@@ -1,0 +1,43 @@
+=======SIMBOLOS EMPLEADOS EN EL PROYECTO=======
+📝 - Descripción, notas
+💰 - Precio, ventas
+📊 - Costo, fabricación
+🏷️ - Categoría
+🔖 - Subcategoría
+🥗 - Ingredientes
+✏️ - Modificar
+🗑️ - Eliminar
+➕ - Añadir
+✅ - Éxito, confirmar
+❌ - Error, cancelar
+⚠️ - Advertencia
+ℹ️ - Información
+💾 - Guardar
+🔍 - Buscar
+🔄 - Actualizar
+📁 - Archivo
+📋 - Lista
+🖼️ - Imagen
+📛 - Nombre
+⚖️ - Cantidad, peso
+📏 - Medida
+👤 - Empleado
+👥 - Empleados
+🔐 - Contraseña
+📱 - Teléfono
+📧 - Correo
+📍 - Dirección
+🎂 - Fecha
+⭐ - Destacado
+📌 - Importante
+🔔 - Notificación
+⏰ - Hora
+📅 - Fecha
+📈 - Ventas
+📉 - Gastos
+🏪 - Tienda
+🍽️ - Mesa, restaurante
+🥤 - Bebida
+🥡 - Para llevar
+🍔 - Comida
+🔄 - Recargar
