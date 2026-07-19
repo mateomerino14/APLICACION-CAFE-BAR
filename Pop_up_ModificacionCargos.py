@@ -15,10 +15,12 @@ def get_db_path():
 DB_PATH = get_db_path()
 
 class Pop_up_ModificacionCargos(QDialog):
-    def __init__(self, datos, parent=None):
+    def __init__(self, id_cargo, nom_cargo, parent=None):
         super().__init__(parent)
+        self.id_cargo = id_cargo
+        self.nom_cargo = nom_cargo
         self.setWindowTitle("MODIFICACIÓN DE CARGOS")
-        self.setFixedSize(800, 600)
+        self.setFixedSize(1000, 900)
         self.setStyleSheet("""
             QDialog {
                 background: #f8fafc;
@@ -47,11 +49,77 @@ class Pop_up_ModificacionCargos(QDialog):
                 font-weight: bold;
             }
             QMessageBox QPushButton:hover { background-color: #2980b9; }
+            QScrollArea {
+                border: 2px solid #e2e8f0;
+                border-radius: 8px;
+                background-color: white;
+            }
+            QScrollBar:vertical {
+                border: none;
+                background: #f1f5f9;
+                width: 16px;
+                border-radius: 8px;
+                margin: 2px;
+            }
+            QScrollBar::handle:vertical {
+                background: #94a3b8;
+                min-height: 40px;
+                border-radius: 8px;
+                margin: 2px;
+            }
+            QScrollBar::handle:vertical:hover {
+                background: #64748b;
+            }
+            QScrollBar::handle:vertical:pressed {
+                background: #475569;
+            }
+            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+                height: 0px;
+            }
         """)
         
-        self.crearPantallaModificacion(datos)
+        self.crearPantallaModificacion()
         
-    def crearPantallaModificacion(self, datos):
+    def obtener_todas_subpantallas_agrupadas(self):
+        conn = sqlite3.connect(DB_PATH)
+        c = conn.cursor()
+        c.execute("""
+            SELECT p.idPant, p.nomPant, s.idSubPant, s.nomSubPant, s.accion
+            FROM Pantalla p
+            JOIN Subpantalla s ON p.idPant = s.idPant
+            ORDER BY p.idPant, s.nomSubPant
+        """)
+        resultados = c.fetchall()
+        conn.close()
+        
+        pantallas = {}
+        for id_pant, nom_pant, id_sub, nom_sub, accion in resultados:
+            if id_pant not in pantallas:
+                pantallas[id_pant] = {
+                    'nombre': nom_pant,
+                    'subpantallas': []
+                }
+            pantallas[id_pant]['subpantallas'].append({
+                'id': id_sub,
+                'nombre': nom_sub,
+                'accion': accion
+            })
+        return pantallas
+        
+    def obtener_subpantallas_seleccionadas(self):
+        conn = sqlite3.connect(DB_PATH)
+        c = conn.cursor()
+        c.execute("""
+            SELECT s.idSubPant
+            FROM PermisosCargoSubpantalla pcs
+            JOIN Subpantalla s ON pcs.idSubPant = s.idSubPant
+            WHERE pcs.idCarg = ?
+        """, (self.id_cargo,))
+        resultados = c.fetchall()
+        conn.close()
+        return [r[0] for r in resultados]
+        
+    def crearPantallaModificacion(self):
         main_widget = QWidget()
         main_widget.setStyleSheet("""
             QWidget {
@@ -65,7 +133,8 @@ class Pop_up_ModificacionCargos(QDialog):
         layoutDatos = QVBoxLayout(main_widget)
         layoutDatos.setSpacing(20)
         layoutDatos.setContentsMargins(30, 25, 30, 25)
-        titulo = QLabel("MODIFICACIÓN DE CARGOS")
+        
+        titulo = QLabel(f"MODIFICAR CARGO: {self.nom_cargo}")
         titulo.setStyleSheet("""
             QLabel {
                 font-size: 24px;
@@ -81,9 +150,10 @@ class Pop_up_ModificacionCargos(QDialog):
         """)
         titulo.setAlignment(Qt.AlignCenter)
         layoutDatos.addWidget(titulo)
+        
         layoutCargo = QHBoxLayout()
         cargo = QLabel("Cargo:")
-        campoCargo = QLabel(str(datos[0]))
+        campoCargo = QLabel(self.nom_cargo)
         label_style = """
             QLabel {
                 font-size: 14px;
@@ -111,6 +181,7 @@ class Pop_up_ModificacionCargos(QDialog):
         layoutCargo.addWidget(cargo)
         layoutCargo.addWidget(campoCargo)
         layoutDatos.addLayout(layoutCargo)
+        
         separador = QFrame()
         separador.setFrameShape(QFrame.HLine)
         separador.setFrameShadow(QFrame.Sunken)
@@ -123,7 +194,8 @@ class Pop_up_ModificacionCargos(QDialog):
             }
         """)
         layoutDatos.addWidget(separador)
-        tituloSecciones = QLabel("PERMISOS DE ACCESO")
+        
+        tituloSecciones = QLabel("PERMISOS DE ACCESO POR SUBECCIÓN")
         tituloSecciones.setStyleSheet("""
             QLabel {
                 font-size: 16px;
@@ -137,6 +209,16 @@ class Pop_up_ModificacionCargos(QDialog):
         """)
         tituloSecciones.setAlignment(Qt.AlignCenter)
         layoutDatos.addWidget(tituloSecciones)
+        
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setMinimumHeight(350)
+        
+        scroll_content = QWidget()
+        scroll_layout = QVBoxLayout(scroll_content)
+        scroll_layout.setSpacing(15)
+        scroll_layout.setContentsMargins(20, 20, 20, 20)
+        
         checkbox_style = """
             QCheckBox {
                 font-size: 14px;
@@ -167,36 +249,108 @@ class Pop_up_ModificacionCargos(QDialog):
                 border: 2px solid #6c757d;
             }
         """
-        seccion1 = QCheckBox("📋 Familia")
-        seccion2 = QCheckBox("📁 Secciones")
-        seccion3 = QCheckBox("💰 Caja")
-        seccion5 = QCheckBox("📦 Stock")
-        seccion6 = QCheckBox("📊 Reportes")
-        seccion7 = QCheckBox("⚙️ Administracion")
-        seccion8 = QCheckBox("🍽️ Productos")
-        seccion9 = QCheckBox("🎯 Promociones")
-        seccion10 = QCheckBox("👤 Empleados")
-        checkboxes = [seccion1, seccion2, seccion3, seccion5, 
-                     seccion6, seccion7, seccion8, seccion9, seccion10]
-        for checkbox in checkboxes:
-            checkbox.setStyleSheet(checkbox_style)
-            checkbox.setCursor(Qt.PointingHandCursor)
-        grid_layout = QGridLayout()
-        grid_layout.setSpacing(10)
-        grid_layout.addWidget(seccion1, 0, 0)
-        grid_layout.addWidget(seccion2, 0, 1)
-        grid_layout.addWidget(seccion3, 0, 2)
-        grid_layout.addWidget(seccion5, 0, 3)
-        grid_layout.addWidget(seccion6, 1, 0)
-        grid_layout.addWidget(seccion7, 1, 1)
-        grid_layout.addWidget(seccion8, 1, 2)
-        grid_layout.addWidget(seccion9, 1, 3)
-        grid_layout.addWidget(seccion10, 2, 0)
-        layoutDatos.addLayout(grid_layout)
-        layoutDatos.addStretch(1)
+        
+        self.checkboxes = []
+        self.checkboxes_por_pantalla = {}
+        
+        pantallas = self.obtener_todas_subpantallas_agrupadas()
+        seleccionadas = self.obtener_subpantallas_seleccionadas()
+        
+        for id_pant, pantalla in pantallas.items():
+            seccion_widget = QWidget()
+            seccion_widget.setStyleSheet("""
+                QWidget {
+                    background-color: #f8fafc;
+                    border-radius: 8px;
+                    border: 1px solid #e2e8f0;
+                }
+            """)
+            seccion_layout = QVBoxLayout(seccion_widget)
+            
+            header_seccion = QHBoxLayout()
+            titulo_seccion = QLabel(f"📌 {pantalla['nombre']}")
+            titulo_seccion.setStyleSheet("""
+                font-size: 16px;
+                font-weight: bold;
+                color: #1e293b;
+                background-color: #e2e8f0;
+                padding: 10px 15px;
+                border-radius: 6px;
+                margin: 5px;
+            """)
+            header_seccion.addWidget(titulo_seccion, 1)
+            
+            btn_seleccionar_todas = QPushButton("✓ Todas")
+            btn_seleccionar_todas.setStyleSheet("""
+                QPushButton {
+                    background-color: #10b981;
+                    color: white;
+                    border: none;
+                    border-radius: 4px;
+                    padding: 5px 10px;
+                    font-weight: bold;
+                    font-size: 12px;
+                }
+                QPushButton:hover {
+                    background-color: #059669;
+                }
+            """)
+            btn_seleccionar_todas.setCursor(Qt.PointingHandCursor)
+            header_seccion.addWidget(btn_seleccionar_todas)
+            
+            btn_deseleccionar_todas = QPushButton("✗ Ninguna")
+            btn_deseleccionar_todas.setStyleSheet("""
+                QPushButton {
+                    background-color: #ef4444;
+                    color: white;
+                    border: none;
+                    border-radius: 4px;
+                    padding: 5px 10px;
+                    font-weight: bold;
+                    font-size: 12px;
+                }
+                QPushButton:hover {
+                    background-color: #dc2626;
+                }
+            """)
+            btn_deseleccionar_todas.setCursor(Qt.PointingHandCursor)
+            header_seccion.addWidget(btn_deseleccionar_todas)
+            
+            seccion_layout.addLayout(header_seccion)
+            
+            grid_sub = QGridLayout()
+            grid_sub.setSpacing(10)
+            grid_sub.setContentsMargins(15, 10, 15, 10)
+            
+            self.checkboxes_por_pantalla[id_pant] = []
+            
+            for i, sub in enumerate(pantalla['subpantallas']):
+                checkbox = QCheckBox(sub['nombre'])
+                checkbox.setStyleSheet(checkbox_style)
+                checkbox.setProperty("idSubPant", sub['id'])
+                if sub['id'] in seleccionadas:
+                    checkbox.setChecked(True)
+                self.checkboxes.append(checkbox)
+                self.checkboxes_por_pantalla[id_pant].append(checkbox)
+                
+                fila = i // 2
+                columna = i % 2
+                grid_sub.addWidget(checkbox, fila, columna)
+            
+            btn_seleccionar_todas.clicked.connect(lambda checked, lista=self.checkboxes_por_pantalla[id_pant]: self.seleccionar_todos(lista, True))
+            btn_deseleccionar_todas.clicked.connect(lambda checked, lista=self.checkboxes_por_pantalla[id_pant]: self.seleccionar_todos(lista, False))
+            
+            seccion_layout.addLayout(grid_sub)
+            scroll_layout.addWidget(seccion_widget)
+        
+        scroll_layout.addStretch()
+        scroll_area.setWidget(scroll_content)
+        layoutDatos.addWidget(scroll_area, 1)
+        
         layoutBotones = QHBoxLayout()
         cancelar = QPushButton("CANCELAR")
         modificar = QPushButton("GUARDAR CAMBIOS")
+        
         boton_cancelar_style = """
             QPushButton {
                 background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
@@ -240,58 +394,61 @@ class Pop_up_ModificacionCargos(QDialog):
                 padding: 11px 24px;
             }
         """
+        
         cancelar.setStyleSheet(boton_cancelar_style)
         modificar.setStyleSheet(boton_guardar_style)
         cancelar.setCursor(Qt.PointingHandCursor)
         modificar.setCursor(Qt.PointingHandCursor)
+        
         cancelar.clicked.connect(self.cerrarVentanaCancelar)
-        modificar.clicked.connect(lambda: self.guardarCargos(datos[0]))
+        modificar.clicked.connect(self.guardarCambios)
+        
         layoutBotones.addStretch(1)
         layoutBotones.addWidget(cancelar)
         layoutBotones.addSpacing(20)
         layoutBotones.addWidget(modificar)
         layoutBotones.addStretch(1)
         layoutDatos.addLayout(layoutBotones)
-        self.objetos = checkboxes
-        listaPaginas = datos[1].split(',')
-        conjunto = set(listaPaginas)
-        for checkbox in self.objetos:
-            nombre_checkbox = checkbox.text().split(' ', 1)[1] if ' ' in checkbox.text() else checkbox.text()
-            if nombre_checkbox in conjunto:
-                checkbox.setChecked(True)
-           
+        
+    def seleccionar_todos(self, lista_checkboxes, estado):
+        for checkbox in lista_checkboxes:
+            checkbox.setChecked(estado)
+        
     def cerrarVentanaCancelar(self):
         self.reject()
         
-    def guardarCargos(self, nomCargo):
-        marcados = []
-        for elem in self.objetos:
-            if elem.isChecked():
-                nombre = elem.text().split(' ', 1)[1] if ' ' in elem.text() else elem.text()
-                marcados.append(nombre)    
-        if len(marcados) == 0:
-            QMessageBox.warning(self, "Advertencia", "Se debe dar acceso por lo menos a una página")
+    def guardarCambios(self):
+        seleccionados = []
+        for checkbox in self.checkboxes:
+            if checkbox.isChecked():
+                id_subpantalla = checkbox.property("idSubPant")
+                seleccionados.append(id_subpantalla)
+        
+        if len(seleccionados) == 0:
+            QMessageBox.warning(self, "Advertencia", "Se debe dar acceso por lo menos a una subsección")
             return
+        
         conn = sqlite3.connect(DB_PATH)
         c = conn.cursor()
-        consultaIdCargo = """SELECT idCargo FROM Cargo WHERE nomCarg=?"""
-        c.execute(consultaIdCargo, (nomCargo,))
-        resultado = c.fetchone()
-        idCargo = resultado[0]
-        eliminar = """DELETE FROM PermisosCargo WHERE idCarg=?"""
-        c.execute(eliminar, (idCargo,))
-        for elem in marcados:
-            idConsulta = """SELECT idPant FROM Pantalla WHERE nomPant=?"""
-            c.execute(idConsulta, (elem,))
-            resultado = c.fetchone()
-            if resultado:
-                idPantalla = resultado[0]
-                consulta = """INSERT INTO PermisosCargo(idCarg, idPant) VALUES (?, ?)"""
-                c.execute(consulta, (idCargo, idPantalla))    
-        conn.commit()
-        conn.close()   
-        QMessageBox.information(self, "Confirmación", "Se ha registrado con éxito la modificación")
-        self.accept()
+        
+        try:
+            conn.execute("BEGIN TRANSACTION")
+            
+            c.execute("DELETE FROM PermisosCargoSubpantalla WHERE idCarg = ?", (self.id_cargo,))
+            
+            for id_sub in seleccionados:
+                c.execute("INSERT INTO PermisosCargoSubpantalla(idCarg, idSubPant) VALUES (?, ?)",
+                         (self.id_cargo, id_sub))
+            
+            conn.commit()
+            QMessageBox.information(self, "Confirmación", "Se ha registrado con éxito la modificación")
+            self.accept()
+            
+        except Exception as e:
+            conn.rollback()
+            QMessageBox.critical(self, "Error", f"Error al guardar: {str(e)}")
+        finally:
+            conn.close()
         
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton:
@@ -303,10 +460,8 @@ class Pop_up_ModificacionCargos(QDialog):
             self.move(event.globalPos() - self.drag_start_position)
             event.accept()
 
-
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-    datos_ejemplo = ["Administrador","Familia","Secciones","Caja","Stock","Reportes","Administración"]
-    pagina = Pop_up_ModificacionCargos(datos_ejemplo)
+    pagina = Pop_up_ModificacionCargos(1, "Administrador")
     pagina.show()
     sys.exit(app.exec_())

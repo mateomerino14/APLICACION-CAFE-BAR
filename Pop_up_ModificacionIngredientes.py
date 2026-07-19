@@ -17,8 +17,9 @@ DB_PATH = get_db_path()
 class Pop_up_ModificacionIngredientes(QDialog):
     def __init__(self, datos, parent=None):
         super().__init__(parent)
+        self.nombres_existentes = []
         self.setWindowTitle("MODIFICACIÓN DE INGREDIENTE")
-        self.setFixedSize(700, 790)
+        self.setFixedSize(700, 870)
         self.setStyleSheet("""
             QDialog {
                 background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
@@ -127,8 +128,6 @@ class Pop_up_ModificacionIngredientes(QDialog):
                 color: #1e293b;
                 selection-background-color: #3498db;
                 selection-color: white;
-                min-height: 80px;
-                max-height: 80px;
             }
             QTextEdit:focus {
                 border: 2px solid #3498db;
@@ -186,6 +185,12 @@ class Pop_up_ModificacionIngredientes(QDialog):
         self.campoNombre.setValidator(QRegExpValidator(letras_regex))
         self.campoNombre.setText(datos[1])
         self.campoNombre.setStyleSheet(field_style)
+
+        self.completerNombre = QCompleter(self.nombres_existentes, self)
+        self.completerNombre.setCaseSensitivity(Qt.CaseInsensitive)
+        self.completerNombre.setFilterMode(Qt.MatchContains)
+        self.campoNombre.setCompleter(self.completerNombre)
+
         form_layout.addWidget(self.campoNombre)
         descripcion_label = QLabel("📋 DESCRIPCIÓN")
         descripcion_label.setStyleSheet(label_style)
@@ -193,6 +198,7 @@ class Pop_up_ModificacionIngredientes(QDialog):
         self.campoDescripcion = QTextEdit()
         self.campoDescripcion.setPlaceholderText("Ingrese la descripción del ingrediente (opcional)")
         self.campoDescripcion.setText(datos[2])
+        self.campoDescripcion.setFixedHeight(80)
         self.campoDescripcion.setStyleSheet(field_style)
         form_layout.addWidget(self.campoDescripcion)
         cantidad_label = QLabel("⚖️ CANTIDAD EN STOCK")
@@ -229,6 +235,17 @@ class Pop_up_ModificacionIngredientes(QDialog):
             self.campoUnidadMedida.setCurrentText(unidad_actual)
         self.campoUnidadMedida.setStyleSheet(field_style)
         form_layout.addWidget(self.campoUnidadMedida)
+        precioExtra_label = QLabel("💲 PRECIO EXTRA (Bs) — al agregarlo como extra en un pedido")
+        precioExtra_label.setStyleSheet(label_style)
+        form_layout.addWidget(precioExtra_label)
+        self.campoPrecioExtra = QLineEdit()
+        self.campoPrecioExtra.setPlaceholderText("0.00")
+        precioExtraRegex = QRegExp("[0-9]+\\.?[0-9]*")
+        self.campoPrecioExtra.setValidator(QRegExpValidator(precioExtraRegex))
+        precio_extra_actual = datos[5] if len(datos) > 5 and datos[5] not in (None, "") else "0"
+        self.campoPrecioExtra.setText(str(precio_extra_actual))
+        self.campoPrecioExtra.setStyleSheet(field_style)
+        form_layout.addWidget(self.campoPrecioExtra)
         form_layout.addStretch()
         main_layout.addWidget(form_container)
         botones_container = QFrame()
@@ -298,6 +315,10 @@ class Pop_up_ModificacionIngredientes(QDialog):
         botones_layout.addWidget(self.btn_modificar)
         botones_layout.addStretch()
         main_layout.addWidget(botones_container)
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        self.completerNombre.setModel(QStringListModel(self.nombres_existentes))
         
     def modificarRegistro(self, datos):
         if not self.campoNombre.text().strip():
@@ -314,8 +335,8 @@ class Pop_up_ModificacionIngredientes(QDialog):
         
         conn = sqlite3.connect(DB_PATH)
         c = conn.cursor()
-        consulta = """SELECT * FROM Stock WHERE nomIng=? AND descripcion=? AND idIng != ?"""
-        c.execute(consulta, (self.campoNombre.text().strip(), self.campoDescripcion.toPlainText().strip(), int(datos[0])))
+        consulta = """SELECT * FROM Stock WHERE UPPER(nomIng)=UPPER(?) AND idIng != ?"""
+        c.execute(consulta, (self.campoNombre.text().strip(), int(datos[0])))
         resultados = c.fetchall()
         if resultados:
             QMessageBox.warning(self, "Advertencia", "Este ingrediente ya está registrado")
@@ -323,14 +344,17 @@ class Pop_up_ModificacionIngredientes(QDialog):
             return
             
         try:
+            precio_extra_texto = self.campoPrecioExtra.text().strip()
+            precio_extra_valor = float(precio_extra_texto) if precio_extra_texto != "" else 0.0
             consulta = """UPDATE Stock 
-                       SET nomIng=?, descripcion=?, cantidadStock=?, unidadMedida=?
+                       SET nomIng=?, descripcion=?, cantidadStock=?, unidadMedida=?, precioExtra=?
                        WHERE idIng=?"""
             c.execute(consulta, (
                 self.campoNombre.text().strip(), 
                 self.campoDescripcion.toPlainText().strip(), 
                 float(self.campoCantidad.text()) if self.campoCantidad.text() else 0.00,
-                self.campoUnidadMedida.currentText().strip(), 
+                self.campoUnidadMedida.currentText().strip(),
+                precio_extra_valor,
                 int(datos[0])
             ))
             conn.commit()
@@ -375,7 +399,7 @@ if __name__ == "__main__":
     app = QApplication(sys.argv)
     app.setStyle('Fusion')
     
-    datos_ejemplo = [1, "Azúcar", "Azúcar refinada para repostería", "50", "Kilogramos"]
+    datos_ejemplo = [1, "Azúcar", "Azúcar refinada para repostería", "50", "Kilogramos", "0.50"]
     pagina = Pop_up_ModificacionIngredientes(datos_ejemplo)
     pagina.show()
     sys.exit(app.exec_())

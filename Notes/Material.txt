@@ -1,0 +1,151 @@
+============================================================
+DOCUMENTACIÓN DEL PROYECTO
+============================================================
+
+COMANDO DE GENERACIÓN DE EJECUTABLE
+
+pyinstaller Main.py --onedir --windowed --clean --noconfirm --icon "Imagenes\icono.ico" --add-data "Imagenes;Imagenes" --add-data "C:\Users\MAT\anaconda3\envs\py310\Lib\site-packages\escpos\capabilities.json;escpos"
+
+------------------------------------------------------------
+DESGLOSE DEL COMANDO
+------------------------------------------------------------
+
+pyinstaller
+  Herramienta que convierte un script Python en un ejecutable (.exe).
+
+Main.py
+  Archivo principal del proyecto.
+
+--onedir
+  Genera una carpeta que contiene el ejecutable y todas sus dependencias.
+
+--windowed
+  Ejecuta la aplicación sin mostrar consola (ideal para interfaces gráficas).
+
+--clean
+  Elimina archivos temporales antes de compilar.
+
+--noconfirm
+  Sobrescribe la carpeta dist sin pedir confirmación.
+
+--icon "Imagenes\icono.ico"
+  Asigna un ícono personalizado al ejecutable.
+
+--add-data "Imagenes;Imagenes"
+  Incluye la carpeta Imagenes dentro del ejecutable.
+
+--add-data "...capabilities.json;escpos"
+  Incluye el archivo capabilities.json necesario para la librería escpos.
+
+
+------------------------------------------------------------
+RESULTADO DE LA COMPILACIÓN
+------------------------------------------------------------
+
+/dist
+   /Main
+      Main.exe
+      (archivos internos necesarios)
+
+
+============================================================
+SÍMBOLOS EMPLEADOS EN EL PROYECTO
+============================================================
+
+------------------------------------------------------------
+GESTIÓN Y DESCRIPCIÓN
+------------------------------------------------------------
+
+📝  Descripción, notas
+📛  Nombre
+🥗  Ingredientes
+⭐  Destacado
+📌  Importante
+ℹ️  Información
+
+
+------------------------------------------------------------
+VENTAS Y FINANZAS
+------------------------------------------------------------
+
+💰  Precio, ventas
+📊  Costo, fabricación
+📈  Ventas
+📉  Gastos
+
+
+------------------------------------------------------------
+CLASIFICACIÓN
+------------------------------------------------------------
+
+🏷️  Categoría
+🔖  Subcategoría
+
+
+------------------------------------------------------------
+ACCIONES DEL SISTEMA
+------------------------------------------------------------
+
+➕  Añadir
+✏️  Modificar
+🗑️  Eliminar
+💾  Guardar
+🔍  Buscar
+🔄  Actualizar / Recargar
+📋  Lista
+📁  Archivo
+🖼️  Imagen
+
+
+------------------------------------------------------------
+GESTIÓN DE USUARIOS
+------------------------------------------------------------
+
+👤  Empleado
+👥  Empleados
+🔐  Contraseña
+📱  Teléfono
+📧  Correo
+📍  Dirección
+
+
+------------------------------------------------------------
+TIEMPO Y FECHA
+------------------------------------------------------------
+
+📅  Fecha
+🎂  Fecha especial
+⏰  Hora
+
+
+------------------------------------------------------------
+RESTAURANTE / TIENDA
+------------------------------------------------------------
+
+🏪  Tienda
+🍽️  Mesa / Restaurante
+🥤  Bebida
+🥡  Para llevar
+🍔  Comida
+
+
+------------------------------------------------------------
+ESTADOS Y NOTIFICACIONES
+------------------------------------------------------------
+
+✅  Éxito / Confirmar
+❌  Error / Cancelar
+⚠️  Advertencia
+🔔  Notificación
+
+
+============================================================
+NOTAS FINALES
+============================================================
+
+- Este comando está configurado para entorno Windows.
+- Verificar que la ruta de Anaconda sea correcta.
+- Si cambias de entorno virtual, actualizar la ruta del capabilities.json.
+- Asegurarse de que la carpeta Imagenes exista antes de compilar.
+
+============================================================

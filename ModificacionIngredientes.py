@@ -43,7 +43,18 @@ class ModificacionIngredientes(QWidget):
         self.crearFiltro()
         self.campoModificar()
         self.showMaximized()
-  
+
+    def cargarNombresIngredientes(self):
+        try:
+            conn = sqlite3.connect(DB_PATH)
+            c = conn.cursor()
+            c.execute("SELECT nomIng FROM Stock")
+            nombres = [row[0] for row in c.fetchall()]
+            conn.close()
+            return nombres
+        except:
+            return []
+
     #No tocar
     def crearFiltro(self):
         layoutFiltro=QHBoxLayout()
@@ -99,13 +110,13 @@ class ModificacionIngredientes(QWidget):
         tabla.setRowCount(0)
         conn = sqlite3.connect(DB_PATH) 
         if(texto==""):
-            consulta = """SELECT idIng,nomIng,descripcion,cantidadStock,unidadMedida
+            consulta = """SELECT idIng,nomIng,descripcion,cantidadStock,unidadMedida,COALESCE(precioExtra,0)
                           FROM Stock
                           ORDER BY nomIng ASC"""
             c = conn.cursor()
             resultado = c.execute(consulta)
         else:
-            consulta = """SELECT idIng,nomIng,descripcion,cantidadStock,unidadMedida
+            consulta = """SELECT idIng,nomIng,descripcion,cantidadStock,unidadMedida,COALESCE(precioExtra,0)
                  FROM Stock
                  WHERE nomIng LIKE ?
                  ORDER BY nomIng ASC"""
@@ -173,7 +184,6 @@ class ModificacionIngredientes(QWidget):
                             }
                             QTableWidget::item {
                                 color: #343a40; 
-                                /* Color de texto oscuro */
                             }
                             QHeaderView {
                                 margin: 0;
@@ -198,7 +208,6 @@ class ModificacionIngredientes(QWidget):
         self.tabla.setSelectionMode(QTableWidget.NoSelection) 
         self.tabla.setEditTriggers(QTableWidget.NoEditTriggers) 
         layoutTabla.addWidget(self.tabla)
-        #layoutCampoModificar.addWidget(campoModificar)
         layoutCampoModificar.addWidget(campoTabla)
         self.tabla.horizontalHeader().setStretchLastSection(True)
         self.tabla.verticalHeader().setDefaultSectionSize(150)
@@ -208,7 +217,7 @@ class ModificacionIngredientes(QWidget):
     
     def cargarDatos(self):
         conn = sqlite3.connect(DB_PATH) 
-        consulta = """SELECT idIng,nomIng,descripcion,cantidadStock,unidadMedida
+        consulta = """SELECT idIng,nomIng,descripcion,cantidadStock,unidadMedida,COALESCE(precioExtra,0)
                       FROM Stock
                       ORDER BY nomIng ASC"""
         c = conn.cursor()
@@ -219,7 +228,8 @@ class ModificacionIngredientes(QWidget):
             'nomIng': 'Nombre',
             'descripcion': 'Descripcion',
             'cantidadStock': 'Cantidad',
-            'unidadMedida': 'Unidad de Medida'
+            'unidadMedida': 'Unidad de Medida',
+            'COALESCE(precioExtra,0)': 'Precio Extra'
         }
         
         columnasNuevas = [mapeo_nombres[colum] for colum in columnas]
@@ -228,10 +238,11 @@ class ModificacionIngredientes(QWidget):
         self.tabla.setHorizontalHeaderLabels(columnasNuevas)
         self.tabla.setRowCount(0)
         anchos_columnas = {
-            'Nombre': 350,
-            'Descripcion': 430,
-            'Cantidad': 300,
-            'Unidad de Medida': 300
+            'Nombre': 300,
+            'Descripcion': 380,
+            'Cantidad': 250,
+            'Unidad de Medida': 250,
+            'Precio Extra': 200
         }
         for i, col_name in enumerate(columnasNuevas):
             self.tabla.setColumnWidth(i, anchos_columnas.get(col_name, 100)) 
@@ -240,7 +251,6 @@ class ModificacionIngredientes(QWidget):
         for f, registro in enumerate(registros):
             self.tabla.insertRow(f)
             for c, campo in enumerate(registro):
-               print(c,campo)
                if c!=0:
                     if c == len(registro)-1:  
                         boton=QPushButton()
@@ -258,7 +268,7 @@ class ModificacionIngredientes(QWidget):
         conn.close()
     
 
-    def pantallaModificar(self, idIng,fila):
+    def pantallaModificar(self, idIng, fila):
         if not (0 <= fila < self.tabla.rowCount()):
             QMessageBox.warning(self, "Error", "Fila seleccionada no válida")
             return
@@ -268,16 +278,14 @@ class ModificacionIngredientes(QWidget):
                 item = self.tabla.item(fila, c)
                 datos.append(item.text() if item else "")
             scroll_pos = self.tabla.verticalScrollBar().value()
-            pagina=Pop_up_ModificacionIngredientes(datos,self)
+            pagina = Pop_up_ModificacionIngredientes(datos, self)
+            pagina.nombres_existentes = self.cargarNombresIngredientes()
             pagina.exec_()
             self.filtrarDatos(self.campoBusqueda.text().strip())
             self.tabla.verticalScrollBar().setValue(scroll_pos)
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Error al modificar: {str(e)}")
         
-        
-        
-    
     
     
 if __name__=="__main__":

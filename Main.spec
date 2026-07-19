@@ -6,7 +6,7 @@ a = Analysis(
     pathex=[],
     binaries=[],
     datas=[('Imagenes', 'Imagenes'), ('C:\\Users\\MAT\\anaconda3\\envs\\py310\\Lib\\site-packages\\escpos\\capabilities.json', 'escpos')],
-    hiddenimports=[],
+    hiddenimports=['bcrypt'],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
@@ -32,7 +32,7 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=['icono.ico'],
+    icon=['Imagenes\\icono.ico'],
 )
 coll = COLLECT(
     exe,

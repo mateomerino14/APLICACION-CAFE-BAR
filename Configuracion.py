@@ -9,10 +9,13 @@ from datetime import datetime
 import smtplib
 import shutil
 import zipfile
+import tempfile
+import io
+from EliminacionFisica import EliminacionFisica
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.application import MIMEApplication
-
+from SeguridadUtils import hashear_password, verificar_password
 
 def get_db_path():
     if getattr(sys, 'frozen', False):
@@ -21,9 +24,7 @@ def get_db_path():
         base_path = os.path.dirname(__file__)
     return os.path.join(base_path, 'database', 'cafebar.db')
 
-
 DB_PATH = get_db_path()
-
 
 class Configuracion(QWidget):
     def __init__(self):
@@ -148,8 +149,9 @@ class Configuracion(QWidget):
         """)
         btnImportar.setCursor(Qt.PointingHandCursor)
         btnImportar.clicked.connect(self.importar_backup)
-        btnLimpiar = QPushButton("Limpiar Ventas (Reiniciar Caja)")
-        btnLimpiar.setStyleSheet("""
+        
+        btnEliminarFisica = QPushButton("Eliminar Ventas")
+        btnEliminarFisica.setStyleSheet("""
             QPushButton {
                 background-color: #e74c3c;
                 color: white;
@@ -163,8 +165,9 @@ class Configuracion(QWidget):
                 background-color: #c0392b;
             }
         """)
-        btnLimpiar.setCursor(Qt.PointingHandCursor)
-        btnLimpiar.clicked.connect(self.limpiar_ventas)
+        btnEliminarFisica.setCursor(Qt.PointingHandCursor)
+        btnEliminarFisica.clicked.connect(self.abrir_eliminacion_fisica)
+        
         btnAdministrarCorreos = QPushButton("Administrar Correos / Backup")
         btnAdministrarCorreos.setStyleSheet("""
             QPushButton {
@@ -264,7 +267,7 @@ class Configuracion(QWidget):
         """)
         layoutBotones.addWidget(btnExportar)
         layoutBotones.addWidget(btnImportar)
-        layoutBotones.addWidget(btnLimpiar)
+        layoutBotones.addWidget(btnEliminarFisica)
         layoutBotones.addWidget(btnAdministrarCorreos)
         layoutBotones.addWidget(btnImpuestos)
         layoutBotones.addWidget(btnCambiarClaveDir)
@@ -272,6 +275,10 @@ class Configuracion(QWidget):
         self.labelEstado = QLabel("Estado: Listo")
         self.labelEstado.setStyleSheet("color: #7f8c8d; font-size: 14px; font-style: italic; padding: 10px;")
         self.layoutPrincipal.addWidget(self.labelEstado, alignment=Qt.AlignCenter)
+    
+    def abrir_eliminacion_fisica(self):
+        dialog = EliminacionFisica(self)
+        dialog.exec_()
         
     def abrir_ventas_diarias(self):
         dialog = QDialog(self)
@@ -324,12 +331,6 @@ class Configuracion(QWidget):
             QPushButton[active="true"]:hover { 
                 background:#27ae60; 
             }
-            QPushButton[canceladas="true"] { 
-                background:#e74c3c; 
-            }
-            QPushButton[canceladas="true"]:hover { 
-                background:#c0392b; 
-            }
             QLineEdit {
                 padding: 8px;
                 border: 2px solid #e2e8f0;
@@ -347,18 +348,7 @@ class Configuracion(QWidget):
         conn = sqlite3.connect(DB_PATH)
         cur = conn.cursor()
         hoy = datetime.now().strftime("%Y-%m-%d")
-        cur.execute("""
-            SELECT COUNT(DISTINCT v.numVenta), COALESCE(SUM(v.totalVenta), 0)
-            FROM Venta v
-            WHERE DATE(v.fechaReg) = ?
-            AND EXISTS (
-                SELECT 1 FROM DetallesVenta d 
-                WHERE d.numVenta = v.numVenta 
-                AND d.fechaRegVenta = v.fechaReg
-                AND d.estadoDetalleVenta != 'Cancelada'
-            )
-        """, (hoy,))
-        total_ventas, total_monto = cur.fetchone()
+        
         cur.execute("""
             SELECT COUNT(DISTINCT v.numVenta), COALESCE(SUM(v.totalVenta), 0)
             FROM Venta v
@@ -367,12 +357,13 @@ class Configuracion(QWidget):
                 SELECT 1 FROM DetallesVenta d 
                 WHERE d.numVenta = v.numVenta 
                 AND d.fechaRegVenta = v.fechaReg
-                AND d.estadoDetalleVenta != 'Cancelada'
+                AND d.estadoDetalleVenta != 'Finalizado'
             )
         """, (hoy,))
-        canceladas_result = cur.fetchone()
-        canceladas = canceladas_result[0] or 0
-        monto_cancelado = canceladas_result[1] or 0
+        ventas_finalizadas, monto_finalizado = cur.fetchone()
+        ventas_finalizadas = ventas_finalizadas or 0
+        monto_finalizado = monto_finalizado or 0
+        
         cur.execute("""
             SELECT COUNT(DISTINCT v.numVenta)
             FROM Venta v
@@ -385,33 +376,111 @@ class Configuracion(QWidget):
             )
         """, (hoy,))
         en_preparacion = cur.fetchone()[0] or 0
+        
+        cur.execute("""
+            SELECT COUNT(DISTINCT v.numVenta)
+            FROM Venta v
+            WHERE DATE(v.fechaReg) = ?
+            AND NOT EXISTS (
+                SELECT 1 FROM DetallesVenta d 
+                WHERE d.numVenta = v.numVenta 
+                AND d.fechaRegVenta = v.fechaReg
+                AND d.estadoDetalleVenta != 'Cobrar'
+            )
+            AND EXISTS (
+                SELECT 1 FROM DetallesVenta d 
+                WHERE d.numVenta = v.numVenta 
+                AND d.fechaRegVenta = v.fechaReg
+                AND d.estadoDetalleVenta = 'Cobrar'
+            )
+        """, (hoy,))
+        por_cobrar = cur.fetchone()[0] or 0
+        
+        cur.execute("""
+            SELECT COUNT(DISTINCT v.numVenta)
+            FROM Venta v
+            WHERE DATE(v.fechaReg) = ?
+            AND EXISTS (
+                SELECT 1 FROM DetallesVenta d 
+                WHERE d.numVenta = v.numVenta 
+                AND d.fechaRegVenta = v.fechaReg
+                AND d.estadoDetalleVenta = 'Preparacion'
+            )
+            AND EXISTS (
+                SELECT 1 FROM DetallesVenta d 
+                WHERE d.numVenta = v.numVenta 
+                AND d.fechaRegVenta = v.fechaReg
+                AND d.estadoDetalleVenta = 'Cobrar'
+            )
+        """, (hoy,))
+        mixtas = cur.fetchone()[0] or 0
+        
         conn.close()
+        
         stats_data = [
-            (f"Ventas Hoy: {total_ventas}", "#3498db"),
-            (f"Total: {total_monto:.2f} Bs", "#2ecc71"),
-            (f"En Prep.: {en_preparacion}", "#f39c12"),
-            (f"Canceladas: {canceladas}", "#e74c3c"),
-            (f"Perdido: {monto_cancelado:.2f} Bs", "#95a5a6")
+            (f"✅ Finalizadas: {ventas_finalizadas}", "#2ecc71", f"Total: {monto_finalizado:.2f} Bs"),
+            (f"⏳ En Preparación: {en_preparacion}", "#f39c12", None),
+            (f"💰 Por Cobrar: {por_cobrar}", "#3498db", None),
+            (f"🔄 Mixtas: {mixtas}", "#9b59b6", None)
         ]
         
-        for text, color in stats_data:
+        for text, color, extra in stats_data:
+            container = QWidget()
+            container_layout = QVBoxLayout(container)
+            container_layout.setContentsMargins(5, 5, 5, 5)
+            container_layout.setSpacing(2)
+            
             label = QLabel(text)
             label.setStyleSheet(f"""
                 QLabel {{
                     background: {color};
                     color: white;
-                    padding: 10px 15px;
-                    border-radius: 8px;
+                    padding: 8px 12px;
+                    border-radius: 6px;
                     font-weight: bold;
                     font-size: 13px;
-                    margin: 2px;
-                    min-width: 120px;
+                    min-width: 150px;
                     text-align: center;
                 }}
             """)
-            stats_layout.addWidget(label)
+            container_layout.addWidget(label)
+            
+            if extra:
+                extra_label = QLabel(extra)
+                if text.startswith("✅"):
+                    extra_label.setStyleSheet(f"""
+                        QLabel {{
+                            background: #000000;
+                            color: white;
+                            padding: 4px 8px;
+                            border-radius: 4px;
+                            font-weight: bold;
+                            font-size: 12px;
+                            text-align: center;
+                            margin-top: -4px;
+                            border: 1px solid #ffffff;
+                        }}
+                    """)
+                else:
+                    extra_label.setStyleSheet(f"""
+                        QLabel {{
+                            background: {color}80;
+                            color: white;
+                            padding: 4px 8px;
+                            border-radius: 4px;
+                            font-weight: bold;
+                            font-size: 12px;
+                            text-align: center;
+                            margin-top: -4px;
+                        }}
+                    """)
+                container_layout.addWidget(extra_label)
+            
+            stats_layout.addWidget(container)
+        
         stats_layout.addStretch()
         layout.addLayout(stats_layout)
+        
         filtros_top_layout = QHBoxLayout()
         search_layout = QHBoxLayout()
         search_input = QLineEdit()
@@ -428,21 +497,113 @@ class Configuracion(QWidget):
         filtros_top_layout.addWidget(btn_recargar)
         filtros_top_layout.addStretch()
         layout.addLayout(filtros_top_layout)
+        
         filtrosLayout = QHBoxLayout()
         filtrosLayout.setSpacing(10)
-        btnTodas = QPushButton("Todas")
-        btnFinalizadas = QPushButton("Finalizadas")
-        btnEnPreparacion = QPushButton("En preparación")
-        btnPorCobrar = QPushButton("Por cobrar")
-        btnCanceladas = QPushButton("Canceladas")
-        btnTodas.setProperty("active", "true")
-        btnCanceladas.setProperty("canceladas", "true")
-        for btn in [btnTodas, btnFinalizadas, btnEnPreparacion, btnPorCobrar, btnCanceladas]:
+        
+        btnTodas = QPushButton("📋 TODAS")
+        btnTodas.setStyleSheet("""
+            QPushButton {
+                background-color: #34495e;
+                color: white;
+                font-weight: bold;
+                padding: 8px 16px;
+                border-radius: 20px;
+                border: none;
+            }
+            QPushButton:hover {
+                background-color: #2c3e50;
+            }
+            QPushButton:checked {
+                background-color: #2ecc71;
+                border: 2px solid #27ae60;
+            }
+        """)
+        
+        btnFinalizadas = QPushButton("✅ FINALIZADAS")
+        btnFinalizadas.setStyleSheet("""
+            QPushButton {
+                background-color: #27ae60;
+                color: white;
+                font-weight: bold;
+                padding: 8px 16px;
+                border-radius: 20px;
+                border: none;
+            }
+            QPushButton:hover {
+                background-color: #229954;
+            }
+            QPushButton:checked {
+                background-color: #2ecc71;
+                border: 2px solid #27ae60;
+            }
+        """)
+        
+        btnEnPreparacion = QPushButton("⏳ EN PREPARACIÓN")
+        btnEnPreparacion.setStyleSheet("""
+            QPushButton {
+                background-color: #f39c12;
+                color: white;
+                font-weight: bold;
+                padding: 8px 16px;
+                border-radius: 20px;
+                border: none;
+            }
+            QPushButton:hover {
+                background-color: #e67e22;
+            }
+            QPushButton:checked {
+                background-color: #f1c40f;
+                border: 2px solid #f39c12;
+            }
+        """)
+        
+        btnPorCobrar = QPushButton("💰 POR COBRAR")
+        btnPorCobrar.setStyleSheet("""
+            QPushButton {
+                background-color: #3498db;
+                color: white;
+                font-weight: bold;
+                padding: 8px 16px;
+                border-radius: 20px;
+                border: none;
+            }
+            QPushButton:hover {
+                background-color: #2980b9;
+            }
+            QPushButton:checked {
+                background-color: #5dade2;
+                border: 2px solid #3498db;
+            }
+        """)
+        
+        btnMixtas = QPushButton("🔄 MIXTAS")
+        btnMixtas.setStyleSheet("""
+            QPushButton {
+                background-color: #9b59b6;
+                color: white;
+                font-weight: bold;
+                padding: 8px 16px;
+                border-radius: 20px;
+                border: none;
+            }
+            QPushButton:hover {
+                background-color: #8e44ad;
+            }
+            QPushButton:checked {
+                background-color: #af7ac5;
+                border: 2px solid #9b59b6;
+            }
+        """)
+        
+        for btn in [btnTodas, btnFinalizadas, btnEnPreparacion, btnPorCobrar, btnMixtas]:
             btn.setCheckable(True)
             btn.setAutoExclusive(True)
             filtrosLayout.addWidget(btn)
+        
         filtrosLayout.addStretch()
         layout.addLayout(filtrosLayout)
+        
         tabla = QTableWidget()
         tabla.setColumnCount(7)
         tabla.setHorizontalHeaderLabels([
@@ -468,13 +629,26 @@ class Configuracion(QWidget):
         tabla.verticalHeader().setVisible(False)
         tabla.doubleClicked.connect(lambda index: ver_detalles_venta_desde_tabla(tabla, index.row()))
         layout.addWidget(tabla)
+        
         botones_layout = QHBoxLayout()
         btn_ver_detalles = QPushButton("📋 Ver Detalles")
-        btn_ver_detalles.setStyleSheet("background: #9b59b6;")
+        btn_ver_detalles.setStyleSheet("""
+            QPushButton {
+                background: #9b59b6;
+                color: white;
+                font-weight: bold;
+                padding: 8px 16px;
+                border-radius: 20px;
+            }
+            QPushButton:hover {
+                background: #8e44ad;
+            }
+        """)
         btn_ver_detalles.clicked.connect(lambda: ver_detalles_venta_desde_boton(tabla))
         botones_layout.addWidget(btn_ver_detalles)
         botones_layout.addStretch()
         layout.addLayout(botones_layout)
+        
         def cargar_ventas(filtro=None, busqueda=""):
             conn = sqlite3.connect(DB_PATH)
             cur = conn.cursor()
@@ -495,31 +669,34 @@ class Configuracion(QWidget):
                             SELECT 1 FROM DetallesVenta d 
                             WHERE d.numVenta = v.numVenta 
                             AND d.fechaRegVenta = v.fechaReg
-                            AND d.estadoDetalleVenta != 'Cancelada'
-                        ) THEN 'Cancelada'
+                            AND d.estadoDetalleVenta != 'Finalizado'
+                        ) THEN 'Finalizada'
                         
                         WHEN EXISTS (
                             SELECT 1 FROM DetallesVenta d 
                             WHERE d.numVenta = v.numVenta 
                             AND d.fechaRegVenta = v.fechaReg
                             AND d.estadoDetalleVenta = 'Preparacion'
+                        ) AND NOT EXISTS (
+                            SELECT 1 FROM DetallesVenta d 
+                            WHERE d.numVenta = v.numVenta 
+                            AND d.fechaRegVenta = v.fechaReg
+                            AND d.estadoDetalleVenta = 'Cobrar'
                         ) THEN 'En Preparación'
                         
                         WHEN NOT EXISTS (
                             SELECT 1 FROM DetallesVenta d 
                             WHERE d.numVenta = v.numVenta 
                             AND d.fechaRegVenta = v.fechaReg
-                            AND d.estadoDetalleVenta != 'Finalizado'
-                        ) THEN 'Finalizada'
-                        
-                        WHEN NOT EXISTS (
+                            AND d.estadoDetalleVenta != 'Cobrar'
+                        ) AND EXISTS (
                             SELECT 1 FROM DetallesVenta d 
                             WHERE d.numVenta = v.numVenta 
                             AND d.fechaRegVenta = v.fechaReg
-                            AND d.estadoDetalleVenta != 'Cobrar'
+                            AND d.estadoDetalleVenta = 'Cobrar'
                         ) THEN 'Por Cobrar'
                         
-                        ELSE 'Mixto'
+                        ELSE 'Mixta'
                     END AS estado
                 FROM Venta v
                 JOIN Empleado e1 ON v.codEmp = e1.codEmp
@@ -527,6 +704,7 @@ class Configuracion(QWidget):
                 WHERE DATE(v.fechaReg) = ?
                 """
             params = [hoy]
+            
             if filtro == "Finalizadas":
                 query += """ AND NOT EXISTS (
                     SELECT 1 FROM DetallesVenta d 
@@ -540,6 +718,11 @@ class Configuracion(QWidget):
                     WHERE d.numVenta = v.numVenta 
                     AND d.fechaRegVenta = v.fechaReg
                     AND d.estadoDetalleVenta = 'Preparacion'
+                ) AND NOT EXISTS (
+                    SELECT 1 FROM DetallesVenta d 
+                    WHERE d.numVenta = v.numVenta 
+                    AND d.fechaRegVenta = v.fechaReg
+                    AND d.estadoDetalleVenta = 'Cobrar'
                 )"""
             elif filtro == "Por cobrar":
                 query += """ AND NOT EXISTS (
@@ -547,24 +730,36 @@ class Configuracion(QWidget):
                     WHERE d.numVenta = v.numVenta 
                     AND d.fechaRegVenta = v.fechaReg
                     AND d.estadoDetalleVenta != 'Cobrar'
-                )"""
-            elif filtro == "Canceladas":
-                query += """ AND NOT EXISTS (
+                ) AND EXISTS (
                     SELECT 1 FROM DetallesVenta d 
                     WHERE d.numVenta = v.numVenta 
                     AND d.fechaRegVenta = v.fechaReg
-                    AND d.estadoDetalleVenta != 'Cancelada'
-                )"""   
+                    AND d.estadoDetalleVenta = 'Cobrar'
+                )"""
+            elif filtro == "Mixtas":
+                query += """ AND EXISTS (
+                    SELECT 1 FROM DetallesVenta d 
+                    WHERE d.numVenta = v.numVenta 
+                    AND d.fechaRegVenta = v.fechaReg
+                    AND d.estadoDetalleVenta = 'Preparacion'
+                ) AND EXISTS (
+                    SELECT 1 FROM DetallesVenta d 
+                    WHERE d.numVenta = v.numVenta 
+                    AND d.fechaRegVenta = v.fechaReg
+                    AND d.estadoDetalleVenta = 'Cobrar'
+                )"""
+            
             if busqueda:
                 query += """ AND (
                     (CASE WHEN v.codEmp2 = -1 THEN 'DIRECTORIO' ELSE e2.aliasEmp END) LIKE ?
                 )"""
-                search_term = f"%{busqueda}%"
-                params.append(search_term)
+                params.append(f"%{busqueda}%")
+            
             query += " ORDER BY v.horaReg DESC"
             cur.execute(query, params)
             rows = cur.fetchall()
             conn.close()
+            
             tabla.setRowCount(0)
             for r in rows:
                 fila = tabla.rowCount()
@@ -574,15 +769,16 @@ class Configuracion(QWidget):
                     item = QTableWidgetItem(str(val))
                     item.setFlags(item.flags() & ~Qt.ItemIsEditable)
                     item.setTextAlignment(Qt.AlignCenter | Qt.AlignVCenter)
-                    if estado == "Cancelada":
-                        item.setBackground(QColor(255, 230, 230))
-                        item.setForeground(QColor(220, 50, 50))
-                    elif estado == "En Preparación":
-                        item.setBackground(QColor(255, 255, 230))
-                    elif estado == "Por Cobrar":
+                    
+                    if estado == "Finalizada":
                         item.setBackground(QColor(230, 255, 230))
-                    elif estado == "Finalizada":
-                        item.setBackground(QColor(240, 248, 255))
+                    elif estado == "En Preparación":
+                        item.setBackground(QColor(255, 255, 200))
+                    elif estado == "Por Cobrar":
+                        item.setBackground(QColor(200, 230, 255))
+                    elif estado == "Mixta":
+                        item.setBackground(QColor(240, 210, 255))
+                    
                     if c == 4:
                         try:
                             total_val = float(val)
@@ -600,9 +796,9 @@ class Configuracion(QWidget):
                 btnFinalizadas: "Finalizadas",
                 btnEnPreparacion: "En preparación",
                 btnPorCobrar: "Por cobrar",
-                btnCanceladas: "Canceladas"
+                btnMixtas: "Mixtas"
             }
-            filtro_activo=next((estado for btn, estado in filtros.items() if btn.isChecked()), None)
+            filtro_activo = next((estado for btn, estado in filtros.items() if btn.isChecked()), None)
             cargar_ventas(filtro_activo, texto)
 
         def recargar_todo():
@@ -614,7 +810,7 @@ class Configuracion(QWidget):
         btnFinalizadas.clicked.connect(lambda: cargar_ventas("Finalizadas", search_input.text()))
         btnEnPreparacion.clicked.connect(lambda: cargar_ventas("En preparación", search_input.text()))
         btnPorCobrar.clicked.connect(lambda: cargar_ventas("Por cobrar", search_input.text()))
-        btnCanceladas.clicked.connect(lambda: cargar_ventas("Canceladas", search_input.text()))
+        btnMixtas.clicked.connect(lambda: cargar_ventas("Mixtas", search_input.text()))
         search_button.clicked.connect(buscar_ventas)
         search_input.returnPressed.connect(buscar_ventas)
         btn_recargar.clicked.connect(recargar_todo)
@@ -745,11 +941,11 @@ class Configuracion(QWidget):
                     item = QTableWidgetItem(str(val))
                     item.setFlags(item.flags() & ~Qt.ItemIsEditable)
                     item.setTextAlignment(Qt.AlignCenter | Qt.AlignVCenter)
-                    if estado_det == "Cancelada":
-                        item.setBackground(QColor(255, 230, 230))
-                    elif estado_det == "Preparacion":
-                        item.setBackground(QColor(255, 255, 230))
+                    if estado_det == "Preparacion":
+                        item.setBackground(QColor(255, 255, 200))
                     elif estado_det == "Cobrar":
+                        item.setBackground(QColor(200, 230, 255))
+                    elif estado_det == "Finalizado":
                         item.setBackground(QColor(230, 255, 230))
                     tabla_detalles.setItem(fila, col, item)
                 total += subtotal
@@ -793,6 +989,7 @@ class Configuracion(QWidget):
             footer_layout.addWidget(btn_cerrar)
             layout_detalles.addLayout(footer_layout)
             dialog_detalles.exec_()
+        
         btnTodas.setChecked(True)
         cargar_ventas()
         dialog.exec_()
@@ -803,15 +1000,16 @@ class Configuracion(QWidget):
         cur = conn.cursor()
         try:
             cur.execute("""
-                CREATE TABLE IF NOT EXISTS ConfiguracionSistema(
-                    clave TEXT PRIMARY KEY,
-                    valor TEXT NOT NULL
+                CREATE TABLE IF NOT EXISTS Enlace(
+                    idEnlace INTEGER PRIMARY KEY AUTOINCREMENT,
+                    enlace VARCHAR(100) NOT NULL DEFAULT 'https://siat.impuestos.gob.bo/v2/launcher/'
                 )
             """)
-            cur.execute("""
-                INSERT OR IGNORE INTO ConfiguracionSistema(clave, valor)
-                VALUES('url_impuestos', 'https://siat.impuestos.gob.bo/v2/launcher/')
-            """)
+            cur.execute("SELECT COUNT(*) FROM Enlace")
+            count = cur.fetchone()[0]
+            if count == 0:
+                cur.execute("INSERT INTO Enlace (enlace) VALUES (?)", 
+                        ("https://siat.impuestos.gob.bo/v2/launcher/",))
             conn.commit()
         finally:
             conn.close()
@@ -819,10 +1017,12 @@ class Configuracion(QWidget):
     def obtener_url_impuestos(self):
         conn = sqlite3.connect(DB_PATH)
         cur = conn.cursor()
-        cur.execute("SELECT enlace FROM Enlace LIMIT 1")
-        r = cur.fetchone()
-        conn.close()
-        return r[0] if r else "https://siat.impuestos.gob.bo/v2/launcher/"
+        try:
+            cur.execute("SELECT enlace FROM Enlace LIMIT 1")
+            r = cur.fetchone()
+            return r[0] if r else "https://siat.impuestos.gob.bo/v2/launcher/"
+        finally:
+            conn.close()
 
     def abrirPopUpEnlaceImpuestos(self):
         actual = self.obtener_url_impuestos()
@@ -842,30 +1042,58 @@ class Configuracion(QWidget):
 
         conn = sqlite3.connect(DB_PATH)
         cur = conn.cursor()
-        cur.execute("UPDATE Enlace SET enlace=?", (url,))
-        conn.commit()
-        conn.close()
-        QMessageBox.information(self, "Enlace actualizado", "El enlace fue actualizado correctamente.")
+        try:
+            cur.execute("UPDATE Enlace SET enlace=?", (url,))
+            conn.commit()
+            QMessageBox.information(self, "Enlace actualizado", "El enlace fue actualizado correctamente.")
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"No se pudo actualizar: {str(e)}")
+        finally:
+            conn.close()
 
     def exportar_backup(self):
-        backend = ConfiguracionBackend(DB_PATH)
-        carpeta_base = os.path.dirname(DB_PATH)
-        excel_path = os.path.join(carpeta_base, "cafebar_export.xlsx")
-        carpeta_imagenes = os.path.join(carpeta_base, "imagenes")
-        zip_path = os.path.join(carpeta_base, "cafebar_backup.zip")
-        cuenta = self.obtener_cuenta_gmail_activa()
-        if not cuenta:
-            QMessageBox.warning(self, "Error", "No hay cuenta Gmail activa.")
-            return
-        correo, password = cuenta
+        temp_dir = tempfile.mkdtemp()
+        
         try:
+            backend = ConfiguracionBackend(DB_PATH)
+            
+            excel_path = os.path.join(temp_dir, "cafebar_export.xlsx")
+            carpeta_imagenes = os.path.join(temp_dir, "imagenes")
+            zip_path = os.path.join(temp_dir, "cafebar_backup.zip")
+            
+            cuenta = self.obtener_cuenta_gmail_activa()
+            if not cuenta:
+                QMessageBox.warning(self, "Error", "No hay cuenta Gmail activa.")
+                return
+                
+            correo, password = cuenta
+            
+            self.labelEstado.setText("Estado: Exportando datos...")
+            QApplication.processEvents()
+            
             backend.exportar_a_excel(excel_path, carpeta_imagenes)
+            self.labelEstado.setText("Estado: Creando archivo ZIP...")
+            QApplication.processEvents()
+            
             backend.crear_zip_backup(excel_path, carpeta_imagenes, zip_path)
+            self.labelEstado.setText("Estado: Enviando por correo...")
+            QApplication.processEvents()
+            
             backend.enviar_backup_por_correo(correo, password, correo, zip_path)
-            QMessageBox.information(self, "Backup enviado", "Backup enviado al Gmail activo.")
+            
+            self.labelEstado.setText("Estado: Backup enviado correctamente")
+            QMessageBox.information(self, "Backup enviado", 
+                                   "Backup enviado al Gmail activo.\nLos archivos temporales han sido eliminados.")
+            
         except Exception as e:
+            self.labelEstado.setText("Estado: Error en el proceso")
             QMessageBox.critical(self, "Error", f"No se pudo enviar backup: {e}")
-
+            
+        finally:
+            try:
+                shutil.rmtree(temp_dir)
+            except:
+                pass
 
     def abrirPopUpCambiarContrasenaDirectorio(self):
         d, inpActual = self.dialogo_input(
@@ -880,7 +1108,7 @@ class Configuracion(QWidget):
         cur = conn.cursor()
         cur.execute("SELECT contrasenaAdmin FROM Directorio WHERE idAmin = 1")
         row = cur.fetchone()
-        if not row or row[0] != actual:
+        if not row or not verificar_password(actual, row[0]):
             QMessageBox.warning(self, "Error", "Contraseña actual incorrecta.")
             conn.close()
             return
@@ -910,7 +1138,8 @@ class Configuracion(QWidget):
             QMessageBox.warning(self, "Error", "Las contraseñas no coinciden.")
             conn.close()
             return
-        cur.execute("UPDATE Directorio SET contrasenaAdmin = ? WHERE idAmin = 1", (nueva,))
+        nueva_hash = hashear_password(nueva)
+        cur.execute("UPDATE Directorio SET contrasenaAdmin = ? WHERE idAmin = 1", (nueva_hash,))
         conn.commit()
         conn.close()
         QMessageBox.information(self, "Éxito", "Contraseña del DIRECTORIO actualizada.")
@@ -925,7 +1154,6 @@ class Configuracion(QWidget):
         row = cur.fetchone()
         conn.close()
         return row
-
 
     def abrirPopUpConfiguracionCorreos(self):
         dialog = QDialog(self)
@@ -1048,7 +1276,6 @@ class Configuracion(QWidget):
             self.listaCuentas.addItem(texto)
             self.mapaIDs[n] = idc
         conn.close()
-
     
     def activar_cuenta(self):
         if not self.listaCuentas.currentItem():
@@ -1322,21 +1549,60 @@ class Configuracion(QWidget):
         dialog.exec_()
 
     def importar_backup(self):
-        carpeta = QFileDialog.getExistingDirectory(self, "Selecciona la carpeta del backup")
-        if not carpeta:
+        zip_path, _ = QFileDialog.getOpenFileName(
+            self, 
+            "Selecciona el archivo ZIP de backup", 
+            "", 
+            "Archivos ZIP (*.zip)"
+        )
+        
+        if not zip_path:
             return
-        excel_path = os.path.join(carpeta, "cafebar_export.xlsx")
-        carpeta_imagenes = os.path.join(carpeta, "imagenes")
-        if not os.path.exists(excel_path):
-            QMessageBox.warning(self, "Error", "No se encontró cafebar_export.xlsx en esa carpeta.")
-            return
-        backend = ConfiguracionBackend(DB_PATH)
+        
+        temp_dir = tempfile.mkdtemp()
+        
         try:
-            backend.importar_desde_excel(excel_path, carpeta_imagenes)
-            QMessageBox.information(self, "Éxito", "Importación completada correctamente.")
+            self.labelEstado.setText("Estado: Extrayendo archivos...")
+            QApplication.processEvents()
+            
+            with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+                zip_ref.extractall(temp_dir)
+            
+            excel_path = None
+            imagenes_dir = None
+            
+            for root, dirs, files in os.walk(temp_dir):
+                for file in files:
+                    if file.endswith('.xlsx') and 'cafebar_export' in file:
+                        excel_path = os.path.join(root, file)
+                for dir_name in dirs:
+                    if dir_name == 'imagenes':
+                        imagenes_dir = os.path.join(root, dir_name)
+            
+            if not excel_path or not os.path.exists(excel_path):
+                QMessageBox.warning(self, "Error", 
+                                  "No se encontró un archivo Excel válido en el ZIP.")
+                return
+            
+            self.labelEstado.setText("Estado: Importando datos...")
+            QApplication.processEvents()
+            
+            backend = ConfiguracionBackend(DB_PATH)
+            backend.importar_desde_excel(excel_path, imagenes_dir)
+            
+            self.labelEstado.setText("Estado: Importación completada")
+            QMessageBox.information(self, "Éxito", 
+                                  "Importación completada correctamente.\nLos archivos temporales han sido eliminados.")
+            
         except Exception as e:
+            self.labelEstado.setText("Estado: Error en la importación")
             QMessageBox.critical(self, "Error", f"No se pudo importar: {e}")
-
+            
+        finally:
+            try:
+                shutil.rmtree(temp_dir)
+            except:
+                pass
     
     def eliminar_cuenta(self):
         if not self.listaCuentas.currentItem():
@@ -1397,6 +1663,17 @@ class Configuracion(QWidget):
             QPushButton#accept:hover { 
                 background:#2980b9; 
             }
+            QPushButton#cancel {
+                background:#95a5a6;
+                color:white;
+                padding:10px 24px;
+                border-radius:10px;
+                font-weight:bold;
+                min-width:120px;
+            }
+            QPushButton#cancel:hover {
+                background:#7f8c8d;
+            }
             QPushButton#eye {
                 background:#ecf0f1;
                 border-radius:8px;
@@ -1430,392 +1707,21 @@ class Configuracion(QWidget):
             h.addWidget(ojo)
         else:
             h.addWidget(inputt)
+        botones_layout = QHBoxLayout()
+        botones_layout.setSpacing(15)
+        btn_cancelar = QPushButton("Cancelar")
+        btn_cancelar.setObjectName("cancel")
+        btn_cancelar.clicked.connect(d.reject)
         btn = QPushButton("Aceptar")
         btn.setObjectName("accept")
         btn.clicked.connect(d.accept)
+        botones_layout.addWidget(btn_cancelar)
+        botones_layout.addWidget(btn)
         layout.addWidget(label)
         layout.addWidget(cont)
         layout.addStretch()
-        layout.addWidget(btn, alignment=Qt.AlignCenter)
+        layout.addLayout(botones_layout)
         return d, inputt
-    
-    def limpiar_ventas(self):
-        reply = QMessageBox.question(
-            self,
-            "Confirmación",
-            "¿Seguro que desea limpiar las ventas? (Esto eliminará registros de Venta y DetallesVenta)",
-            QMessageBox.Yes | QMessageBox.No
-        )
-        if reply != QMessageBox.Yes:
-            return
-    
-        try:
-            conn = sqlite3.connect(DB_PATH)
-            cur = conn.cursor()
-            cur.execute("DELETE FROM Pago")
-            cur.execute("DELETE FROM DetallesVenta")
-            cur.execute("DELETE FROM Venta")
-            cur.execute("UPDATE Mesa SET disponible=TRUE")
-            conn.commit()
-            conn.close()
-            self.mostrar_mensaje_exito_con_opcion_extra()
-
-        except Exception as e:
-            QMessageBox.critical(self, "Error", f"No se pudo limpiar: {e}")
-    
-    def mostrar_mensaje_exito_con_opcion_extra(self):
-        msg_box = QMessageBox(self)
-        msg_box.setWindowTitle("Éxito")
-        msg_box.setText("Ventas limpiadas correctamente.")
-        msg_box.setIcon(QMessageBox.Information)
-        msg_box.setStyleSheet("""
-            QMessageBox {
-                background: #ffffff;
-            }
-            QMessageBox QLabel {
-                color: #2c3e50;
-                background:transparent;
-                font-size: 15px;
-                font-weight: 500;
-            }
-            QMessageBox QDialogButtonBox {
-                background: #f5f7fa;              
-                border-top: 1px solid #e2e8f0;
-                padding: 10px 16px;
-            }
-            QMessageBox QPushButton {
-                background-color: #3498db;
-                color: white;
-                border-radius: 10px;
-                padding: 8px 18px;
-                min-width: 110px;
-                font-weight: bold;
-            }
-            QMessageBox QPushButton:hover { background-color: #2980b9; }
-        """)
-        btn_eliminar_secciones = QPushButton("🗑️ Eliminar Secciones")
-        btn_eliminar_secciones.setStyleSheet("""
-            QPushButton {
-                background-color: #e74c3c;
-                color: white;
-                padding: 8px 16px;
-                border-radius: 10px;
-                font-weight: bold;
-                font-size: 14px;
-                min-width: 160px;
-            }
-            QPushButton:hover {
-                background-color: #c0392b;
-            }
-        """)
-        btn_eliminar_secciones.clicked.connect(lambda: self.abrir_dialogo_eliminar_secciones(msg_box))
-        msg_box.addButton(btn_eliminar_secciones, QMessageBox.ActionRole)
-        msg_box.addButton(QMessageBox.Ok)
-        msg_box.exec_()
-    
-    def abrir_dialogo_eliminar_secciones(self, parent_msg_box=None):
-        if parent_msg_box:
-            parent_msg_box.close()
-        dialog = QDialog(self)
-        dialog.setWindowTitle("Eliminar Secciones Permanentemente")
-        dialog.setFixedSize(850, 550)
-        dialog.setStyleSheet("""
-            QDialog {
-                background: #f8fafc;
-                border-radius: 14px;
-            }
-            QLabel {
-                font-size: 14px;
-                font-weight: 600;
-                color: #2c3e50;
-            }
-            QGroupBox {
-                font-weight: bold;
-                font-size: 14px;
-                border: 2px solid #3498db;
-                border-radius: 8px;
-                margin-top: 10px;
-                padding-top: 10px;
-            }
-            QGroupBox::title {
-                subcontrol-origin: margin;
-                left: 10px;
-                padding: 0 10px 0 10px;
-            }
-            QTableWidget {
-                background: white;
-                border: 2px solid #e2e8f0;
-                border-radius: 8px;
-                font-size: 13px;
-            }
-            QTableWidget::item {
-                padding: 8px;
-            }
-            QTableWidget::item:selected {
-                background-color: #3498db;
-                color: white;
-            }
-            QHeaderView::section {
-                background: #3498db;
-                color: white;
-                font-weight: bold;
-                padding: 8px;
-                border: none;
-            }
-            QPushButton {
-                padding: 10px 20px;
-                border-radius: 8px;
-                font-weight: bold;
-                font-size: 14px;
-                min-width: 120px;
-                border: none;
-            }
-            QCheckBox {
-                spacing: 8px;
-                font-size: 13px;
-            }
-            QCheckBox::indicator {
-                width: 18px;
-                height: 18px;
-                border-radius: 4px;
-                border: 2px solid #cbd5e1;
-            }
-            QCheckBox::indicator:checked {
-                background-color: #3498db;
-                border-color: #3498db;
-                image: url(data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTYiIGhlaWdodD0iMTYiIHZpZXdCb3g9IjAgMCAxNiAxNiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTEzLjMzMzMgNEw2LjA2NjY3IDExLjI2NjcgMi42NjY2NyA3Ljg2NjY3IiBzdHJva2U9IndoaXRlIiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPgo8L3N2Zz4K);
-            }
-        """)
-        layout = QVBoxLayout(dialog)
-        layout.setContentsMargins(20, 20, 20, 20)
-        layout.setSpacing(15)
-        title_label = QLabel("Eliminar Secciones Permanentemente")
-        title_label.setStyleSheet("font-size: 18px; font-weight: bold; color: #1e293b;")
-        title_label.setAlignment(Qt.AlignCenter)
-        layout.addWidget(title_label)
-        warning_label = QLabel("⚠️ ADVERTENCIA: Esta acción es irreversible. Se eliminarán las secciones seleccionadas junto con todas sus mesas asociadas.")
-        warning_label.setStyleSheet("""
-            QLabel {
-                background-color: #fef3c7;
-                color: #92400e;
-                padding: 12px;
-                border-radius: 8px;
-                border: 1px solid #fbbf24;
-                font-size: 13px;
-            }
-        """)
-        warning_label.setWordWrap(True)
-        layout.addWidget(warning_label)
-        table_widget = QTableWidget()
-        table_widget.setColumnCount(5)
-        table_widget.setHorizontalHeaderLabels(["", "ID", "Nombre", "Descripción", "Mesas"])
-        table_widget.horizontalHeader().setStretchLastSection(True)
-        table_widget.setSelectionBehavior(QTableWidget.SelectRows)
-        table_widget.setEditTriggers(QTableWidget.NoEditTriggers)
-        table_widget.verticalHeader().setVisible(False)
-        conn = sqlite3.connect(DB_PATH)
-        cur = conn.cursor()
-        cur.execute("""
-            SELECT s.idSeccion, s.nombSeccion, s.descripcion, 
-                   COUNT(m.idMesa) as num_mesas
-            FROM Seccion s
-            LEFT JOIN Mesa m ON s.idSeccion = m.idSeccion
-            GROUP BY s.idSeccion, s.nombSeccion, s.descripcion
-            ORDER BY s.idSeccion
-        """)
-        secciones = cur.fetchall()
-        conn.close()
-        table_widget.setRowCount(len(secciones))
-        for i, (id_seccion, nombre, descripcion, num_mesas) in enumerate(secciones):
-            checkbox = QCheckBox()
-            checkbox_widget = QWidget()
-            checkbox_layout = QHBoxLayout(checkbox_widget)
-            checkbox_layout.setAlignment(Qt.AlignCenter)
-            checkbox_layout.addWidget(checkbox)
-            checkbox_layout.setContentsMargins(0, 0, 0, 0)
-            table_widget.setCellWidget(i, 0, checkbox_widget)
-            id_item = QTableWidgetItem(str(id_seccion))
-            id_item.setTextAlignment(Qt.AlignCenter)
-            table_widget.setItem(i, 1, id_item)
-            nombre_item = QTableWidgetItem(nombre)
-            nombre_item.setTextAlignment(Qt.AlignCenter)
-            table_widget.setItem(i, 2, nombre_item)
-            desc_item = QTableWidgetItem(descripcion if descripcion else "")
-            desc_item.setTextAlignment(Qt.AlignCenter)
-            table_widget.setItem(i, 3, desc_item)
-            mesas_item = QTableWidgetItem(str(num_mesas))
-            mesas_item.setTextAlignment(Qt.AlignCenter)
-            if num_mesas > 0:
-                mesas_item.setBackground(QColor(254, 226, 226))
-                mesas_item.setForeground(QColor(220, 38, 38))
-            table_widget.setItem(i, 4, mesas_item)
-        table_widget.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeToContents)
-        table_widget.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeToContents)
-        table_widget.horizontalHeader().setSectionResizeMode(2, QHeaderView.Stretch)
-        table_widget.horizontalHeader().setSectionResizeMode(3, QHeaderView.Stretch)
-        table_widget.horizontalHeader().setSectionResizeMode(4, QHeaderView.ResizeToContents)
-        layout.addWidget(table_widget)
-        controls_layout = QHBoxLayout()
-        btn_select_all = QPushButton("✓ Seleccionar Todas")
-        btn_select_all.setStyleSheet("""
-            QPushButton {
-                background-color: #10b981;
-                color: white;
-            }
-            QPushButton:hover {
-                background-color: #0da271;
-            }
-        """)
-        btn_deselect_all = QPushButton("✗ Deseleccionar Todas")
-        btn_deselect_all.setStyleSheet("""
-            QPushButton {
-                background-color: #6b7280;
-                color: white;
-            }
-            QPushButton:hover {
-                background-color: #4b5563;
-            }
-        """)
-        btn_check_with_mesas = QPushButton("☑ Con Mesas")
-        btn_check_with_mesas.setStyleSheet("""
-            QPushButton {
-                background-color: #f59e0b;
-                color: white;
-            }
-            QPushButton:hover {
-                background-color: #d97706;
-            }
-        """)
-
-        def select_all():
-            for i in range(table_widget.rowCount()):
-                checkbox_widget = table_widget.cellWidget(i, 0)
-                checkbox = checkbox_widget.layout().itemAt(0).widget()
-                checkbox.setChecked(True)
-        
-        def deselect_all():
-            for i in range(table_widget.rowCount()):
-                checkbox_widget = table_widget.cellWidget(i, 0)
-                checkbox = checkbox_widget.layout().itemAt(0).widget()
-                checkbox.setChecked(False)
-        
-        def select_with_mesas():
-            for i in range(table_widget.rowCount()):
-                mesas_item = table_widget.item(i, 4)
-                num_mesas = int(mesas_item.text())
-                checkbox_widget = table_widget.cellWidget(i, 0)
-                checkbox = checkbox_widget.layout().itemAt(0).widget()
-                checkbox.setChecked(num_mesas > 0)
-        
-        btn_select_all.clicked.connect(select_all)
-        btn_deselect_all.clicked.connect(deselect_all)
-        btn_check_with_mesas.clicked.connect(select_with_mesas)
-        controls_layout.addWidget(btn_select_all)
-        controls_layout.addWidget(btn_deselect_all)
-        controls_layout.addWidget(btn_check_with_mesas)
-        controls_layout.addStretch()
-        layout.addLayout(controls_layout)
-        buttons_layout = QHBoxLayout()
-        btn_cancel = QPushButton("✕ Cancelar")
-        btn_cancel.setStyleSheet("""
-            QPushButton {
-                background-color: #6b7280;
-                color: white;
-            }
-            QPushButton:hover {
-                background-color: #4b5563;
-            }
-        """)
-        btn_cancel.clicked.connect(dialog.reject)
-        btn_confirm = QPushButton("🗑️ Eliminar Seleccionadas")
-        btn_confirm.setStyleSheet("""
-            QPushButton {
-                background-color: #e74c3c;
-                color: white;
-            }
-            QPushButton:hover {
-                background-color: #c0392b;
-            }
-        """)
-        
-        def eliminar_seleccionadas():
-            secciones_a_eliminar = []
-            for i in range(table_widget.rowCount()):
-                checkbox_widget = table_widget.cellWidget(i, 0)
-                checkbox = checkbox_widget.layout().itemAt(0).widget()
-                if checkbox.isChecked():
-                    id_seccion = int(table_widget.item(i, 1).text())
-                    nombre = table_widget.item(i, 2).text()
-                    num_mesas = int(table_widget.item(i, 4).text())
-                    secciones_a_eliminar.append((id_seccion, nombre, num_mesas))
-            if not secciones_a_eliminar:
-                QMessageBox.warning(dialog, "Advertencia", "No hay secciones seleccionadas para eliminar.")
-                return
-            
-            mensaje = "¿Está seguro que desea eliminar las siguientes secciones?\n\n"
-            for id_seccion, nombre, num_mesas in secciones_a_eliminar:
-                mensaje += f"• {nombre} (ID: {id_seccion}) - {num_mesas} mesa(s)\n"
-            mensaje += "\n⚠️ Esta acción eliminará permanentemente:\n"
-            mensaje += "   - Las secciones seleccionadas\n"
-            mensaje += "   - Todas las mesas asociadas\n"
-            mensaje += "   - Las relaciones con esas secciones\n\n"
-            mensaje += "¿Continuar?"
-            confirm = QMessageBox.question(
-                dialog,
-                "Confirmar Eliminación",
-                mensaje,
-                QMessageBox.Yes | QMessageBox.No
-            )
-            if confirm != QMessageBox.Yes:
-                return
-
-            try:
-                conn = sqlite3.connect(DB_PATH)
-                cur = conn.cursor()
-                for id_seccion, nombre, num_mesas in secciones_a_eliminar:
-                    cur.execute("DELETE FROM Mesa WHERE idSeccion = ?", (id_seccion,))
-                    cur.execute("DELETE FROM Seccion WHERE idSeccion = ?", (id_seccion,))
-                conn.commit()
-                conn.close()
-                success_msg = QMessageBox()
-                success_msg.setWindowTitle("Éxito")
-                success_msg.setText(f"Se eliminaron {len(secciones_a_eliminar)} sección(es) correctamente.")
-                success_msg.setIcon(QMessageBox.Information)
-                success_msg.setStyleSheet("""
-                    QMessageBox {
-                        background: #ffffff;
-                    }
-                    QMessageBox QLabel {
-                        color: #2c3e50;
-                        background:transparent;
-                        font-size: 15px;
-                        font-weight: 500;
-                    }
-                    QMessageBox QDialogButtonBox {
-                        background: #f5f7fa;              
-                        border-top: 1px solid #e2e8f0;
-                        padding: 10px 16px;
-                    }
-                    QMessageBox QPushButton {
-                        background-color: #3498db;
-                        color: white;
-                        border-radius: 10px;
-                        padding: 8px 18px;
-                        min-width: 110px;
-                        font-weight: bold;
-                    }
-                    QMessageBox QPushButton:hover { background-color: #2980b9; }
-                """)
-                success_msg.exec_()
-                dialog.accept()
-            except Exception as e:
-                QMessageBox.critical(dialog, "Error", f"No se pudieron eliminar las secciones: {str(e)}")
-        btn_confirm.clicked.connect(eliminar_seleccionadas)
-        buttons_layout.addWidget(btn_cancel)
-        buttons_layout.addStretch()
-        buttons_layout.addWidget(btn_confirm)
-        layout.addLayout(buttons_layout)
-        dialog.exec_()
 
     def closeEvent(self, event):
         event.accept()
@@ -1936,6 +1842,8 @@ class ConfiguracionBackend:
         with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
             smtp.login(correo_emisor, password_emisor)
             smtp.send_message(msg)
+            
+
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)

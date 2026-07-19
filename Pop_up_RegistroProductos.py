@@ -102,7 +102,6 @@ class Pop_up_RegistroProductos(QDialog):
         layoutPrincipal.setContentsMargins(20, 20, 20, 20)
         layoutPrincipal.setSpacing(20)
     
-
     def subirInformacion(self, datos, tabla, icono):
         pixmap = icono.pixmap(287, 287)
         buffer = QBuffer()
@@ -110,29 +109,56 @@ class Pop_up_RegistroProductos(QDialog):
         pixmap.save(buffer, "PNG")
         imagen_bytes = buffer.data()
         buffer.close()
+        
         conn = sqlite3.connect(DB_PATH)
         c = conn.cursor()
+        
         consulta = """SELECT idSubcategoria FROM Subcategoria WHERE nombre=?"""
         c.execute(consulta, (datos[4],))
         resultados = c.fetchone()
+        
+        if not resultados:
+            QMessageBox.critical(self, "Error", f"No se encontró la subcategoría: {datos[4]}")
+            conn.close()
+            return
+            
         indiceSub = resultados[0]
+        
         consulta = """INSERT INTO Producto(nomProd,descripcion,precioVenta,costoFabricacion,imgProd,idSubcategoria) VALUES(?,?,?,?,?,?)"""
         c.execute(consulta, (datos[0], datos[1], datos[2], datos[3], imagen_bytes, indiceSub))
         indiceProducto = c.lastrowid
+        
         numFilas = tabla.rowCount()
-        for i in range(numFilas):    
-            consulta = """SELECT idIng FROM Stock WHERE nomIng=? AND descripcion=?"""
-            c.execute(consulta, (tabla.item(i, 0).text(), tabla.item(i, 1).text()))
-            resultados = c.fetchone()
-            indiceIng = resultados[0]
+        for i in range(numFilas):
+            item_nombre = tabla.item(i, 0)
+            indiceIng = item_nombre.data(Qt.UserRole + 1) if item_nombre else None
+
+            if indiceIng is None:
+                consulta = """SELECT idIng FROM Stock WHERE nomIng=?"""
+                c.execute(consulta, (tabla.item(i, 0).text(),))
+                resultados = c.fetchone()
+                if not resultados:
+                    QMessageBox.critical(self, "Error", f"No se encontró el ingrediente: {tabla.item(i, 0).text()}")
+                    conn.rollback()
+                    conn.close()
+                    return
+                indiceIng = resultados[0]
+            else:
+                c.execute("SELECT 1 FROM Stock WHERE idIng=?", (indiceIng,))
+                if not c.fetchone():
+                    QMessageBox.critical(self, "Error", f"El ingrediente '{tabla.item(i, 0).text()}' ya no existe. Quítelo de la tabla y vuelva a agregarlo.")
+                    conn.rollback()
+                    conn.close()
+                    return
+
             consulta = """INSERT INTO ProductosIngredientes VALUES(?,?,?)"""
             c.execute(consulta, (indiceProducto, indiceIng, float(tabla.item(i, 2).text())))
+        
         conn.commit()
         conn.close()
         QMessageBox.information(self, "Confirmacion", "Se ha registrado con exito el producto")
         self.cerrarVentana(True)
-        
-
+    
     def actualizarFoto(self, imagen):
         file_path, _ = QFileDialog.getOpenFileName(self, "Seleccionar una imagen", "", "Imágenes (*.png *.jpg *.jpeg *.bmp)")
         if file_path:
@@ -144,15 +170,13 @@ class Pop_up_RegistroProductos(QDialog):
                 icono = QIcon(default_image_path)
             imagen.setIcon(icono)
             imagen.setIconSize(QSize(287, 287))
-
-
+    
     def cerrarVentana(self, bandera=False):
         if bandera:
             self.accept()
         else:
             self.reject()
-        
+
 if __name__ == "__main__":
     aplicacion = QApplication(sys.argv)
-    # Datos de ejemplo para pruebas
     sys.exit(aplicacion.exec_())

@@ -4,6 +4,7 @@ from PyQt5.QtCore import *
 import sys
 import sqlite3
 import os
+from SeguridadUtils import verificar_password
 
 def get_base_dir():
     if getattr(sys, 'frozen', False):
@@ -272,7 +273,7 @@ class Login(QMainWindow):
             if nombre == "DIRECTORIO":
                 c.execute("""SELECT * FROM Directorio""")
                 resultado = c.fetchone()
-                if resultado and contrasena == resultado[2]:
+                if resultado and verificar_password(contrasena, resultado[2]):
                     #QMessageBox.information(self, "Éxito", "Credenciales Correctas")
                     self.iniciarPaginaPrincipal("DIRECTORIO")
                 else:
@@ -280,9 +281,10 @@ class Login(QMainWindow):
                 esDirectorio = True
             
             if not esDirectorio:
-                consulta = """SELECT * FROM Empleado WHERE aliasEmp = ? AND contEmp = ? AND disponibleEmp=1"""
-                c.execute(consulta, (nombre, contrasena))
-                if c.fetchone():
+                consulta = """SELECT contEmp FROM Empleado WHERE aliasEmp = ? AND disponibleEmp=1"""
+                c.execute(consulta, (nombre,))
+                resultado = c.fetchone()
+                if resultado and verificar_password(contrasena, resultado[0]):
                     #QMessageBox.information(self, "Éxito", "Credenciales Correctas")
                     self.iniciarPaginaPrincipal(self.text_usuario.text())
                 else:

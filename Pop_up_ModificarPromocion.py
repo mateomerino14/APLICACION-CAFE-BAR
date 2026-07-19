@@ -14,13 +14,13 @@ def get_db_path():
 
 DB_PATH = get_db_path()
 
-
 class Pop_up_ModificarPromocion(QDialog):
     def __init__(self, nomProm, parent=None):
         super().__init__(parent)
+        QLocale.setDefault(QLocale(QLocale.Spanish, QLocale.Bolivia))
         self.nomProm = nomProm
         self.setWindowTitle("MODIFICAR PROMOCIÓN")
-        self.setFixedSize(1000, 850)
+        self.setFixedSize(1000, 900)
 
         self.setStyleSheet("""
             QDialog { 
@@ -114,7 +114,6 @@ class Pop_up_ModificarPromocion(QDialog):
                 background-color: #2980b9; 
             }
         """)
-
         layoutPrincipal = QVBoxLayout()
         layoutPrincipal.setContentsMargins(20,20,20,20)
         layoutPrincipal.setSpacing(15)
@@ -185,10 +184,22 @@ class Pop_up_ModificarPromocion(QDialog):
         form_layout.setContentsMargins(15, 15, 15, 15)
         self.campoNombre = QLineEdit()
         self.campoNombre.setFixedHeight(38)
+        nombre_promocion_regex = QRegExp("[A-Za-záéíóúÁÉÍÓÚñÑ0-9°%.,\\-\\s]*")
+        self.campoNombre.setValidator(QRegExpValidator(nombre_promocion_regex))
+        self.campoNombre.setMaxLength(30)
         self.campoPrecio = QLineEdit()
         self.campoPrecio.setFixedHeight(38)
-        validador = QRegExpValidator(QRegExp("[0-9]*\\.?[0-9]*"))
+        validador = QRegExpValidator(QRegExp(r"[0-9]{1,8}(\.[0-9]{0,2})?"))
         self.campoPrecio.setValidator(validador)
+        self.campoPrecio.setMaxLength(11)
+
+        # --- COMPLETER para sugerir nombres ya registrados ---
+        self.completerNombres = QCompleter(self.cargarNombresPromociones(), self)
+        self.completerNombres.setCaseSensitivity(Qt.CaseInsensitive)
+        self.completerNombres.setFilterMode(Qt.MatchContains)
+        self.campoNombre.setCompleter(self.completerNombres)
+        # -----------------------------------------------------
+
         form_layout.addWidget(QLabel("📝 Nombre:"),0,0)
         form_layout.addWidget(self.campoNombre,0,1)
         form_layout.addWidget(QLabel("💰 Precio:"),1,0)
@@ -200,6 +211,8 @@ class Pop_up_ModificarPromocion(QDialog):
         layoutFechaEspec = QHBoxLayout()
         self.checkFechaEspec = QCheckBox("Activar fecha específica")
         self.dateFechaEspec = QDateEdit()
+        self.dateFechaEspec.setDisplayFormat("dd/MM/yyyy")
+        self.dateFechaEspec.setLocale(QLocale(QLocale.Spanish, QLocale.Bolivia))
         self.dateFechaEspec.setCalendarPopup(True)
         self.dateFechaEspec.setDate(QDate.currentDate())
         self.dateFechaEspec.setEnabled(False)
@@ -236,7 +249,11 @@ class Pop_up_ModificarPromocion(QDialog):
         layoutFechas = QHBoxLayout()
         self.checkPeriodo = QCheckBox("Activar período")
         self.dateInicio = QDateEdit()
+        self.dateInicio.setDisplayFormat("dd/MM/yyyy")
+        self.dateInicio.setLocale(QLocale(QLocale.Spanish, QLocale.Bolivia))
         self.dateFin = QDateEdit()
+        self.dateFin.setDisplayFormat("dd/MM/yyyy")
+        self.dateFin.setLocale(QLocale(QLocale.Spanish, QLocale.Bolivia))
         self.dateInicio.setCalendarPopup(True)
         self.dateFin.setCalendarPopup(True)
         self.dateInicio.setDate(QDate.currentDate())
@@ -313,14 +330,16 @@ class Pop_up_ModificarPromocion(QDialog):
         layoutFiltros = QHBoxLayout()
         layoutFiltros.addWidget(QLabel("Categoría:"))
         self.comboCategorias = QComboBox()
-        self.comboCategorias.setFixedWidth(180)
-        self.comboCategorias.setFixedHeight(36)
+        self.comboCategorias.setFixedWidth(220)
+        self.comboCategorias.setFixedHeight(43)
+        self.comboCategorias.setMinimumContentsLength(20)
         self.comboCategorias.currentIndexChanged.connect(self.cargarSubcategorias)
         layoutFiltros.addWidget(self.comboCategorias)
         layoutFiltros.addWidget(QLabel("Subcategoría:"))
         self.comboSubcategorias = QComboBox()
-        self.comboSubcategorias.setFixedWidth(180)
-        self.comboSubcategorias.setFixedHeight(36)
+        self.comboSubcategorias.setFixedWidth(220)
+        self.comboSubcategorias.setFixedHeight(43)
+        self.comboSubcategorias.setMinimumContentsLength(20)
         self.comboSubcategorias.currentIndexChanged.connect(self.cargarProductosPorSubcategoria)
         layoutFiltros.addWidget(self.comboSubcategorias)
         layoutFiltros.addStretch()
@@ -328,15 +347,17 @@ class Pop_up_ModificarPromocion(QDialog):
         layoutAgregarProducto = QHBoxLayout()
         layoutAgregarProducto.addWidget(QLabel("Producto:"))
         self.comboProductos = QComboBox()
-        self.comboProductos.setFixedWidth(250)
-        self.comboProductos.setFixedHeight(36)
+        self.comboProductos.setFixedWidth(280)
+        self.comboProductos.setFixedHeight(43)
+        self.comboProductos.setMinimumContentsLength(20)
         layoutAgregarProducto.addWidget(self.comboProductos)
         layoutAgregarProducto.addWidget(QLabel("Cantidad:"))
         self.editCantidad = QLineEdit()
         self.editCantidad.setPlaceholderText("Cantidad")
         self.editCantidad.setFixedWidth(100)
-        self.editCantidad.setFixedHeight(36)
+        self.editCantidad.setFixedHeight(43)
         self.editCantidad.setValidator(QRegExpValidator(QRegExp("[0-9]+")))
+        self.editCantidad.setMaxLength(3)
         layoutAgregarProducto.addWidget(self.editCantidad)
         btnAgregar = QPushButton("➕ Agregar Producto")
         btnAgregar.setStyleSheet("""
@@ -401,8 +422,8 @@ class Pop_up_ModificarPromocion(QDialog):
             }
         """)
         botones_layout = QHBoxLayout(botones_container)
-        btnGuardar = QPushButton("💾 Guardar Cambios")
-        btnCancelar = QPushButton("❌ Cancelar")
+        btnGuardar = QPushButton("Guardar Cambios")
+        btnCancelar = QPushButton("Cancelar")
         btnGuardar.setStyleSheet("""
             QPushButton {
                 background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
@@ -443,6 +464,20 @@ class Pop_up_ModificarPromocion(QDialog):
         self.cargarDatos()
         self.cargarCategorias()
 
+    # --- MÉTODO NUEVO: carga nombres de promociones excluyendo la actual ---
+    def cargarNombresPromociones(self):
+        try:
+            conn = sqlite3.connect(DB_PATH)
+            c = conn.cursor()
+            c.execute("""SELECT nomProm FROM Promocion 
+                         WHERE nomProm != ? 
+                         ORDER BY nomProm COLLATE NOCASE ASC""", (self.nomProm,))
+            nombres = [row[0] for row in c.fetchall()]
+            conn.close()
+            return nombres
+        except:
+            return []
+    # -----------------------------------------------------------------------
 
     def cargarCategorias(self):
         conn = sqlite3.connect(DB_PATH)
@@ -456,7 +491,6 @@ class Pop_up_ModificarPromocion(QDialog):
             self.comboCategorias.addItem(nombre, id_cat)
         if self.comboCategorias.count() > 1:
             self.comboCategorias.setCurrentIndex(1)
-
 
     def cargarSubcategorias(self):
         categoria_id = self.comboCategorias.currentData()
@@ -494,7 +528,6 @@ class Pop_up_ModificarPromocion(QDialog):
         if self.comboSubcategorias.count() > 0:
             self.comboSubcategorias.setCurrentIndex(0)
 
-
     def cargarProductosPorSubcategoria(self):
         subcategoria_id = self.comboSubcategorias.currentData()
         categoria_id = self.comboCategorias.currentData()
@@ -528,7 +561,8 @@ class Pop_up_ModificarPromocion(QDialog):
         productos = [p[0] for p in c.fetchall()]
         conn.close()
         self.comboProductos.addItems(productos)
-
+        if self.comboProductos.count() == 0:
+            self.comboProductos.addItem("No hay productos disponibles")
 
     def actualizar_colores_horas(self):
         for widget in [self.timeInicioFechaEspec, self.timeFinFechaEspec,
@@ -630,7 +664,6 @@ class Pop_up_ModificarPromocion(QDialog):
                 }
             """)
 
-
     def cargarDatos(self):
         conn = sqlite3.connect(DB_PATH)
         c = conn.cursor()
@@ -708,7 +741,6 @@ class Pop_up_ModificarPromocion(QDialog):
         self.cargarTablaProductos(productos)
         conn.close()
 
-
     def cargarTablaProductos(self, productos):
         self.tablaProductos.setRowCount(0)
         for row, (nombre, cantidad) in enumerate(productos):
@@ -756,12 +788,14 @@ class Pop_up_ModificarPromocion(QDialog):
             btnEliminar.clicked.connect(lambda _, r=row: self.eliminarProducto(r))
             self.tablaProductos.setCellWidget(row,3,btnEliminar)
 
-
     def agregarProducto(self):
         producto = self.comboProductos.currentText()
         cantidad = self.editCantidad.text().strip()
-        if not producto or not cantidad:
-            QMessageBox.warning(self, "Advertencia", "Seleccione un producto y escriba una cantidad")
+        if not producto or producto == "No hay productos disponibles":
+            QMessageBox.warning(self, "Advertencia", "Seleccione un producto válido")
+            return
+        if not cantidad:
+            QMessageBox.warning(self, "Advertencia", "Escriba una cantidad")
             return
         for row in range(self.tablaProductos.rowCount()):
             if self.tablaProductos.item(row,0).text() == producto:
@@ -814,13 +848,12 @@ class Pop_up_ModificarPromocion(QDialog):
         self.editCantidad.clear()
         self.comboProductos.setCurrentIndex(0)
 
-
     def modificarProducto(self, fila):
         nombre_actual = self.tablaProductos.item(fila,0).text()
         cantidad_actual = self.tablaProductos.item(fila,1).text()
         dialog = QDialog(self)
         dialog.setWindowTitle(f"Modificar Producto")
-        dialog.setFixedSize(400, 250)
+        dialog.setFixedSize(620, 250)
         dialog.setStyleSheet("""
             QDialog {
                 background: #f8f9fa;
@@ -832,12 +865,14 @@ class Pop_up_ModificarPromocion(QDialog):
         filtros_layout.addWidget(QLabel("Categoría:"))
         combo_categorias = QComboBox()
         combo_categorias.setFixedHeight(32)
+        combo_categorias.setMinimumContentsLength(15)
         combo_categorias.setStyleSheet("""
             QComboBox {
                 background: white;
                 border: 2px solid #3498db;
                 border-radius: 5px;
                 padding: 5px;
+                min-width: 150px;
             }
         """)
         conn = sqlite3.connect(DB_PATH)
@@ -851,17 +886,18 @@ class Pop_up_ModificarPromocion(QDialog):
         filtros_layout.addWidget(QLabel("Subcategoría:"))
         combo_subcategorias = QComboBox()
         combo_subcategorias.setFixedHeight(32)
+        combo_subcategorias.setMinimumContentsLength(15)
         combo_subcategorias.setStyleSheet("""
             QComboBox {
                 background: white;
                 border: 2px solid #3498db;
                 border-radius: 5px;
                 padding: 5px;
+                min-width: 150px;
             }
         """)
         filtros_layout.addWidget(combo_subcategorias)
         filtros_layout.addStretch()
-
 
         def cargar_subcategorias_dialog():
             categoria_id = combo_categorias.currentData()
@@ -890,7 +926,6 @@ class Pop_up_ModificarPromocion(QDialog):
                     combo_subcategorias.addItem(nombre, id_sub)
             if combo_subcategorias.count() > 0:
                 combo_subcategorias.setCurrentIndex(0)
-        
 
         def cargar_productos_dialog():
             subcategoria_id = combo_subcategorias.currentData()
@@ -920,18 +955,27 @@ class Pop_up_ModificarPromocion(QDialog):
                     ORDER BY P.nomProd
                 """, (subcategoria_id,))
             productos = [p[0] for p in c.fetchall()]
-            combo.addItems(productos)
-            combo.setCurrentText(nombre_actual)
+            if productos:
+                combo.addItems(productos)
+                if nombre_actual in productos:
+                    combo.setCurrentText(nombre_actual)
+                else:
+                    combo.setCurrentIndex(0)
+            else:
+                combo.addItem("No hay productos disponibles")
+
         combo_categorias.currentIndexChanged.connect(lambda: cargar_subcategorias_dialog())
         combo_subcategorias.currentIndexChanged.connect(lambda: cargar_productos_dialog())
         layout.addLayout(filtros_layout)
         combo = QComboBox()
+        combo.setMinimumContentsLength(18)
         combo.setStyleSheet("""
             QComboBox {
                 background: white;
                 border: 2px solid #3498db;
                 border-radius: 5px;
                 padding: 5px;
+                min-width: 200px;
             }
         """)
         layout.addWidget(QLabel("Producto:"))
@@ -939,6 +983,7 @@ class Pop_up_ModificarPromocion(QDialog):
         edit_cantidad = QLineEdit(cantidad_actual)
         edit_cantidad.setFixedHeight(35)
         edit_cantidad.setValidator(QRegExpValidator(QRegExp("[0-9]+")))
+        edit_cantidad.setMaxLength(3)
         edit_cantidad.setStyleSheet("""
             QLineEdit {
                 background: white;
@@ -950,8 +995,8 @@ class Pop_up_ModificarPromocion(QDialog):
         layout.addWidget(QLabel("Cantidad:"))
         layout.addWidget(edit_cantidad)
         btns = QHBoxLayout()
-        btn_guardar = QPushButton("💾 Guardar")
-        btn_cancelar = QPushButton("❌ Cancelar")
+        btn_guardar = QPushButton("Guardar")
+        btn_cancelar = QPushButton("Cancelar")
         btn_guardar.setStyleSheet("""
             QPushButton {
                 background: #27ae60;
@@ -969,10 +1014,12 @@ class Pop_up_ModificarPromocion(QDialog):
             }
         """)
     
-
         def guardar():
             nuevo_nombre = combo.currentText()
             nueva_cantidad = edit_cantidad.text().strip()
+            if not nuevo_nombre or nuevo_nombre == "No hay productos disponibles":
+                QMessageBox.information(dialog, "Aviso", "Seleccione un producto válido")
+                return
             if not nueva_cantidad:
                 QMessageBox.information(dialog, "Aviso", "Debe llenar los campos necesarios")
                 return
@@ -987,15 +1034,15 @@ class Pop_up_ModificarPromocion(QDialog):
             item.setTextAlignment(Qt.AlignCenter)
             self.tablaProductos.setItem(fila,1,item)
             dialog.accept()
+
         btn_guardar.clicked.connect(guardar)
         btn_cancelar.clicked.connect(dialog.reject)
         btns.addWidget(btn_guardar)
         btns.addWidget(btn_cancelar)
         layout.addLayout(btns)
         cargar_subcategorias_dialog()
-        conn.close()
         dialog.exec_()
-
+        conn.close()
 
     def eliminarProducto(self,fila):
         self.tablaProductos.removeRow(fila)
@@ -1007,14 +1054,12 @@ class Pop_up_ModificarPromocion(QDialog):
             boton.disconnect()
             boton.clicked.connect(lambda _, r=i: self.eliminarProducto(r))
 
-
     def actualizarFoto(self):
         file_path,_ = QFileDialog.getOpenFileName(self,"Seleccionar imagen","","Imágenes (*.png *.jpg *.jpeg *.bmp *.webp)")
         if file_path:
             pixmap = QPixmap(file_path).scaled(160,160,Qt.KeepAspectRatio, Qt.SmoothTransformation)
             self.botonImagen.setIcon(QIcon(pixmap))
             self.botonImagen.setIconSize(QSize(160,160))
-
 
     def obtenerBytesImagen(self):
         icon = self.botonImagen.icon()
@@ -1025,7 +1070,6 @@ class Pop_up_ModificarPromocion(QDialog):
         buffer.open(QBuffer.ReadWrite)
         pixmap.save(buffer,"PNG")
         return buffer.data()
-
 
     def guardarCambios(self):
         nombre = self.campoNombre.text().strip()

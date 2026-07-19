@@ -115,7 +115,7 @@ class Pop_up_ModificacionProductos(QDialog):
                 color: #2c3e50;
                 font-size: 15px;
                 font-weight: 500;
-                min-width:300px;
+                min-width:325px;
                 background:transparent;
             }
             QMessageBox QDialogButtonBox {
@@ -225,8 +225,35 @@ class Pop_up_ModificacionProductos(QDialog):
         form_layout.setSpacing(15)
         form_layout.setContentsMargins(15, 15, 15, 15)
         self.campoNombre = QLineEdit(producto_data[0] if producto_data else "")
+        nombre_producto_regex = QRegExp("[A-Za-záéíóúÁÉÍÓÚñÑ0-9°%.,\\-\\s]*")
+        self.campoNombre.setValidator(QRegExpValidator(nombre_producto_regex))
+        self.campoNombre.setMaxLength(30)
+        try:
+            conn = sqlite3.connect(DB_PATH)
+            c = conn.cursor()
+            c.execute("SELECT nomProd FROM Producto WHERE activo = 1 ORDER BY nomProd COLLATE NOCASE ASC")
+            nombres_productos = [row[0] for row in c.fetchall()]
+            conn.close()
+        except:
+            nombres_productos = []
+        completer_nombre = QCompleter(nombres_productos, self)
+        completer_nombre.setCaseSensitivity(Qt.CaseInsensitive)
+        completer_nombre.setFilterMode(Qt.MatchContains)
+        self.campoNombre.setCompleter(completer_nombre)
         self.campoDescripcion = QTextEdit(producto_data[1] if producto_data and producto_data[1] else "")
         self.campoDescripcion.setMaximumHeight(80)
+        MAX_LARGO_DESCRIPCION = 200
+        def limitar_descripcion_edit():
+            texto = self.campoDescripcion.toPlainText()
+            if len(texto) > MAX_LARGO_DESCRIPCION:
+                cursor = self.campoDescripcion.textCursor()
+                posicion = cursor.position()
+                self.campoDescripcion.blockSignals(True)
+                self.campoDescripcion.setPlainText(texto[:MAX_LARGO_DESCRIPCION])
+                cursor.setPosition(min(posicion, MAX_LARGO_DESCRIPCION))
+                self.campoDescripcion.setTextCursor(cursor)
+                self.campoDescripcion.blockSignals(False)
+        self.campoDescripcion.textChanged.connect(limitar_descripcion_edit)
         self.campoDescripcion.setStyleSheet("""QTextEdit{
             background-color: white;
             border: 2px solid #3498db;
@@ -242,9 +269,11 @@ class Pop_up_ModificacionProductos(QDialog):
         }""")
         self.campoPrecio = QLineEdit(str(producto_data[2]) if producto_data else "0.00")
         self.campoCosto = QLineEdit(str(producto_data[3]) if producto_data else "0.00")
-        validador = QRegExpValidator(QRegExp("[0-9]*\\.?[0-9]*"))
+        validador = QRegExpValidator(QRegExp(r"[0-9]{1,8}(\.[0-9]{0,2})?"))
         self.campoPrecio.setValidator(validador)
+        self.campoPrecio.setMaxLength(11)
         self.campoCosto.setValidator(validador)
+        self.campoCosto.setMaxLength(11)
         self.comboCategoria = QComboBox()
         self.comboSubcategoria = QComboBox()
         if producto_data:
@@ -294,17 +323,11 @@ class Pop_up_ModificacionProductos(QDialog):
         self.cantidad_nuevo = QLineEdit()
         self.cantidad_nuevo.setPlaceholderText("Cantidad")
         self.cantidad_nuevo.setValidator(validador)
+        self.cantidad_nuevo.setMaxLength(11)
         self.cantidad_nuevo.setMinimumHeight(35)
         self.cantidad_nuevo.setMinimumWidth(120)
         self.descripcion_nuevo = QLabel()
-        self.descripcion_nuevo.setMinimumHeight(35)
-        self.descripcion_nuevo.setStyleSheet("""
-            background-color: white;
-            border: 2px solid #3498db;
-            border-radius: 6px;
-            padding: 8px;
-            font-size: 14px;
-        """)
+        self.descripcion_nuevo.setVisible(False) 
         btn_agregar = QPushButton("➕ Agregar")
         btn_agregar.setStyleSheet("""
             QPushButton {
@@ -327,24 +350,17 @@ class Pop_up_ModificacionProductos(QDialog):
         agregar_ingrediente_layout.addWidget(self.cantidad_nuevo)
         agregar_ingrediente_layout.addWidget(btn_agregar)
         ingredientes_layout.addLayout(agregar_ingrediente_layout)
-        descripcion_layout = QHBoxLayout()
-        descripcion_layout.addWidget(QLabel("Descripción:"))
-        descripcion_layout.addWidget(self.descripcion_nuevo)
-        ingredientes_layout.addLayout(descripcion_layout)
         self.nuevo_ingrediente.currentIndexChanged.connect(lambda: self.actualizarDescripcionNuevo(self.nuevo_ingrediente.currentText(), self.descripcion_nuevo, self.cantidad_nuevo))
         self.nuevo_ingrediente.editTextChanged.connect(lambda: self.actualizarDescripcionNuevo(self.nuevo_ingrediente.currentText(), self.descripcion_nuevo, self.cantidad_nuevo))
+        
         self.tablaIngredientes = QTableWidget()
-        self.tablaIngredientes.setColumnCount(5)
-        self.tablaIngredientes.setHorizontalHeaderLabels(["Ingrediente", "Descripción", "Cantidad", "Modificar", "Eliminar"])
+        self.tablaIngredientes.setColumnCount(4)
+        self.tablaIngredientes.setHorizontalHeaderLabels(["Ingrediente", "Cantidad", "Modificar", "Eliminar"])
         self.tablaIngredientes.setEditTriggers(QTableWidget.NoEditTriggers)
         self.tablaIngredientes.verticalHeader().setVisible(False)
         self.tablaIngredientes.horizontalHeader().setStretchLastSection(False)
-        ancho_total = 860
-        self.tablaIngredientes.setColumnWidth(0,180)
-        self.tablaIngredientes.setColumnWidth(1,420)
-        self.tablaIngredientes.setColumnWidth(2,100)
-        self.tablaIngredientes.setColumnWidth(3,95)
-        self.tablaIngredientes.setColumnWidth(4,95)
+        header = self.tablaIngredientes.horizontalHeader()
+        header.setSectionResizeMode(QHeaderView.Stretch)
         self.tablaIngredientes.setEditTriggers(QTableWidget.NoEditTriggers)
         self.tablaIngredientes.setSelectionMode(QTableWidget.NoSelection)
         self.tablaIngredientes.verticalHeader().setSectionResizeMode(QHeaderView.Fixed)
@@ -465,7 +481,6 @@ class Pop_up_ModificacionProductos(QDialog):
         except Exception as e:
             self.mostrarError(f"Error al cargar ingredientes: {str(e)}")
     
-
     def actualizarDescripcionNuevo(self, textoIngrediente, campoDescripcion, campoCantidad):
         if not textoIngrediente:
             campoDescripcion.setText("")
@@ -479,7 +494,7 @@ class Pop_up_ModificacionProductos(QDialog):
             dupla = c.fetchone()
             conn.close()
             if dupla is not None:
-                campoDescripcion.setText(str(dupla[0]))
+                campoDescripcion.setText(str(dupla[0]))  
                 campoCantidad.setPlaceholderText(f"{str(dupla[1])}")
             else:
                 campoDescripcion.setText("")
@@ -487,22 +502,26 @@ class Pop_up_ModificacionProductos(QDialog):
         except Exception as e:
             self.mostrarError(f"Error al actualizar descripción: {str(e)}")
     
-
+    def obtenerFilaDesdeBoton(self, boton):
+        indice = self.tablaIngredientes.indexAt(boton.mapTo(self.tablaIngredientes.viewport(), QPoint(0, 0)))
+        return indice.row()
+    
     def agregarIngrediente(self):
         try:
             ingrediente = self.nuevo_ingrediente.currentText()
             cantidad = self.cantidad_nuevo.text()
-            descripcion = self.descripcion_nuevo.text()
             if not ingrediente or not cantidad:
                 self.mostrarAdvertencia("Debe elegir un ingrediente y cantidad")
                 return
             conn = sqlite3.connect(DB_PATH)
             c = conn.cursor()
-            c.execute("SELECT nomIng FROM Stock WHERE UPPER(nomIng)=UPPER(?) AND disponible = 1", (ingrediente,))
-            if not c.fetchone():
+            c.execute("SELECT nomIng, descripcion FROM Stock WHERE UPPER(nomIng)=UPPER(?) AND disponible = 1", (ingrediente,))
+            resultado = c.fetchone()
+            if not resultado:
                 conn.close()
                 self.mostrarAdvertencia("El ingrediente seleccionado no existe o no está disponible")
                 return
+            descripcion = str(resultado[1]) if resultado[1] else ""
             conn.close()
             for i in range(self.tablaIngredientes.rowCount()):
                 if self.tablaIngredientes.item(i, 0).text().upper() == ingrediente.upper():
@@ -514,14 +533,11 @@ class Pop_up_ModificacionProductos(QDialog):
             item_nombre.setTextAlignment(Qt.AlignCenter)
             item_nombre.setToolTip(ingrediente)
             self.tablaIngredientes.setItem(fila, 0, item_nombre)
-            item_descripcion = QTableWidgetItem(descripcion)
-            item_descripcion.setTextAlignment(Qt.AlignCenter)
-            item_descripcion.setToolTip(descripcion)
-            self.tablaIngredientes.setItem(fila, 1, item_descripcion)
+            item_nombre.setData(Qt.UserRole, descripcion)
             item_cantidad = QTableWidgetItem(str(cantidad))
             item_cantidad.setTextAlignment(Qt.AlignCenter)
             item_cantidad.setToolTip(str(cantidad))
-            self.tablaIngredientes.setItem(fila, 2, item_cantidad)
+            self.tablaIngredientes.setItem(fila, 1, item_cantidad)
             btnModificar = QPushButton("✏️")
             btnModificar.setStyleSheet("""
                 QPushButton {
@@ -537,8 +553,8 @@ class Pop_up_ModificacionProductos(QDialog):
                 }
             """)
             btnModificar.setCursor(Qt.PointingHandCursor)
-            btnModificar.clicked.connect(lambda _, r=fila: self.modificarIngrediente(r))
-            self.tablaIngredientes.setCellWidget(fila, 3, btnModificar)
+            btnModificar.clicked.connect(lambda checked, b=btnModificar: self.modificarIngrediente(b))
+            self.tablaIngredientes.setCellWidget(fila, 2, btnModificar)
             btnEliminar = QPushButton("🗑️")
             btnEliminar.setStyleSheet("""
                 QPushButton {
@@ -554,8 +570,8 @@ class Pop_up_ModificacionProductos(QDialog):
                 }
             """)
             btnEliminar.setCursor(Qt.PointingHandCursor)
-            btnEliminar.clicked.connect(lambda _, r=fila: self.eliminarIngrediente(r))
-            self.tablaIngredientes.setCellWidget(fila, 4, btnEliminar)
+            btnEliminar.clicked.connect(lambda checked, b=btnEliminar: self.eliminarIngrediente(b))
+            self.tablaIngredientes.setCellWidget(fila, 3, btnEliminar)
             self.tablaIngredientes.scrollToBottom()
             self.nuevo_ingrediente.setEditText("")
             self.nuevo_ingrediente.setCurrentIndex(-1)
@@ -565,7 +581,6 @@ class Pop_up_ModificacionProductos(QDialog):
         except Exception as e:
             self.mostrarError(f"Error al agregar ingrediente: {str(e)}")
     
-
     def mostrarError(self, mensaje):
         msg = QMessageBox(self)
         msg.setIcon(QMessageBox.Critical)
@@ -595,7 +610,6 @@ class Pop_up_ModificacionProductos(QDialog):
                 label.setFixedSize(40, 40)
         msg.exec_()
     
-
     def mostrarAdvertencia(self, mensaje):
         msg = QMessageBox(self)
         msg.setIcon(QMessageBox.Warning)
@@ -607,7 +621,6 @@ class Pop_up_ModificacionProductos(QDialog):
                 background-color: white;
             }
         """)
-        
         for label in msg.findChildren(QLabel):
             label.setStyleSheet("""
                 QLabel {
@@ -618,7 +631,6 @@ class Pop_up_ModificacionProductos(QDialog):
                     border: none;
                 }
             """)
-            
             if label.text() == mensaje:
                 label.setContentsMargins(10, 0, 0, 0)
                 label.setStyleSheet("""width:280px; background:transparent;""")
@@ -627,7 +639,6 @@ class Pop_up_ModificacionProductos(QDialog):
                 label.setFixedSize(40, 40)
         msg.exec_()
     
-
     def mostrarExito(self, mensaje):
         msg = QMessageBox(self)
         msg.setIcon(QMessageBox.Information)
@@ -639,7 +650,6 @@ class Pop_up_ModificacionProductos(QDialog):
                 background-color: white;
             }
         """)
-        
         for label in msg.findChildren(QLabel):
             label.setStyleSheet("""
                 QLabel {
@@ -650,7 +660,6 @@ class Pop_up_ModificacionProductos(QDialog):
                     border: none;
                 }
             """)
-            
             if label.text() == mensaje:
                 label.setContentsMargins(10, 0, 0, 0)
                 label.setStyleSheet("""width:280px; background:transparent;""")
@@ -659,7 +668,6 @@ class Pop_up_ModificacionProductos(QDialog):
                 label.setFixedSize(40, 40)
         msg.exec_()
     
-
     def cargarComboboxes(self, categoria_actual, subcategoria_actual):
         try:
             conn = sqlite3.connect(DB_PATH)
@@ -678,7 +686,6 @@ class Pop_up_ModificacionProductos(QDialog):
             self.mostrarError(f"Error al cargar comboboxes: {str(e)}")
             raise
     
-
     def actualizarSubcategorias(self, categoria):
         try:
             self.comboSubcategoria.clear()
@@ -694,7 +701,6 @@ class Pop_up_ModificacionProductos(QDialog):
         except Exception as e:
             self.mostrarError(f"Error al actualizar subcategorías: {str(e)}")
     
-
     def cargarIngredientes(self, ingredientes_data):
         try:
             self.tablaIngredientes.setRowCount(0)
@@ -703,15 +709,12 @@ class Pop_up_ModificacionProductos(QDialog):
                 item_nombre = QTableWidgetItem(nombre)
                 item_nombre.setTextAlignment(Qt.AlignCenter)
                 item_nombre.setToolTip(nombre)
+                item_nombre.setData(Qt.UserRole, descripcion)
                 self.tablaIngredientes.setItem(row, 0, item_nombre)
-                item_descripcion = QTableWidgetItem(descripcion)
-                item_descripcion.setTextAlignment(Qt.AlignCenter)
-                item_descripcion.setToolTip(descripcion)
-                self.tablaIngredientes.setItem(row, 1, item_descripcion)
                 item_cantidad = QTableWidgetItem(str(cantidad))
                 item_cantidad.setTextAlignment(Qt.AlignCenter)
                 item_cantidad.setToolTip(str(cantidad))
-                self.tablaIngredientes.setItem(row, 2, item_cantidad)
+                self.tablaIngredientes.setItem(row, 1, item_cantidad)
                 btnModificar = QPushButton("✏️")
                 btnModificar.setStyleSheet("""
                     QPushButton {
@@ -727,8 +730,8 @@ class Pop_up_ModificacionProductos(QDialog):
                     }
                 """)
                 btnModificar.setCursor(Qt.PointingHandCursor)
-                btnModificar.clicked.connect(lambda _, r=row: self.modificarIngrediente(r))
-                self.tablaIngredientes.setCellWidget(row, 3, btnModificar)
+                btnModificar.clicked.connect(lambda checked, b=btnModificar: self.modificarIngrediente(b))
+                self.tablaIngredientes.setCellWidget(row, 2, btnModificar)
                 btnEliminar = QPushButton("🗑️")
                 btnEliminar.setStyleSheet("""
                     QPushButton {
@@ -744,25 +747,31 @@ class Pop_up_ModificacionProductos(QDialog):
                     }
                 """)
                 btnEliminar.setCursor(Qt.PointingHandCursor)
-                btnEliminar.clicked.connect(lambda _, r=row: self.eliminarIngrediente(r))
-                self.tablaIngredientes.setCellWidget(row, 4, btnEliminar)
+                btnEliminar.clicked.connect(lambda checked, b=btnEliminar: self.eliminarIngrediente(b))
+                self.tablaIngredientes.setCellWidget(row, 3, btnEliminar)
         except Exception as e:
             self.mostrarError(f"Error al cargar ingredientes: {str(e)}")
             raise
     
-
-    def modificarIngrediente(self, fila):
+    def modificarIngrediente(self, boton):
         try:
+            fila = self.obtenerFilaDesdeBoton(boton)
+            if fila < 0:
+                return
+                
             nombre = self.tablaIngredientes.item(fila, 0).text()
-            cantidad = self.tablaIngredientes.item(fila, 2).text()
+            cantidad = self.tablaIngredientes.item(fila, 1).text()
+            descripcion_actual = self.tablaIngredientes.item(fila, 0).data(Qt.UserRole) or ""
+            
             conn = sqlite3.connect(DB_PATH)
             c = conn.cursor()
             c.execute("""SELECT nomIng FROM Stock WHERE disponible = 1 ORDER BY nomIng COLLATE NOCASE ASC""")
             ingredientes = [str(elem[0]) for elem in c.fetchall()]
             conn.close()
+            
             dialog = QDialog(self)
             dialog.setWindowTitle("Modificar Ingrediente")
-            dialog.setFixedSize(500, 300)
+            dialog.setFixedSize(450, 200)  
             dialog.setStyleSheet("""
                 QDialog {
                     background: #f8f9fa;
@@ -773,31 +782,28 @@ class Pop_up_ModificacionProductos(QDialog):
             layout = QVBoxLayout(dialog)
             layout.setSpacing(15)
             layout.setContentsMargins(20, 20, 20, 20)
+            
             nombre_ingrediente = QComboBox()
             nombre_ingrediente.setEditable(True)
             nombre_ingrediente.setInsertPolicy(QComboBox.NoInsert)
             nombre_ingrediente.setMinimumHeight(35)
+            
             completer = QCompleter()
             completer.setCaseSensitivity(Qt.CaseInsensitive)
             completer.setFilterMode(Qt.MatchContains)
             completer.setCompletionMode(QCompleter.PopupCompletion)
             nombre_ingrediente.setCompleter(completer)
+            
             modelo = QStringListModel()
             modelo.setStringList(ingredientes)
             completer.setModel(modelo)
             nombre_ingrediente.addItems(ingredientes)
             nombre_ingrediente.setCurrentText(nombre)
             descripcion_label = QLabel()
-            descripcion_label.setMinimumHeight(35)
-            descripcion_label.setStyleSheet("""
-                background-color: white;
-                border: 2px solid #3498db;
-                border-radius: 6px;
-                padding: 8px;
-                font-size: 14px;
-            """)
+            descripcion_label.setVisible(False)
             cantidad_edit = QLineEdit(cantidad)
-            cantidad_edit.setValidator(QRegExpValidator(QRegExp("[0-9]*\\.?[0-9]*")))
+            cantidad_edit.setValidator(QRegExpValidator(QRegExp(r"[0-9]{1,8}(\.[0-9]{0,2})?")))
+            cantidad_edit.setMaxLength(11)
             cantidad_edit.setMinimumHeight(35)
             cantidad_edit.setPlaceholderText("Cantidad")
             cantidad_edit.setStyleSheet("""
@@ -813,21 +819,37 @@ class Pop_up_ModificacionProductos(QDialog):
                     background-color: #f8f9fa;
                 }
             """)
-            nombre_ingrediente.currentIndexChanged.connect(lambda: self.actualizarDescripcionModificacion(nombre_ingrediente.currentText(), descripcion_label, cantidad_edit))
-            nombre_ingrediente.editTextChanged.connect(lambda: self.actualizarDescripcionModificacion(nombre_ingrediente.currentText(), descripcion_label, cantidad_edit))
-            self.actualizarDescripcionModificacion(nombre, descripcion_label, cantidad_edit)
+            def actualizar_descripcion():
+                texto = nombre_ingrediente.currentText()
+                if texto:
+                    try:
+                        conn = sqlite3.connect(DB_PATH)
+                        c = conn.cursor()
+                        c.execute("SELECT descripcion FROM Stock WHERE UPPER(nomIng)=UPPER(?)", (texto,))
+                        resultado = c.fetchone()
+                        conn.close()
+                        if resultado and resultado[0]:
+                            descripcion_label.setText(str(resultado[0]))
+                        else:
+                            descripcion_label.setText("")
+                    except Exception as e:
+                        self.mostrarError(f"Error al actualizar descripción: {str(e)}")
+            
+            nombre_ingrediente.currentIndexChanged.connect(actualizar_descripcion)
+            nombre_ingrediente.editTextChanged.connect(actualizar_descripcion)
+            descripcion_label.setText(descripcion_actual)
+            
             form_layout = QGridLayout()
             form_layout.setSpacing(10)
             form_layout.addWidget(QLabel("Ingrediente:"), 0, 0)
             form_layout.addWidget(nombre_ingrediente, 0, 1)
-            form_layout.addWidget(QLabel("Descripción:"), 1, 0)
-            form_layout.addWidget(descripcion_label, 1, 1)
-            form_layout.addWidget(QLabel("Cantidad:"), 2, 0)
-            form_layout.addWidget(cantidad_edit, 2, 1)
+            form_layout.addWidget(QLabel("Cantidad:"), 1, 0)
+            form_layout.addWidget(cantidad_edit, 1, 1)
             layout.addLayout(form_layout)
+            
             btn_layout = QHBoxLayout()
-            btn_guardar = QPushButton("💾 Guardar")
-            btn_cancelar = QPushButton("❌ Cancelar")
+            btn_guardar = QPushButton("Guardar")
+            btn_cancelar = QPushButton("Cancelar")
             btn_guardar.setStyleSheet("""
                 QPushButton {
                     background: #27ae60;
@@ -854,69 +876,48 @@ class Pop_up_ModificacionProductos(QDialog):
                     background: #c0392b;
                 }
             """)
-            btn_guardar.clicked.connect(lambda: self.comprobarModificacion(nombre_ingrediente.currentText(), descripcion_label.text(), cantidad_edit.text(), dialog, fila))
+            
+            def guardar_modificacion():
+                if not nombre_ingrediente.currentText() or not cantidad_edit.text():
+                    self.mostrarAdvertencia("Debe llenar todos los campos")
+                    return
+                try:
+                    nombre_actual = self.tablaIngredientes.item(fila, 0).text()
+                    if nombre_ingrediente.currentText() == nombre_actual:
+                        dialog.accept()
+                    else:
+                        for i in range(self.tablaIngredientes.rowCount()):
+                            if i != fila and self.tablaIngredientes.item(i, 0).text().upper() == nombre_ingrediente.currentText().upper():
+                                self.mostrarAdvertencia("Este ingrediente ya está registrado")
+                                return
+                        dialog.accept()
+                except Exception as e:
+                    self.mostrarError(f"Error al comprobar ingrediente: {str(e)}")
+            
+            btn_guardar.clicked.connect(guardar_modificacion)
             btn_cancelar.clicked.connect(dialog.reject)
+            
             btn_layout.addWidget(btn_guardar)
             btn_layout.addWidget(btn_cancelar)
             layout.addLayout(btn_layout)
+            
             if dialog.exec_() == QDialog.Accepted:
                 self.tablaIngredientes.item(fila, 0).setText(nombre_ingrediente.currentText())
                 self.tablaIngredientes.item(fila, 0).setToolTip(nombre_ingrediente.currentText())
-                self.tablaIngredientes.item(fila, 1).setText(descripcion_label.text())
-                self.tablaIngredientes.item(fila, 1).setToolTip(descripcion_label.text())
-                self.tablaIngredientes.item(fila, 2).setText(cantidad_edit.text())
-                self.tablaIngredientes.item(fila, 2).setToolTip(cantidad_edit.text())
+                self.tablaIngredientes.item(fila, 0).setData(Qt.UserRole, descripcion_label.text())
+                self.tablaIngredientes.item(fila, 1).setText(cantidad_edit.text())
+                self.tablaIngredientes.item(fila, 1).setToolTip(cantidad_edit.text())
         except Exception as e:
             self.mostrarError(f"Error al modificar ingrediente: {str(e)}")
     
-
-    def actualizarDescripcionModificacion(self, textoIngrediente, campoDescripcion, campoCantidad):
-        if not textoIngrediente:
-            campoDescripcion.setText("")
-            campoCantidad.setPlaceholderText("Cantidad")
-            return
+    def eliminarIngrediente(self, boton):
         try:
-            conn = sqlite3.connect(DB_PATH)
-            c = conn.cursor()
-            consulta = """SELECT descripcion, unidadMedida FROM Stock WHERE UPPER(nomIng)=UPPER(?)"""
-            c.execute(consulta, (textoIngrediente,))
-            dupla = c.fetchone()
-            conn.close()
-            if dupla is not None:
-                campoDescripcion.setText(str(dupla[0]))
-                campoCantidad.setPlaceholderText(f"Cantidad ({str(dupla[1])})")
-            else:
-                campoDescripcion.setText("")
-                campoCantidad.setPlaceholderText("Cantidad")
-        except Exception as e:
-            self.mostrarError(f"Error al actualizar descripción: {str(e)}")
-    
-
-    def comprobarModificacion(self, ingrediente, descripcion, cantidad, dialog, fila):
-        if not ingrediente or not descripcion or not cantidad:
-            self.mostrarAdvertencia("Debe llenar todos los campos")
-            return
-        try:
-            nombre_actual = self.tablaIngredientes.item(fila, 0).text()
-            if ingrediente == nombre_actual:
-                dialog.accept()
-            else:
-                for i in range(self.tablaIngredientes.rowCount()):
-                    if i != fila and self.tablaIngredientes.item(i, 0).text().upper() == ingrediente.upper():
-                        self.mostrarAdvertencia("Este ingrediente ya está registrado")
-                        return
-                dialog.accept()
-        except Exception as e:
-            self.mostrarError(f"Error al comprobar ingrediente: {str(e)}")
-    
-
-    def eliminarIngrediente(self, fila):
-        try:
-            self.tablaIngredientes.removeRow(fila)
+            fila = self.obtenerFilaDesdeBoton(boton)
+            if fila >= 0:
+                self.tablaIngredientes.removeRow(fila)
         except Exception as e:
             self.mostrarError(f"Error al eliminar ingrediente: {str(e)}")
     
-
     def actualizarFoto(self):
         try:
             file_path, _ = QFileDialog.getOpenFileName(self, "Seleccionar imagen", "", "Imágenes (*.png *.jpg *.jpeg *.bmp *.webp)")
@@ -929,7 +930,6 @@ class Pop_up_ModificacionProductos(QDialog):
         except Exception as e:
             self.mostrarError(f"Error al actualizar foto: {str(e)}")
     
-
     def obtenerBytesImagen(self):
         try:
             icon = self.imagen.icon()
@@ -944,7 +944,6 @@ class Pop_up_ModificacionProductos(QDialog):
             self.mostrarError(f"Error al obtener bytes de imagen: {str(e)}")
             return None
     
-
     def guardarCambios(self):
         try:
             if not self.campoCosto.text().strip():
@@ -966,8 +965,10 @@ class Pop_up_ModificacionProductos(QDialog):
             if self.tablaIngredientes.rowCount() == 0:
                 self.mostrarAdvertencia("Debe contener al menos 1 ingrediente")
                 return
+            
             conn = sqlite3.connect(DB_PATH)
             c = conn.cursor()
+            
             c.execute("SELECT idSubcategoria FROM Subcategoria WHERE nombre = ? AND activa = 1", 
                      (self.comboSubcategoria.currentText(),))
             resultado = c.fetchone()
@@ -975,15 +976,19 @@ class Pop_up_ModificacionProductos(QDialog):
                 self.mostrarAdvertencia("Subcategoría no válida")
                 return
             id_subcategoria = resultado[0]
+            
             c.execute("""UPDATE Producto SET nomProd=?, descripcion=?, precioVenta=?, 
                       costoFabricacion=?, imgProd=?, idSubcategoria=? WHERE idProd=?""",
                       (self.campoNombre.text(), self.campoDescripcion.toPlainText(),
                        float(self.campoPrecio.text()), float(self.campoCosto.text()),
                        self.obtenerBytesImagen(), id_subcategoria, self.id_prod))
+            
             c.execute("DELETE FROM ProductosIngredientes WHERE idProd = ?", (self.id_prod,))
+            
             for row in range(self.tablaIngredientes.rowCount()):
                 nombre_ing = self.tablaIngredientes.item(row, 0).text()
-                cantidad_texto = self.tablaIngredientes.item(row, 2).text()
+                cantidad_texto = self.tablaIngredientes.item(row, 1).text()
+                
                 try:
                     cantidad = float(cantidad_texto)
                 except ValueError:
@@ -996,15 +1001,16 @@ class Pop_up_ModificacionProductos(QDialog):
                     self.mostrarAdvertencia(f"Ingrediente '{nombre_ing}' no encontrado")
                     continue
                 id_ing = resultado_ing[0]
+                
                 c.execute("INSERT INTO ProductosIngredientes (idProd, idIng, cantidadIngNecesitada) VALUES (?, ?, ?)", 
                          (self.id_prod, id_ing, cantidad))
+            
             conn.commit()
             conn.close()
             self.mostrarExito("Producto modificado correctamente")
             self.accept()
         except Exception as e:
             self.mostrarError(f"Error al guardar: {str(e)}")
-
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)

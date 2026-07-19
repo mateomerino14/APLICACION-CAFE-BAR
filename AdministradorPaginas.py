@@ -8,8 +8,6 @@ from datetime import datetime
 from PaginaPrincipal import PaginaPrincipal
 from Familia import Familia
 from RegistrarPedidos import RegistrarPedidos
-from PedidosPendientes import PedidosPendientes
-from CobroPedidos import CobroPedidos
 from RegistroClientes import RegistroClientes
 from ModificacionClientes import ModificacionClientes
 from Configuracion import Configuracion
@@ -66,7 +64,6 @@ class AdministradorPaginas(QMainWindow):
 
     def cargar_permisos_usuario(self):
         if self.usuario == "DIRECTORIO":
-            #Clientes Quitados
             return ["Home", "Familia", "Caja", "Administracion",
                     "Productos", "Secciones", "Stock", "Promociones", "Empleados", "Reportes"]
         conn = None
@@ -79,12 +76,20 @@ class AdministradorPaginas(QMainWindow):
                 return ["Home"]
             id_cargo = resultado[0]
             cursor.execute("""
-                SELECT p.nomPant
+                SELECT DISTINCT p.nomPant
                 FROM PermisosCargo pc
                 JOIN Pantalla p ON pc.idPant = p.idPant
                 WHERE pc.idCarg = ?
             """, (id_cargo,))
-            permisos = [fila[0] for fila in cursor.fetchall()]
+            permisos_pantallas = [fila[0] for fila in cursor.fetchall()]
+            cursor.execute("""
+                SELECT DISTINCT sp.accion
+                FROM PermisosCargoSubpantalla pcs
+                JOIN Subpantalla sp ON pcs.idSubPant = sp.idSubPant
+                WHERE pcs.idCarg = ?
+            """, (id_cargo,))
+            permisos_subpantallas = [fila[0] for fila in cursor.fetchall()]
+            permisos = list(set(permisos_pantallas + permisos_subpantallas))
             if "Home" not in permisos:
                 permisos.append("Home")
             return permisos
@@ -204,11 +209,34 @@ class AdministradorPaginas(QMainWindow):
         QMenu::item:selected { background-color: #e6f2ff; color: #2c3e50; }
         QMenu::separator { height: 1px; background: #eee; margin: 5px 0; }
         """
+        mapa_acciones = {
+            "REGISTRAR PEDIDO": "REGISTRAR_PEDIDO",
+            "CONFIGURACION": "CONFIGURACION",
+            "IMPRESORAS": "IMPRESORAS",
+            "REGISTRAR CATEGORIA": "REGISTRAR_CATEGORIA",
+            "MODIFICAR CATEGORIA": "MODIFICAR_CATEGORIA",
+            "DAR DE BAJA CATEGORIA": "BAJA_CATEGORIA",
+            "REGISTRAR PRODUCTO": "REGISTRAR_PRODUCTO",
+            "MODIFICAR PRODUCTO": "MODIFICAR_PRODUCTO",
+            "DAR DE BAJA PRODUCTO": "BAJA_PRODUCTO",
+            "REGISTRAR INGREDIENTES": "REGISTRAR_INGREDIENTES",
+            "MODIFICAR INGREDIENTES": "MODIFICAR_INGREDIENTES",
+            "REGISTRAR PROMOCIONES": "REGISTRAR_PROMOCIONES",
+            "MODIFICAR PROMOCIONES": "MODIFICAR_PROMOCIONES",
+            "DAR DE BAJA PROMOCIONES": "BAJA_PROMOCIONES",
+            "REGISTRAR CARGOS": "REGISTRAR_CARGOS",
+            "MODIFICACION CARGOS": "MODIFICAR_CARGOS",
+            "REGISTRAR EMPLEADOS": "REGISTRAR_EMPLEADOS",
+            "MODIFICAR EMPLEADOS": "MODIFICAR_EMPLEADOS",
+            "DAR DE BAJA EMPLEADOS": "BAJA_EMPLEADOS",
+            "VER REPORTES": "VER_REPORTES",
+            "ADMINISTRAR SECCIONES": "ADMIN_SECCIONES",
+            "VER FAMILIA": "VER_FAMILIA"
+        }
         opciones_permisos = {
             "HOME": "Home",
             "FAMILIA": "Familia",
             "CAJA": "Caja",
-            #"CLIENTES": "Clientes",
             "ADMINISTRACION": "Administracion",
             "PRODUCTOS": "Productos",
             "SECCIONES": "Secciones",
@@ -220,15 +248,14 @@ class AdministradorPaginas(QMainWindow):
         opciones = {
             "HOME": [],
             "FAMILIA": [],
-            "CAJA": ["REGISTRAR PEDIDO", "PEDIDOS PENDIENTES", "PEDIDOS POR COBRAR"],
-            #"CLIENTES": ["REGISTRAR CLIENTE", "MODIFICAR CLIENTE"],
+            "CAJA": ["REGISTRAR PEDIDO"],
             "ADMINISTRACION": ["CONFIGURACION", "IMPRESORAS"],
             "PRODUCTOS": ["REGISTRAR CATEGORIA", "MODIFICAR CATEGORIA",  "DAR DE BAJA CATEGORIA", "REGISTRAR PRODUCTO", "MODIFICAR PRODUCTO", "DAR DE BAJA PRODUCTO"],
-            "SECCIONES": [],
+            "SECCIONES": ["ADMINISTRAR SECCIONES"],
             "STOCK": ["REGISTRAR INGREDIENTES", "MODIFICAR INGREDIENTES"],
             "PROMOCIONES": ["REGISTRAR PROMOCIONES", "MODIFICAR PROMOCIONES", "DAR DE BAJA PROMOCIONES"],
             "EMPLEADOS": ["REGISTRAR CARGOS", "MODIFICACION CARGOS", "REGISTRAR EMPLEADOS", "MODIFICAR EMPLEADOS", "DAR DE BAJA EMPLEADOS"],
-            "REPORTES": []
+            "REPORTES": ["VER REPORTES"]
         }
         def add_action(menu, text, func):
             act = QAction(text, self)
@@ -236,8 +263,15 @@ class AdministradorPaginas(QMainWindow):
             act.triggered.connect(func)
         for opcion, subopciones in opciones.items():
             permiso_requerido = opciones_permisos.get(opcion)
-            if permiso_requerido not in self.permisos:
-                continue
+            if permiso_requerido not in self.permisos and permiso_requerido not in [p for p in self.permisos if '_' in p]:
+                tiene_permiso = False
+                for subopcion in subopciones:
+                    accion = mapa_acciones.get(subopcion)
+                    if accion and accion in self.permisos:
+                        tiene_permiso = True
+                        break
+                if not tiene_permiso:
+                    continue
             btn = QPushButton(opcion)
             btn.setStyleSheet(estilo_menu)
             btn.setCursor(Qt.PointingHandCursor)
@@ -246,62 +280,72 @@ class AdministradorPaginas(QMainWindow):
                 menuWidget = QMenu()
                 menuWidget.setStyleSheet(estilo_menu)
                 for subopcion in subopciones:
-                    if subopcion == "REGISTRAR PEDIDO":
-                        add_action(menuWidget, subopcion, self.iniciarPaginaRegistroPedido)
-                    elif subopcion == "PEDIDOS PENDIENTES":
-                        add_action(menuWidget, subopcion, self.iniciarPaginaListaPedidosPendientes)
-                    elif subopcion == "PEDIDOS POR COBRAR":
-                        add_action(menuWidget, subopcion, self.iniciarPaginaCobroPedido)
-                    elif subopcion == "REGISTRAR CLIENTE":
-                        add_action(menuWidget, subopcion, self.iniciarPaginaRegistroCliente)
-                    elif subopcion == "MODIFICAR CLIENTE":
-                        add_action(menuWidget, subopcion, self.iniciarPaginaModificacionCliente)
-                    elif subopcion == "CONFIGURACION":
-                        add_action(menuWidget, subopcion, self.iniciarPaginaConfiguracion)
-                    elif subopcion == "IMPRESORAS":
-                        add_action(menuWidget, subopcion, self.iniciarPaginaImpresoras)
-                    elif subopcion == "MODIFICAR CATEGORIA":
-                        add_action(menuWidget, subopcion, self.iniciarPaginaModificacionCategorias)
-                    elif subopcion == "REGISTRAR CATEGORIA":
-                        add_action(menuWidget, subopcion, self.iniciarPaginaCategorias)
-                    elif subopcion == "DAR DE BAJA CATEGORIA":
-                        add_action(menuWidget, subopcion, self.iniciarPaginaDarBajaCategorias)
-                    elif subopcion == "REGISTRAR PRODUCTO":
-                        add_action(menuWidget, subopcion, self.iniciarPaginaRegistoProducto)
-                    elif subopcion == "MODIFICAR PRODUCTO":
-                        add_action(menuWidget, subopcion, self.iniciarPaginaModificacionProducto)
-                    elif subopcion == "DAR DE BAJA PRODUCTO":
-                        add_action(menuWidget, subopcion, self.iniciarPaginaDarBajaProducto)
-                    elif subopcion == "REGISTRAR INGREDIENTES":
-                        add_action(menuWidget, subopcion, self.iniciarPaginaRegistrarIngredientes)
-                    elif subopcion == "MODIFICAR INGREDIENTES":
-                        add_action(menuWidget, subopcion, self.iniciarPaginaModificarIngredientes)
-                    elif subopcion == "REGISTRAR EMPLEADOS":
-                        add_action(menuWidget, subopcion, self.iniciarPaginaRegistrarEmpleados)
-                    elif subopcion == "MODIFICAR EMPLEADOS":
-                        add_action(menuWidget, subopcion, self.iniciarPaginaModificarEmpleados)
-                    elif subopcion == "DAR DE BAJA EMPLEADOS":
-                        add_action(menuWidget, subopcion, self.iniciarPaginaDarBajaEmpleados)
-                    elif subopcion == "REGISTRAR PROMOCIONES":
-                        add_action(menuWidget, subopcion, self.iniciarPaginaRegistrarPromociones)
-                    elif subopcion == "MODIFICAR PROMOCIONES":
-                        add_action(menuWidget, subopcion, self.iniciarPaginaModificacionPromociones)
-                    elif subopcion == "DAR DE BAJA PROMOCIONES":
-                        add_action(menuWidget, subopcion, self.iniciarPaginaDarBajaPromociones)
-                    elif subopcion == "REGISTRAR CARGOS":
-                        add_action(menuWidget, subopcion, self.iniciarPaginaRegistrarCargos)
-                    elif subopcion == "MODIFICACION CARGOS":
-                        add_action(menuWidget, subopcion, self.iniciarPaginaModificacionCargos)
-                btn.setMenu(menuWidget)
+                    accion = mapa_acciones.get(subopcion)
+                    if self.usuario == "DIRECTORIO" or accion in self.permisos or permiso_requerido in self.permisos:
+                        if subopcion == "REGISTRAR PEDIDO":
+                            add_action(menuWidget, subopcion, self.iniciarPaginaRegistroPedido)
+                        elif subopcion == "CONFIGURACION":
+                            add_action(menuWidget, subopcion, self.iniciarPaginaConfiguracion)
+                        elif subopcion == "IMPRESORAS":
+                            add_action(menuWidget, subopcion, self.iniciarPaginaImpresoras)
+                        elif subopcion == "MODIFICAR CATEGORIA":
+                            add_action(menuWidget, subopcion, self.iniciarPaginaModificacionCategorias)
+                        elif subopcion == "REGISTRAR CATEGORIA":
+                            add_action(menuWidget, subopcion, self.iniciarPaginaCategorias)
+                        elif subopcion == "DAR DE BAJA CATEGORIA":
+                            add_action(menuWidget, subopcion, self.iniciarPaginaDarBajaCategorias)
+                        elif subopcion == "REGISTRAR PRODUCTO":
+                            add_action(menuWidget, subopcion, self.iniciarPaginaRegistoProducto)
+                        elif subopcion == "MODIFICAR PRODUCTO":
+                            add_action(menuWidget, subopcion, self.iniciarPaginaModificacionProducto)
+                        elif subopcion == "DAR DE BAJA PRODUCTO":
+                            add_action(menuWidget, subopcion, self.iniciarPaginaDarBajaProducto)
+                        elif subopcion == "ADMINISTRAR SECCIONES":
+                            add_action(menuWidget, subopcion, self.iniciarPaginaSecciones)
+                        elif subopcion == "REGISTRAR INGREDIENTES":
+                            add_action(menuWidget, subopcion, self.iniciarPaginaRegistrarIngredientes)
+                        elif subopcion == "MODIFICAR INGREDIENTES":
+                            add_action(menuWidget, subopcion, self.iniciarPaginaModificarIngredientes)
+                        elif subopcion == "VER REPORTES":
+                            add_action(menuWidget, subopcion, self.iniciarPaginaReportes)
+                        elif subopcion == "REGISTRAR EMPLEADOS":
+                            add_action(menuWidget, subopcion, self.iniciarPaginaRegistrarEmpleados)
+                        elif subopcion == "MODIFICAR EMPLEADOS":
+                            add_action(menuWidget, subopcion, self.iniciarPaginaModificarEmpleados)
+                        elif subopcion == "DAR DE BAJA EMPLEADOS":
+                            add_action(menuWidget, subopcion, self.iniciarPaginaDarBajaEmpleados)
+                        elif subopcion == "REGISTRAR PROMOCIONES":
+                            add_action(menuWidget, subopcion, self.iniciarPaginaRegistrarPromociones)
+                        elif subopcion == "MODIFICAR PROMOCIONES":
+                            add_action(menuWidget, subopcion, self.iniciarPaginaModificacionPromociones)
+                        elif subopcion == "DAR DE BAJA PROMOCIONES":
+                            add_action(menuWidget, subopcion, self.iniciarPaginaDarBajaPromociones)
+                        elif subopcion == "REGISTRAR CARGOS":
+                            add_action(menuWidget, subopcion, self.iniciarPaginaRegistrarCargos)
+                        elif subopcion == "MODIFICACION CARGOS":
+                            add_action(menuWidget, subopcion, self.iniciarPaginaModificacionCargos)
+                if not menuWidget.isEmpty():
+                    btn.setMenu(menuWidget)
+                else:
+                    continue
             else:
                 if opcion == "HOME":
                     btn.clicked.connect(self.iniciarPaginaPrincipal)
                 elif opcion == "FAMILIA":
-                    btn.clicked.connect(self.iniciarPaginaFamilia)
+                    if self.usuario == "DIRECTORIO" or "VER_FAMILIA" in self.permisos:
+                        btn.clicked.connect(self.iniciarPaginaFamilia)
+                    else:
+                        continue
                 elif opcion == "SECCIONES":
-                    btn.clicked.connect(self.iniciarPaginaSecciones)
+                    if self.usuario == "DIRECTORIO" or "ADMIN_SECCIONES" in self.permisos:
+                        btn.clicked.connect(self.iniciarPaginaSecciones)
+                    else:
+                        continue
                 elif opcion == "REPORTES":
-                    btn.clicked.connect(self.iniciarPaginaReportes)
+                    if self.usuario == "DIRECTORIO" or "VER_REPORTES" in self.permisos:
+                        btn.clicked.connect(self.iniciarPaginaReportes)
+                    else:
+                        continue
             layoutMenu.addWidget(btn)
         menuContainer = QWidget()
         menuContainer.setStyleSheet("background: #5d9cec;")
@@ -312,8 +356,6 @@ class AdministradorPaginas(QMainWindow):
         if name == "Home":                      return PaginaPrincipal()
         if name == "Familia":                   return Familia()
         if name == "RegistrarPedidos":          return RegistrarPedidos(self.usuario)
-        if name == "PedidosPendientes":         return PedidosPendientes()
-        if name == "CobroPedidos":              return CobroPedidos()
         if name == "RegistroClientes":          return RegistroClientes()
         if name == "ModificacionClientes":      return ModificacionClientes()
         if name == "Configuracion":             return Configuracion()
@@ -365,14 +407,6 @@ class AdministradorPaginas(QMainWindow):
     def iniciarPaginaRegistroPedido(self):
         self.titulo.setText("REGISTRAR PEDIDO")
         self.show_page("RegistrarPedidos")
-
-    def iniciarPaginaListaPedidosPendientes(self):
-        self.titulo.setText("PEDIDOS PENDIENTES")
-        self.show_page("PedidosPendientes", after=lambda p: p.cargarVentasPreparacion())
-
-    def iniciarPaginaCobroPedido(self):
-        self.titulo.setText("COBRO DE PEDIDOS")
-        self.show_page("CobroPedidos", after=lambda p: p.cargarDatosTabla())
 
     def iniciarPaginaRegistroCliente(self):
         self.titulo.setText("REGISTRAR CLIENTE")

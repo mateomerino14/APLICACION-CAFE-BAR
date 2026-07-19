@@ -34,7 +34,6 @@ class ModificacionCargos(QWidget):
             """)
         self.set_up()
         
-        
     def set_up(self):
         self.layoutDatos = QHBoxLayout()
         self.layoutPrincipal = QVBoxLayout()
@@ -89,53 +88,121 @@ class ModificacionCargos(QWidget):
         layoutFiltro.addWidget(botonBusqueda,alignment=Qt.AlignLeft,stretch=40)
         layoutFiltro.addStretch(100)
         self.layoutPrincipal.addLayout(layoutFiltro)
-     
+        
+    def obtener_subpantallas_por_cargo_agrupadas(self, id_cargo):
+        conn = sqlite3.connect(DB_PATH)
+        c = conn.cursor()
+        c.execute("""
+            SELECT p.nomPant, s.nomSubPant
+            FROM PermisosCargoSubpantalla pcs
+            JOIN Subpantalla s ON pcs.idSubPant = s.idSubPant
+            JOIN Pantalla p ON s.idPant = p.idPant
+            WHERE pcs.idCarg = ?
+            ORDER BY p.idPant, s.nomSubPant
+        """, (id_cargo,))
+        resultados = c.fetchall()
+        conn.close()
+        
+        agrupado = {}
+        for pantalla, subpantalla in resultados:
+            if pantalla not in agrupado:
+                agrupado[pantalla] = []
+            agrupado[pantalla].append(subpantalla)
+        return agrupado
         
     def filtrarDatos(self,texto):
         tabla=self.tabla
         tabla.setRowCount(0)
         conn = sqlite3.connect(DB_PATH) 
         if(texto==""):
-            consulta = """SELECT nomCarg,nomPant FROM Cargo C,Pantalla P,PermisosCargo PC WHERE C.idCargo=PC.idCarg AND PC.idPant=P.idPant ORDER BY nomCarg"""
+            consulta = """SELECT idCargo, nomCarg FROM Cargo ORDER BY nomCarg"""
             c = conn.cursor()
             resultado = c.execute(consulta)
         else:
-            consulta = """SELECT nomCarg,nomPant FROM Cargo C,Pantalla P,PermisosCargo PC WHERE C.idCargo=PC.idCarg AND PC.idPant=P.idPant AND nomCarg LIKE ? ORDER BY nomCarg"""
+            consulta = """SELECT idCargo, nomCarg FROM Cargo WHERE nomCarg LIKE ? ORDER BY nomCarg"""
             c = conn.cursor()
             resultado = c.execute(consulta,(f"{texto}%",))
         registros = resultado.fetchall()
-        mapaCargos={}
-        for registro in registros:
-            if registro[0] in mapaCargos:
-                mapaCargos[registro[0]].append(registro[1])
-            else:
-                mapaCargos[registro[0]]=[registro[1]]
-        registros=[]
-        for clave in mapaCargos:
-            nuevo=[]
-            nuevo.append(clave)
-            segundo=""
-            for valor in mapaCargos[clave]:
-                segundo=segundo+valor+','
-            segundo=segundo[:-1]
-            nuevo.append(segundo)
-            registros.append(nuevo)
         for f, registro in enumerate(registros):
+            id_cargo, nom_cargo = registro
+            subpantallas_agrupadas = self.obtener_subpantallas_por_cargo_agrupadas(id_cargo)
+            
+            container = QWidget()
+            container.setStyleSheet("background-color: transparent;")
+            container_layout = QVBoxLayout(container)
+            container_layout.setContentsMargins(0, 0, 0, 0)
+            container_layout.setSpacing(0)
+            
+            scroll = QScrollArea()
+            scroll.setWidgetResizable(True)
+            scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+            scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+            scroll.setStyleSheet("""
+                QScrollArea {
+                    border: none;
+                    background-color: transparent;
+                }
+                QScrollBar:vertical {
+                    border: none;
+                    background: #f1f3f5;
+                    width: 6px;
+                    border-radius: 3px;
+                }
+                QScrollBar::handle:vertical {
+                    background: #94a3b8;
+                    min-height: 30px;
+                    border-radius: 3px;
+                }
+                QScrollBar::handle:vertical:hover {
+                    background: #64748b;
+                }
+                QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+                    height: 0px;
+                }
+            """)
+            
+            content = QWidget()
+            content.setStyleSheet("background-color: transparent;")
+            content_layout = QVBoxLayout(content)
+            content_layout.setSpacing(2)
+            content_layout.setContentsMargins(8, 8, 8, 8)
+            
+            for pantalla, subpantallas in subpantallas_agrupadas.items():
+                if subpantallas:
+                    linea = f"<b>{pantalla}:</b> " + ", ".join(subpantallas)
+                    label = QLabel(linea)
+                    label.setStyleSheet("""
+                        QLabel {
+                            color: #2c3e50;
+                            font-size: 13px;
+                            padding: 1px 0px;
+                            background-color: transparent;
+                        }
+                    """)
+                    label.setWordWrap(True)
+                    content_layout.addWidget(label)
+            
+            content_layout.addStretch()
+            scroll.setWidget(content)
+            container_layout.addWidget(scroll)
+            
             self.tabla.insertRow(f)
-            for c, campo in enumerate(registro):
-                if c == len(registro)-1:
-                    boton=QPushButton()
-                    boton.setStyleSheet("""background-color: #f8f9fa;""")
-                    boton.setCursor(Qt.PointingHandCursor)
-                    boton.setIcon(QIcon(f"{DIRECCION_IMAGEN}\\modificarEmpleado.jpg"))
-                    boton.setIconSize(QSize(50,50))
-                    boton.clicked.connect(lambda checked, fila=f: self.pantallaModificar(fila))
-                    self.tabla.setCellWidget(f,c+1,boton)
-                valor = str(campo) if campo is not None else ""
-                item = QTableWidgetItem(valor)
-                item.setTextAlignment(Qt.AlignCenter)
-                item.setToolTip(valor) 
-                self.tabla.setItem(f, c, item)
+            item_cargo = QTableWidgetItem(nom_cargo)
+            item_cargo.setTextAlignment(Qt.AlignCenter)
+            item_cargo.setToolTip(nom_cargo)
+            self.tabla.setItem(f, 0, item_cargo)
+            container.setFixedHeight(180)
+            
+            self.tabla.setCellWidget(f, 1, container)
+            
+            boton=QPushButton()
+            boton.setStyleSheet("""background-color: #f8f9fa;""")
+            boton.setCursor(Qt.PointingHandCursor)
+            boton.setIcon(QIcon(f"{DIRECCION_IMAGEN}\\modificarEmpleado.jpg"))
+            boton.setIconSize(QSize(50,50))
+            boton.clicked.connect(lambda checked, fila=f, id_cargo=id_cargo, nom_cargo=nom_cargo: self.pantallaModificar(fila, id_cargo, nom_cargo))
+            self.tabla.setCellWidget(f, 2, boton)
+            self.tabla.setRowHeight(f, 160)
         conn.close()
         
     def campoModificar(self):
@@ -192,77 +259,25 @@ class ModificacionCargos(QWidget):
         self.tabla.verticalHeader().setDefaultSectionSize(150)
         self.layoutPrincipal.addLayout(layoutCampoModificar)   
     
-    
     def cargarDatos(self):
-        conn = sqlite3.connect(DB_PATH) 
-        consulta = """SELECT nomCarg,nomPant FROM Cargo C,Pantalla P,PermisosCargo PC WHERE C.idCargo=PC.idCarg AND PC.idPant=P.idPant ORDER BY nomCarg"""
-        c = conn.cursor()
-        resultado = c.execute(consulta)
-        columnas = [desc[0] for desc in c.description]
-        mapeo_nombres = {
-            'nomCarg': 'Cargo',
-            'nomPant': 'Acceso a Pantallas'
-        }
-        columnasNuevas = [mapeo_nombres[colum] for colum in columnas]
-        columnasNuevas.append("Accion")
-        self.tabla.setColumnCount(len(columnasNuevas))
-        self.tabla.setHorizontalHeaderLabels(columnasNuevas)
-        self.tabla.setRowCount(0)
+        self.tabla.setColumnCount(3)
+        self.tabla.setHorizontalHeaderLabels(["Cargo", "Accesos por Sección", "Accion"])
         anchos_columnas = {
-            'Cargo': 500,
-            'Acceso a Pantallas': 500
+            'Cargo': 250,
+            'Accesos por Sección': 700,
+            'Accion': 150
         }
-        for i, col_name in enumerate(columnasNuevas):
-            self.tabla.setColumnWidth(i, anchos_columnas.get(col_name, 100))
+        for i in range(3):
+            nombre_col = self.tabla.horizontalHeaderItem(i).text() if self.tabla.horizontalHeaderItem(i) else ""
+            self.tabla.setColumnWidth(i, anchos_columnas.get(nombre_col, 100))
         self.tabla.horizontalHeader().setSectionResizeMode(QHeaderView.Fixed)
-        registros = resultado.fetchall()
-        mapaCargos={}
-        for registro in registros:
-            if registro[0] in mapaCargos:
-                mapaCargos[registro[0]].append(registro[1])
-            else:
-                mapaCargos[registro[0]]=[registro[1]]
-        registros=[]
-        for clave in mapaCargos:
-            nuevo=[]
-            nuevo.append(clave)
-            segundo=""
-            for valor in mapaCargos[clave]:
-                segundo=segundo+valor+','
-            segundo=segundo[:-1]
-            nuevo.append(segundo)
-            registros.append(nuevo)
-        for f, registro in enumerate(registros):
-            self.tabla.insertRow(f)
-            for c, campo in enumerate(registro):
-                if c == len(registro)-1:
-                    boton=QPushButton()
-                    boton.setStyleSheet("""background-color: #f8f9fa;""")
-                    boton.setCursor(Qt.PointingHandCursor)
-                    boton.setIcon(QIcon(f"{DIRECCION_IMAGEN}\\modificarEmpleado.jpg"))
-                    boton.setIconSize(QSize(50,50))
-                    boton.clicked.connect(lambda checked, fila=f: self.pantallaModificar(fila))
-                    self.tabla.setCellWidget(f,c+1,boton)
-                valor = str(campo) if campo is not None else ""
-                item = QTableWidgetItem(valor)
-                item.setTextAlignment(Qt.AlignCenter)
-                item.setToolTip(valor) 
-                self.tabla.setItem(f, c, item)
-        conn.close()
-    
-
-    def pantallaModificar(self, fila):
+        self.tabla.setWordWrap(True)
+        self.filtrarDatos("")
+        
+    def pantallaModificar(self, fila, id_cargo, nom_cargo):
         scroll_position = self.tabla.verticalScrollBar().value() if hasattr(self, 'tabla') else 0
-        if not (0 <= fila < self.tabla.rowCount()):
-            QMessageBox.warning(self, "Error", "Fila seleccionada no válida")
-            return
         try:
-            datos = []
-            for c in range(self.tabla.columnCount()-1):
-                item = self.tabla.item(fila, c)
-                texto = item.text() if item else ""
-                datos.append(texto)
-            pagina = Pop_up_ModificacionCargos(datos, self)
+            pagina = Pop_up_ModificacionCargos(id_cargo, nom_cargo, self)
             pagina.exec_()
             if hasattr(self, 'tabla'):
                 QTimer.singleShot(0, lambda: self.tabla.verticalScrollBar().setValue(scroll_position))
@@ -272,9 +287,6 @@ class ModificacionCargos(QWidget):
             if hasattr(self, 'tabla'):
                 self.tabla.verticalScrollBar().setValue(scroll_position)
         
-        
-        
-    
 if __name__=="__main__":
     app = QApplication(sys.argv)
     pagina = ModificacionCargos()

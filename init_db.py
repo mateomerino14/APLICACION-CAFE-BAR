@@ -2,8 +2,6 @@ import sqlite3
 import os
 import sys
 
-#CREACION DE TRIGGER Y ESTRUCTURA DE LA BASE DE DATOS
-
 def get_db_path():
     if getattr(sys, 'frozen', False):
         base_path = os.path.dirname(sys.executable)
@@ -25,7 +23,8 @@ def crear_db():
                               descripcion TEXT,
                               cantidadStock DECIMAL(10,2) DEFAULT 0.00,
                               disponible BOOLEAN DEFAULT TRUE,
-                              unidadMedida VARCHAR(10) NOT NULL)"""
+                              unidadMedida VARCHAR(10) NOT NULL,
+                              precioExtra DECIMAL(10,2) DEFAULT 0.00)"""
     
     tablaProductos = """CREATE TABLE IF NOT EXISTS Producto(
                       idProd INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -96,6 +95,13 @@ def crear_db():
                       idPant INTEGER PRIMARY KEY AUTOINCREMENT,
                       nomPant VARCHAR(40) NOT NULL)"""
     
+    tablaSubpantalla = """CREATE TABLE IF NOT EXISTS Subpantalla(
+                        idSubPant INTEGER PRIMARY KEY AUTOINCREMENT,
+                        idPant INTEGER NOT NULL,
+                        nomSubPant VARCHAR(50) NOT NULL,
+                        accion VARCHAR(50) NOT NULL,
+                        FOREIGN KEY (idPant) REFERENCES Pantalla(idPant))"""
+    
     tablaCargos = """CREATE TABLE IF NOT EXISTS Cargo(
                    idCargo INTEGER PRIMARY KEY AUTOINCREMENT,
                    nomCarg VARCHAR(20) UNIQUE NOT NULL)"""
@@ -106,6 +112,13 @@ def crear_db():
                            PRIMARY KEY(idCarg,idPant),
                            FOREIGN KEY (idCarg) REFERENCES Cargo(idCarg),
                            FOREIGN KEY (idPant) REFERENCES Pantalla(idPant))"""
+    
+    tablaPermisosCargoSubpantalla = """CREATE TABLE IF NOT EXISTS PermisosCargoSubpantalla(
+                                      idCarg INTEGER NOT NULL,
+                                      idSubPant INTEGER NOT NULL,
+                                      PRIMARY KEY(idCarg, idSubPant),
+                                      FOREIGN KEY (idCarg) REFERENCES Cargo(idCarg),
+                                      FOREIGN KEY (idSubPant) REFERENCES Subpantalla(idSubPant))"""
     
     tablaEmpleado = """CREATE TABLE IF NOT EXISTS Empleado(
                      codEmp INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -129,6 +142,13 @@ def crear_db():
                              PRIMARY KEY(codEmp,idPant),
                              FOREIGN KEY (codEmp) REFERENCES Empleado(codEmp),
                              FOREIGN KEY (idPant) REFERENCES Pantalla(idPant))"""
+    
+    tablaPermisosPersonalSubpantalla = """CREATE TABLE IF NOT EXISTS PermisosPersonalSubpantalla(
+                                         codEmp INTEGER NOT NULL,
+                                         idSubPant INTEGER NOT NULL,
+                                         PRIMARY KEY(codEmp, idSubPant),
+                                         FOREIGN KEY (codEmp) REFERENCES Empleado(codEmp),
+                                         FOREIGN KEY (idSubPant) REFERENCES Subpantalla(idSubPant))"""
     
     tablaPromociones = """CREATE TABLE IF NOT EXISTS Promocion(
                             idProm INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -166,6 +186,7 @@ def crear_db():
                   idMesa INTEGER,
                   idSeccion INTEGER,
                   nit INTEGER DEFAULT -1,
+                  impresiones_ticket INTEGER DEFAULT 0,
                   PRIMARY KEY(numVenta, fechaReg),
                   FOREIGN KEY(nit) REFERENCES Cliente(nit),
                   FOREIGN KEY (idMesa) REFERENCES Mesa(idMesa),
@@ -206,7 +227,39 @@ def crear_db():
                           FOREIGN KEY (idMeseroActual) REFERENCES Empleado(codEmp)
                           FOREIGN KEY (idProm) REFERENCES Promocion(idProm)
                           )"""
+
+    tablaDetallesVentaExclusiones = """CREATE TABLE IF NOT EXISTS DetallesVentaExclusiones(
+                          idExclusion INTEGER PRIMARY KEY AUTOINCREMENT,
+                          idDetalleVenta INTEGER NOT NULL,
+                          idIng INTEGER NOT NULL,
+                          nomIng VARCHAR(30) NOT NULL,
+                          FOREIGN KEY (idDetalleVenta) REFERENCES DetallesVenta(idDetalleVenta),
+                          FOREIGN KEY (idIng) REFERENCES Stock(idIng))"""
+                          
+    tablaDetallesVentaExclusionesPromo = """CREATE TABLE IF NOT EXISTS DetallesVentaExclusionesPromo(
+                          idExclusion INTEGER PRIMARY KEY AUTOINCREMENT,
+                          idDetalleVenta INTEGER NOT NULL,
+                          idProd INTEGER NOT NULL,
+                          idIng INTEGER NOT NULL,
+                          nomIng VARCHAR(30) NOT NULL,
+                          FOREIGN KEY (idDetalleVenta) REFERENCES DetallesVenta(idDetalleVenta),
+                          FOREIGN KEY (idProd) REFERENCES Producto(idProd),
+                          FOREIGN KEY (idIng) REFERENCES Stock(idIng))"""
+
+    tablaDetallesVentaExtras = """CREATE TABLE IF NOT EXISTS DetallesVentaExtras(
+                          idExtra INTEGER PRIMARY KEY AUTOINCREMENT,
+                          idDetalleVenta INTEGER NOT NULL,
+                          idIng INTEGER NOT NULL,
+                          nomIng VARCHAR(30) NOT NULL,
+                          cantidadExtra DECIMAL(10,2) NOT NULL,
+                          precioExtra DECIMAL(10,2) NOT NULL,
+                          idProd INTEGER,
+                          numUnidad INTEGER,
+                          FOREIGN KEY (idDetalleVenta) REFERENCES DetallesVenta(idDetalleVenta),
+                          FOREIGN KEY (idIng) REFERENCES Stock(idIng),
+                          FOREIGN KEY (idProd) REFERENCES Producto(idProd))"""
     
+
     tablaDirectorio = """CREATE TABLE IF NOT EXISTS Directorio(
                        idAmin INTEGER PRIMARY KEY AUTOINCREMENT,
                        nomAdmin VARCHAR(30) NOT NULL,
@@ -218,7 +271,6 @@ def crear_db():
                     correoCuenta VARCHAR NOT NULL,
                     contCuenta VARCHAR NOT NULL)"""
     
-  
     tablaEnlace = """CREATE TABLE IF NOT EXISTS Enlace(
                     idEnlace INTEGER PRIMARY KEY AUTOINCREMENT,
                     enlace VARCHAR(100) NOT NULL DEFAULT 'https://siat.impuestos.gob.bo/v2/launcher/'
@@ -233,10 +285,13 @@ def crear_db():
     c.executescript(tablaSecciones)
     c.executescript(tablaCliente)
     c.executescript(tablaPantallas)
+    c.executescript(tablaSubpantalla)
     c.executescript(tablaCargos)
     c.executescript(tablaPermisosCargos)
+    c.executescript(tablaPermisosCargoSubpantalla)
     c.executescript(tablaEmpleado)
     c.executescript(tablaPermisosPersonal)
+    c.executescript(tablaPermisosPersonalSubpantalla)
     c.executescript(tablaPromociones)
     c.executescript(tablaDiasPromocion)
     c.executescript(tablaPromocionProductos)
@@ -244,11 +299,14 @@ def crear_db():
     c.executescript(tablaMetodosPago)
     c.executescript(tablaPago)
     c.executescript(tablaDetallesVenta)
+    c.executescript(tablaDetallesVentaExclusiones)   
     c.executescript(tablaDirectorio)
     c.executescript(tablaCorreos)
     c.executescript(tablaEnlace)
     c.executescript(tablaImpresora)
-    #('Clientes'),
+    c.executescript(tablaDetallesVentaExclusionesPromo)
+    c.executescript(tablaDetallesVentaExtras)
+
     consultaPaginas = """INSERT INTO Pantalla(nomPant) VALUES 
                         ('Familia'),
                         ('Caja'),
@@ -259,6 +317,7 @@ def crear_db():
                         ('Promociones'),
                         ('Empleados'),
                         ('Reportes')"""
+    
     consultaMetodosPago = """INSERT INTO MetodoPago(nombre) VALUES ('Efectivo')"""
     consultaMetodosPago2 = """INSERT INTO MetodoPago(nombre) VALUES ('Qr')"""
     
@@ -266,12 +325,40 @@ def crear_db():
     count = c.fetchone()[0]
     if count == 0:
         c.execute(consultaPaginas)
+        subpantallas = [
+            (1, 'Familia', 'VER_FAMILIA'),
+            (2, 'Registrar Pedido', 'REGISTRAR_PEDIDO'),
+            (3, 'Configuración', 'CONFIGURACION'),
+            (3, 'Impresoras', 'IMPRESORAS'),
+            (4, 'Registrar Categoría', 'REGISTRAR_CATEGORIA'),
+            (4, 'Modificar Categoría', 'MODIFICAR_CATEGORIA'),
+            (4, 'Dar de Baja Categoría', 'BAJA_CATEGORIA'),
+            (4, 'Registrar Producto', 'REGISTRAR_PRODUCTO'),
+            (4, 'Modificar Producto', 'MODIFICAR_PRODUCTO'),
+            (4, 'Dar de Baja Producto', 'BAJA_PRODUCTO'),
+            (5, 'Administrar Secciones', 'ADMIN_SECCIONES'),
+            (6, 'Registrar Ingredientes', 'REGISTRAR_INGREDIENTES'),
+            (6, 'Modificar Ingredientes', 'MODIFICAR_INGREDIENTES'),
+            (7, 'Registrar Promociones', 'REGISTRAR_PROMOCIONES'),
+            (7, 'Modificar Promociones', 'MODIFICAR_PROMOCIONES'),
+            (7, 'Dar de Baja Promociones', 'BAJA_PROMOCIONES'),
+            (8, 'Registrar Cargos', 'REGISTRAR_CARGOS'),
+            (8, 'Modificar Cargos', 'MODIFICAR_CARGOS'),
+            (8, 'Registrar Empleados', 'REGISTRAR_EMPLEADOS'),
+            (8, 'Modificar Empleados', 'MODIFICAR_EMPLEADOS'),
+            (8, 'Dar de Baja Empleados', 'BAJA_EMPLEADOS'),
+            (9, 'Ver Reportes', 'VER_REPORTES')
+        ]
+        for id_pant, nombre, accion in subpantallas:
+            c.execute("INSERT INTO Subpantalla (idPant, nomSubPant, accion) VALUES (?, ?, ?)",
+                     (id_pant, nombre, accion))
         
     c.execute("SELECT COUNT(*) FROM MetodoPago")
     count = c.fetchone()[0]
     if count == 0:
         c.execute(consultaMetodosPago)
         c.execute(consultaMetodosPago2)
+    
     try:
         c.execute("SELECT COUNT(*) FROM Enlace")
         count = c.fetchone()[0]
@@ -289,6 +376,7 @@ def crear_db():
             c.execute(ingresarAdmin, ("DIRECTORIO", "79213966482250"))
     except Exception as e:
         print(f"Error al insertar directorio por defecto: {e}")
+    
     conn.commit()
     conn.close()
 
@@ -317,9 +405,210 @@ def crearTriggers():
     conn.commit()
     conn.close()
 
+def migrarTablaExclusionesPromo():
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        c = conn.cursor()
+        c.execute("""CREATE TABLE IF NOT EXISTS DetallesVentaExclusionesPromo(
+                      idExclusion INTEGER PRIMARY KEY AUTOINCREMENT,
+                      idDetalleVenta INTEGER NOT NULL,
+                      idProd INTEGER NOT NULL,
+                      idIng INTEGER NOT NULL,
+                      nomIng VARCHAR(30) NOT NULL,
+                      numUnidad INTEGER NOT NULL DEFAULT 0,
+                      FOREIGN KEY (idDetalleVenta) REFERENCES DetallesVenta(idDetalleVenta),
+                      FOREIGN KEY (idProd) REFERENCES Producto(idProd),
+                      FOREIGN KEY (idIng) REFERENCES Stock(idIng))""")
+        
+        c.execute("""CREATE TABLE IF NOT EXISTS DetallesVentaUnidades(
+                      idUnidad INTEGER PRIMARY KEY AUTOINCREMENT,
+                      idDetalleVenta INTEGER NOT NULL,
+                      numUnidad INTEGER NOT NULL,
+                      marcado BOOLEAN DEFAULT FALSE,
+                      FOREIGN KEY (idDetalleVenta) REFERENCES DetallesVenta(idDetalleVenta))""")
+        try:
+            c.execute("ALTER TABLE DetallesVentaExclusionesPromo ADD COLUMN numUnidad INTEGER NOT NULL DEFAULT 0")
+        except Exception:
+            pass
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        print(f"Error en migración: {e}")
+
+# -----------------------------------------------------------------------
+# Función para migrar BD existente: crea la tabla si ya existe la BD
+# Llamar esta función en el arranque de la app para bases ya creadas.
+# -----------------------------------------------------------------------
+def migrarTablaExclusiones():
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        c = conn.cursor()
+        c.execute("""CREATE TABLE IF NOT EXISTS DetallesVentaExclusiones(
+                      idExclusion INTEGER PRIMARY KEY AUTOINCREMENT,
+                      idDetalleVenta INTEGER NOT NULL,
+                      idIng INTEGER NOT NULL,
+                      nomIng VARCHAR(30) NOT NULL,
+                      FOREIGN KEY (idDetalleVenta) REFERENCES DetallesVenta(idDetalleVenta),
+                      FOREIGN KEY (idIng) REFERENCES Stock(idIng))""")
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        print(f"Error en migración de exclusiones: {e}")
+
+
+def migrar_unidades_con_producto():
+        conn = sqlite3.connect(DB_PATH)
+        c = conn.cursor()
+        try:
+            c.execute("ALTER TABLE DetallesVentaUnidades ADD COLUMN idProd INTEGER")
+            print("Columna idProd agregada a DetallesVentaUnidades")
+        except sqlite3.OperationalError as e:
+            if "duplicate column name" in str(e):
+                print("La columna idProd ya existe")
+            else:
+                raise
+        c.execute("CREATE INDEX IF NOT EXISTS idx_unidades_idprod ON DetallesVentaUnidades(idProd)")
+        c.execute("""
+            UPDATE DetallesVentaUnidades 
+            SET idProd = (
+                SELECT idProd FROM DetallesVenta 
+                WHERE DetallesVenta.idDetalleVenta = DetallesVentaUnidades.idDetalleVenta
+            )
+            WHERE idProd IS NULL AND idDetalleVenta IN (
+                SELECT idDetalleVenta FROM DetallesVenta WHERE idProd IS NOT NULL
+            )
+        """)
+        print(f"Actualizadas {c.rowcount} unidades de productos normales")
+        conn.commit()
+        conn.close()
+
+# -----------------------------------------------------------------------
+# AJUSTE: Ingredientes extra en pedidos (con precio adicional)
+# - Agrega la columna precioExtra a Stock si la base ya existía sin ella.
+# - Crea la tabla DetallesVentaExtras si la base ya existía sin ella.
+# Se puede ejecutar cualquier cantidad de veces sin causar error.
+# -----------------------------------------------------------------------
+def migrarIngredientesExtra():
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        c = conn.cursor()
+        try:
+            c.execute("ALTER TABLE Stock ADD COLUMN precioExtra DECIMAL(10,2) DEFAULT 0.00")
+            print("Columna precioExtra agregada a Stock")
+        except sqlite3.OperationalError as e:
+            if "duplicate column name" in str(e):
+                print("La columna precioExtra ya existe en Stock")
+            else:
+                raise
+        c.execute("""CREATE TABLE IF NOT EXISTS DetallesVentaExtras(
+                      idExtra INTEGER PRIMARY KEY AUTOINCREMENT,
+                      idDetalleVenta INTEGER NOT NULL,
+                      idIng INTEGER NOT NULL,
+                      nomIng VARCHAR(30) NOT NULL,
+                      cantidadExtra DECIMAL(10,2) NOT NULL,
+                      precioExtra DECIMAL(10,2) NOT NULL,
+                      idProd INTEGER,
+                      numUnidad INTEGER,
+                      FOREIGN KEY (idDetalleVenta) REFERENCES DetallesVenta(idDetalleVenta),
+                      FOREIGN KEY (idIng) REFERENCES Stock(idIng))""")
+        # idProd/numUnidad: NULL cuando el extra es de un producto suelto (una
+        # sola linea = una sola personalizacion). Cuando el extra pertenece a
+        # un producto DENTRO de una promocion, se llenan para saber a que
+        # producto y a que unidad especifica de la promo corresponde (igual
+        # patron que ya usa DetallesVentaExclusionesPromo).
+        try:
+            c.execute("ALTER TABLE DetallesVentaExtras ADD COLUMN idProd INTEGER")
+        except sqlite3.OperationalError as e:
+            if "duplicate column name" not in str(e):
+                raise
+        try:
+            c.execute("ALTER TABLE DetallesVentaExtras ADD COLUMN numUnidad INTEGER")
+        except sqlite3.OperationalError as e:
+            if "duplicate column name" not in str(e):
+                raise
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        print(f"Error en migración de ingredientes extra: {e}")
+
+# -----------------------------------------------------------------------
+# AJUSTE: Reporte de tiempos de venta (hora de inicio / hora de cierre)
+# Agrega la columna horaCierre a Venta. Se actualiza cuando se cobra la
+# venta (ver DialogoCobroVenta.py: al confirmar el pago, agregar
+#   UPDATE Venta SET horaCierre = DATETIME('now','localtime')
+#   WHERE numVenta=? AND fechaReg=?
+# ). Mientras esa venta no se cobre, horaCierre queda NULL.
+# -----------------------------------------------------------------------
+def migrarHoraCierreVenta():
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        c = conn.cursor()
+        try:
+            c.execute("ALTER TABLE Venta ADD COLUMN horaCierre TEXT")
+            print("Columna horaCierre agregada a Venta")
+        except sqlite3.OperationalError as e:
+            if "duplicate column name" in str(e):
+                print("La columna horaCierre ya existe en Venta")
+            else:
+                raise
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        print(f"Error en migración de horaCierre: {e}")
+
+# -----------------------------------------------------------------------
+# AJUSTE: Contraseñas hasheadas con bcrypt
+# Convierte cualquier contraseña que todavía esté en texto plano
+# (Empleado.contEmp y Directorio.contrasenaAdmin) a un hash seguro.
+# Es segura de correr múltiples veces: si una contraseña ya es un hash
+# de bcrypt, la deja intacta.
+# -----------------------------------------------------------------------
+def migrarPasswordsAHash():
+    try:
+        from SeguridadUtils import hashear_password, es_hash_bcrypt
+    except ImportError:
+        print("ADVERTENCIA: no se encontró el paquete 'bcrypt' (o SeguridadUtils.py).")
+        print("Instala bcrypt con: pip install bcrypt --break-system-packages")
+        print("Las contraseñas seguirán en texto plano hasta que se instale.")
+        return
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        c = conn.cursor()
+
+        c.execute("SELECT codEmp, contEmp FROM Empleado")
+        empleados = c.fetchall()
+        migrados_emp = 0
+        for cod, cont in empleados:
+            if cont and not es_hash_bcrypt(cont):
+                nuevo_hash = hashear_password(cont)
+                c.execute("UPDATE Empleado SET contEmp=? WHERE codEmp=?", (nuevo_hash, cod))
+                migrados_emp += 1
+
+        c.execute("SELECT idAmin, contrasenaAdmin FROM Directorio")
+        admins = c.fetchall()
+        migrados_admin = 0
+        for id_admin, cont in admins:
+            if cont and not es_hash_bcrypt(cont):
+                nuevo_hash = hashear_password(cont)
+                c.execute("UPDATE Directorio SET contrasenaAdmin=? WHERE idAmin=?", (nuevo_hash, id_admin))
+                migrados_admin += 1
+
+        conn.commit()
+        conn.close()
+        if migrados_emp or migrados_admin:
+            print(f"Migración de contraseñas: {migrados_emp} empleado(s) y {migrados_admin} cuenta(s) de directorio hasheadas.")
+    except Exception as e:
+        print(f"Error en migración de contraseñas: {e}")
+
 def inciarBaseDatos():
     crear_db()
     crearTriggers()
+    migrarTablaExclusiones()   
+    migrarTablaExclusionesPromo()
+    migrar_unidades_con_producto()
+    migrarIngredientesExtra()
+    migrarHoraCierreVenta()
+    migrarPasswordsAHash()
     
 if __name__ == "__main__":
     inciarBaseDatos()

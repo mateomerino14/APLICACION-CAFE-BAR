@@ -18,6 +18,7 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib import colors
 from reportlab.lib.units import inch
 from PyQt5.QtWidgets import QMessageBox
+from Impresion import ManejadorImpresion
 import webbrowser
 
 try:
@@ -420,7 +421,72 @@ class CobroPedidos(QWidget):
             QMessageBox.critical(self, "Error", f"Error al cargar datos: {str(e)}")
         finally:
             conn.close()
+
+    
+    def imprimir(self, fecha, numVenta):
+        self.conn = sqlite3.connect(DB_PATH)
+        self.cursor = self.conn.cursor()
+        self.cursor.execute("""SELECT numVenta, idMesa, nombSeccion, E1.nomEmp AS empleado, E2.nomEmp AS cajero 
+                            FROM Venta V
+                            INNER JOIN Empleado E1 ON V.codEmp = E1.codEmp
+                            INNER JOIN Empleado E2 ON V.codEmp2 = E2.codEmp
+                            INNER JOIN Seccion S ON S.idSeccion = V.idSeccion
+                            WHERE DATE(V.fechaReg) = ? AND V.numVenta = ?""", (fecha, numVenta))
+        resultadosVenta = self.cursor.fetchone()
         
+        self.cursor.execute("""
+            SELECT cantidadProdDet, tipoConsumo, 
+                CASE 
+                    WHEN idProd IS NOT NULL THEN (SELECT nomProd FROM Producto WHERE idProd = D.idProd)
+                    ELSE (SELECT nomProm FROM Promocion WHERE idProm = D.idProm)
+                END as nombre,
+                CASE 
+                    WHEN idProd IS NOT NULL THEN (SELECT precioVenta FROM Producto WHERE idProd = D.idProd)
+                    ELSE (SELECT precioProm FROM Promocion WHERE idProm = D.idProm)
+                END as precio
+            FROM DetallesVenta D
+            WHERE D.numVenta = ? AND DATE(D.fechaRegVenta) = ?
+        """, (numVenta, fecha))
+        
+        detallesVenta = self.cursor.fetchall()
+        self.cursor.close()
+        self.conn.close()
+        
+        items_agrupados = {}
+        for cantidad, tipo, nombre, precio in detallesVenta:
+            if nombre is None:
+                continue
+            cantidad = int(cantidad) if cantidad else 0
+            precio = float(precio) if precio else 0.0
+            
+            clave = (nombre, tipo)
+            if clave in items_agrupados:
+                items_agrupados[clave]['cantidad'] += cantidad
+                items_agrupados[clave]['subtotal'] += cantidad * precio
+            else:
+                items_agrupados[clave] = {
+                    'cantidad': cantidad,
+                    'producto': nombre,
+                    'tipo': tipo,
+                    'precio': precio,
+                    'subtotal': cantidad * precio
+                }
+        
+        items = list(items_agrupados.values())
+        
+        impresion = ManejadorImpresion()
+        datosVenta = {
+            'num_venta': str(resultadosVenta[0]),
+            'mesa': str(resultadosVenta[1]),
+            'seccion': str(resultadosVenta[2]),
+            'empleado': str(resultadosVenta[3]),
+            'cajero': str(resultadosVenta[4])
+        }
+        exito, mensaje = impresion.imprimir_ticket(datosVenta, items)
+        print(mensaje)
+
+
+
     def cobrar(self, f, fecha,numVenta, numMesa, idSec):
         self.paginaCobrarVenta = QDialog(self)
         self.paginaCobrarVenta.setFixedSize(1600,900)
@@ -504,13 +570,15 @@ class CobroPedidos(QWidget):
         layoutMetodosPago.addWidget(self.rbMixto)
         self.lblEfectivo = QLabel("Monto en Efectivo:")
         self.lblEfectivo.setStyleSheet("font-size: 14px; font-weight: bold; margin-top: 15px;")
-        self.txtEfectivo = QLineEdit("0.00")
+        self.txtEfectivo = QLineEdit("")
+        self.txtEfectivo.setPlaceholderText("0.00")
         self.txtEfectivo.setValidator(QRegExpValidator(QRegExp("[0-9]+\.?[0-9]{0,2}")))
         self.txtEfectivo.setEnabled(False)
         self.txtEfectivo.setStyleSheet("font-size: 15px; padding: 8px;")
         self.lblQR = QLabel("Monto con QR:")
         self.lblQR.setStyleSheet("font-size: 14px; font-weight: bold; margin-top: 10px;")
-        self.txtQR = QLineEdit("0.00")
+        self.txtQR = QLineEdit("")
+        self.txtQR.setPlaceholderText("0.00")
         self.txtQR.setValidator(QRegExpValidator(QRegExp("[0-9]+\.?[0-9]{0,2}")))
         self.txtQR.setEnabled(False)
         self.txtQR.setStyleSheet("font-size: 15px; padding: 8px;")
@@ -541,7 +609,8 @@ class CobroPedidos(QWidget):
         total.setStyleSheet("font-size: 18px; font-weight: bold; color: #e74c3c; margin-bottom: 15px;")
         etiquetaPago = QLabel("Pago:")
         etiquetaPago.setStyleSheet("font-weight: bold; font-size: 15px; color: #2c3e50; margin-top: 10px;")
-        self.pago = QLineEdit("0.00")
+        self.pago = QLineEdit()
+        self.pago.setPlaceholderText((f"{self.total:.2f} Bs."))
         self.pago.setValidator(QRegExpValidator(QRegExp("[0-9]+\.?[0-9]{0,2}")))
         self.pago.textChanged.connect(self.actualizarCambio)
         self.pago.setStyleSheet("font-size: 15px; padding: 8px;")
@@ -569,12 +638,18 @@ class CobroPedidos(QWidget):
         confirmar.setObjectName("confirmar")
         confirmar.setFixedHeight(35)
         confirmar.setCursor(QCursor(Qt.PointingHandCursor))
-        confirmar.clicked.connect(lambda checked, f=fecha, idMesa=numMesa, idSeccion=idSec: self.confirmar(f,numVenta,idMesa, idSeccion))
+        confirmar.clicked.connect(lambda checked, f=fecha, idMesa=numMesa, idSeccion=idSec,total=round(self.total,2): self.confirmar(f,numVenta,idMesa, idSeccion,total))
         cancelar = QPushButton("CANCELAR")
         cancelar.setObjectName("cancelar")
         cancelar.setFixedHeight(35)
         cancelar.setCursor(QCursor(Qt.PointingHandCursor))
         cancelar.clicked.connect(self.paginaCobrarVenta.close)
+        imprimir=QPushButton("IMPRIMIR")
+        imprimir.setObjectName("imprimir")
+        imprimir.setFixedHeight(35)
+        imprimir.setCursor(QCursor(Qt.PointingHandCursor))
+        imprimir.clicked.connect(lambda _,fecha=fecha,nVenta=numVenta:self.imprimir(fecha,nVenta))
+        layoutBotones.addWidget(imprimir)
         layoutBotones.addWidget(impuestos) 
         layoutBotones.addWidget(confirmar)
         layoutBotones.addWidget(cancelar)
@@ -983,7 +1058,7 @@ class CobroPedidos(QWidget):
         if self.rbEfectivo.isChecked():
             self.txtEfectivo.setEnabled(True)
             self.txtQR.setEnabled(False)
-            self.txtEfectivo.setText(f"{monto_total:.2f}")
+            self.txtEfectivo.setText("")
             self.txtQR.setText("0.00")
             self.actualizarMetodoPagoLabel("Efectivo")
     
@@ -991,32 +1066,34 @@ class CobroPedidos(QWidget):
             self.txtEfectivo.setEnabled(False)
             self.txtQR.setEnabled(True)
             self.txtEfectivo.setText("0.00")
-            self.txtQR.setText(f"{monto_total:.2f}")
+            self.txtQR.setText("")
             self.actualizarMetodoPagoLabel("QR")
     
         elif self.rbMixto.isChecked():
             self.txtEfectivo.setEnabled(True)
             self.txtQR.setEnabled(True)
-            self.txtEfectivo.setText(f"{monto_total/2:.2f}")
-            self.txtQR.setText(f"{monto_total/2:.2f}")
+            self.txtEfectivo.setText("")
+            self.txtQR.setText("")
             self.actualizarMetodoPagoLabel("Mixto (Efectivo + QR)")
     
     def actualizarMetodoPagoLabel(self, metodo):
         if hasattr(self, 'metodoLabel'):
             self.metodoLabel.setText(f"<span style='color: #7f8c8d; font-size: 14px;'>Método: </span><b>{metodo}</b>")
         
-    def confirmar(self, fecha, numVenta, idMesa, idSeccion):
+    def confirmar(self, fecha, numVenta, idMesa, idSeccion,total):
         if self.rbEfectivo.isChecked():
-            if not self.txtEfectivo.text() or float(self.txtEfectivo.text()) <= 0:
+            pagoEfectivo=round(float(self.txtEfectivo.text()),2)
+            if not self.txtEfectivo.text() or  pagoEfectivo!=total:
                 QMessageBox.warning(self, "Advertencia", "Ingrese un monto válido para pago en efectivo")
                 return
         elif self.rbQR.isChecked():
-            if not self.txtQR.text() or float(self.txtQR.text()) <= 0:
+            pagoQr=round(float(self.txtQR.text()),2)
+            if not self.txtQR.text() or  pagoQr!=total:
                 QMessageBox.warning(self, "Advertencia", "Ingrese un monto válido para pago con QR")
                 return
         elif self.rbMixto.isChecked():
-            if (not self.txtEfectivo.text() or float(self.txtEfectivo.text()) <= 0 or 
-                not self.txtQR.text() or float(self.txtQR.text()) <= 0):
+            pago=round(float(self.txtEfectivo.text())+float(self.txtQR.text()),2)
+            if (not self.txtEfectivo.text() or not self.txtQR.text() or pago!=total):
                 QMessageBox.warning(self, "Advertencia", "Ingrese montos válidos para ambos métodos de pago")
                 return
         

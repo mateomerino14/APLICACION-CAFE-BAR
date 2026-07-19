@@ -4,6 +4,7 @@ from PyQt5.QtCore import Qt
 import sqlite3
 import os
 import sys
+from SeguridadUtils import hashear_password
 
 def get_db_path():
     if getattr(sys, 'frozen', False):
@@ -71,7 +72,7 @@ class Pop_up_RegistrarEmpleados(QDialog):
             color: #2b6cb0;
             margin-bottom: 5px;
             padding: 5px;
-            background-color: #ebf4ff;
+            background-color: #f3f3f3;
             border-radius: 6px;
         """)
         titulo.setAlignment(Qt.AlignCenter)
@@ -176,13 +177,14 @@ class Pop_up_RegistrarEmpleados(QDialog):
                 if not resultado:
                     raise ValueError("Cargo no encontrado")
                 id_cargo = resultado[0]
+                c11_hash = hashear_password(c11)
                 consulta = """INSERT INTO Empleado(
                     aliasEmp, contEmp, ciEmp, nomEmp, 
                     apellPatEmp, apellMatEmp, numCelEmp,
                     direccionEmp, correoElEmp, idCargo, imgEmp
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"""
                 c.execute(consulta, (
-                    c10, c11, c4, c1,
+                    c10, c11_hash, c4, c1,
                     c2, c3, c5,
                     c6, c7, id_cargo, 
                     sqlite3.Binary(c9) if c9 else None

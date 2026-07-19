@@ -25,6 +25,12 @@ def get_images_dir():
 
 DIRECCION_IMAGEN = get_images_dir()
 
+# Columna (indice 0-based dentro del SELECT) donde vive la contrasena hasheada.
+# Nunca se muestra su valor real: bcrypt es irreversible, y mostrar el hash
+# no aporta nada util. Se reemplaza siempre por un marcador visual.
+INDICE_COLUMNA_CONTRASENA = 1
+MARCADOR_CONTRASENA = "••••••••"
+
 class ModificacionEmpleados(QWidget):
     def __init__(self):
         super().__init__()
@@ -140,6 +146,11 @@ class ModificacionEmpleados(QWidget):
                     boton.setIconSize(QSize(50,50))
                     boton.clicked.connect(lambda checked, fila=f: self.pantallaModificar(fila))
                     self.tabla.setCellWidget(f,c+1,boton)
+                elif c == INDICE_COLUMNA_CONTRASENA:
+                    item = QTableWidgetItem(MARCADOR_CONTRASENA)
+                    item.setTextAlignment(Qt.AlignCenter)
+                    item.setToolTip("La contraseña está protegida y no puede visualizarse.\nUse 'Restablecer Contraseña' en el popup de modificación.")
+                    self.tabla.setItem(f, c, item)
                 else:
                     valor = str(campo) if campo is not None else ""
                     item = QTableWidgetItem(valor)
@@ -408,6 +419,11 @@ class ModificacionEmpleados(QWidget):
                     boton.setIconSize(QSize(50,50))
                     boton.clicked.connect(lambda checked, fila=f: self.pantallaModificar(fila))
                     self.tabla.setCellWidget(f,c+1,boton)
+                elif c == INDICE_COLUMNA_CONTRASENA:
+                    item = QTableWidgetItem(MARCADOR_CONTRASENA)
+                    item.setTextAlignment(Qt.AlignCenter)
+                    item.setToolTip("La contraseña está protegida y no puede visualizarse.\nUse 'Restablecer Contraseña' en el popup de modificación.")
+                    self.tabla.setItem(f, c, item)
                 else:
                     valor = str(campo) if campo is not None else ""
                     item = QTableWidgetItem(valor)

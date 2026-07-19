@@ -123,8 +123,19 @@ class RegistroPromociones(QWidget):
         self.iniciarPagina()
         self.showMaximized()
 
+    def cargarNombresPromociones(self):
+        try:
+            conn = sqlite3.connect(DB_PATH)
+            c = conn.cursor()
+            c.execute("SELECT nomProm FROM Promocion ORDER BY nomProm COLLATE NOCASE ASC")
+            nombres = [row[0] for row in c.fetchall()]
+            conn.close()
+            return nombres
+        except:
+            return []
 
     def iniciarPagina(self):
+        QLocale.setDefault(QLocale(QLocale.Spanish, QLocale.Bolivia))
         layout1=QHBoxLayout()
         self.layoutPrincipal.addLayout(layout1,stretch=20)
         layout2=QVBoxLayout()
@@ -201,6 +212,15 @@ class RegistroPromociones(QWidget):
         campoNombre=QLineEdit()
         campoNombre.setPlaceholderText("Nombre de la Promocion")
         campoNombre.setFixedHeight(35)
+        nombre_promocion_regex = QRegExp("[A-Za-záéíóúÁÉÍÓÚñÑ0-9°%.,\\-\\s]*")
+        campoNombre.setValidator(QRegExpValidator(nombre_promocion_regex))
+        campoNombre.setMaxLength(30)
+
+        self.completerPromociones = QCompleter(self.cargarNombresPromociones(), self)
+        self.completerPromociones.setCaseSensitivity(Qt.CaseInsensitive)
+        self.completerPromociones.setFilterMode(Qt.MatchContains)
+        campoNombre.setCompleter(self.completerPromociones)
+
         layoutCategoria.addWidget(nombre)
         layoutCategoria.addWidget(campoNombre)
         layoutCategoria3=QHBoxLayout()
@@ -210,8 +230,9 @@ class RegistroPromociones(QWidget):
         campoPrecioVenta=QLineEdit()
         campoPrecioVenta.setPlaceholderText("0.00")
         campoPrecioVenta.setFixedHeight(35)
-        validador=QRegExpValidator(QRegExp("[0-9]*\\.?[0-9]*"))
+        validador=QRegExpValidator(QRegExp(r"[0-9]{1,8}(\.[0-9]{0,2})?"))
         campoPrecioVenta.setValidator(validador)
+        campoPrecioVenta.setMaxLength(11)
         layoutCategoria3.addWidget(precioVenta)
         layoutCategoria3.addWidget(campoPrecioVenta)
         layout2.addLayout(layoutCategoria)
@@ -251,6 +272,7 @@ class RegistroPromociones(QWidget):
         campoCantidad=QLineEdit()
         campoCantidad.setPlaceholderText("0")
         campoCantidad.setValidator(QRegExpValidator(QRegExp("[0-9]+")))
+        campoCantidad.setMaxLength(3)
         campoCantidad.setFixedHeight(35)
         layoutCategoria7.addWidget(ingrediente)
         layoutCategoria7.addWidget(self.campoProducto)
@@ -283,6 +305,8 @@ class RegistroPromociones(QWidget):
         layoutFechaEspec = QHBoxLayout()
         self.checkFechaEspec = QCheckBox("Activar fecha específica")
         self.dateFechaEspec = QDateEdit()
+        self.dateFechaEspec.setDisplayFormat("dd/MM/yyyy")
+        self.dateFechaEspec.setLocale(QLocale(QLocale.Spanish, QLocale.Bolivia))
         self.dateFechaEspec.setCalendarPopup(True)
         self.dateFechaEspec.setDate(QDate.currentDate())
         self.dateFechaEspec.setEnabled(False)
@@ -320,7 +344,11 @@ class RegistroPromociones(QWidget):
         layoutFechas = QHBoxLayout()
         self.checkPeriodo = QCheckBox("Activar período")
         self.dateInicio = QDateEdit()
+        self.dateInicio.setDisplayFormat("dd/MM/yyyy")
+        self.dateInicio.setLocale(QLocale(QLocale.Spanish, QLocale.Bolivia))
         self.dateFin = QDateEdit()
+        self.dateFin.setDisplayFormat("dd/MM/yyyy")
+        self.dateFin.setLocale(QLocale(QLocale.Spanish, QLocale.Bolivia))
         self.dateInicio.setCalendarPopup(True)
         self.dateFin.setCalendarPopup(True)
         self.dateInicio.setDate(QDate.currentDate())
@@ -585,7 +613,7 @@ class RegistroPromociones(QWidget):
             imagenPromocion, tablaRegistrados, conjunto))
         botonAnadir.clicked.connect(lambda:self.anadirElemento(
             [self.campoProducto.currentText(), campoCantidad.text()], 
-            tablaRegistrados, conjunto))
+            tablaRegistrados, conjunto,campoCantidad))
         self.layoutPrincipal.addStretch(2)
         self.layoutPrincipal.addWidget(botonRegistrar)
     
@@ -754,6 +782,7 @@ class RegistroPromociones(QWidget):
                 font-size: 12px;
             }
         """)
+        self.completerPromociones.setModel(QStringListModel(self.cargarNombresPromociones()))
         self.cargar_categorias()
 
 
@@ -829,7 +858,7 @@ class RegistroPromociones(QWidget):
         self.limpiarCampos(nombre,precioVenta,campoProducto,campoCantidad,campoImagen,tabla,conjunto)
     
 
-    def anadirElemento(self,lista,tabla,conjunto,bandera=True):
+    def anadirElemento(self,lista,tabla,conjunto,campoCantidad,bandera=True):
         if self.campoProducto.currentIndex() >= 0:
             current_item = self.campoProducto.model().item(self.campoProducto.currentIndex())
             if current_item and not current_item.isEnabled():
@@ -839,7 +868,7 @@ class RegistroPromociones(QWidget):
             QMessageBox.critical(self,"Error","Debe llenar los campos obligatorios porfavor")
             return
         if lista[0] in conjunto and bandera==True:
-           QMessageBox.critical(self,"Error","El producto ya esta registrada")
+           QMessageBox.critical(self,"Error","El producto ya esta registrado")
            return
         fila=tabla.rowCount()
         tabla.insertRow(fila)
@@ -913,7 +942,7 @@ class RegistroPromociones(QWidget):
         conjunto.add(lista[0])
         self.calcularTotal(tabla)
         tabla.scrollToBottom()
-    
+        campoCantidad.setText("")
 
     def aumentar(self,tabla,boton):
         indice=tabla.indexAt(boton.mapTo(tabla.viewport(),QPoint(0,0)))

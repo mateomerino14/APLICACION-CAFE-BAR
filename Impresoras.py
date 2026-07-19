@@ -996,9 +996,31 @@ class Impresoras(QWidget):
                     import platform
                     if platform.system() == "Windows":
                         import win32print
-                        import win32ui
-                        hPrinter = win32print.OpenPrinter(dispositivo)
-                        try:
+                        
+                        es_termica = any(term in dispositivo.lower() for term in [
+                            'thermal', 'termica', 'ticket', 'receipt', 'pos',
+                            'tm-', 'tsp', 'bixolon', 'star', 'citizen', 'zjiang'
+                        ])
+                        
+                        if es_termica:
+                            texto_limpio = texto.encode('latin-1', errors='ignore')
+                            contenido_bytes = b'\x1b\x40'
+                            contenido_bytes += texto_limpio
+                            contenido_bytes += b'\n' * 5
+                            contenido_bytes += b'\x1d\x56\x00'
+                            hPrinter = win32print.OpenPrinter(dispositivo)
+                            try:
+                                doc_info = ("Prueba Cafebar", None, "RAW")
+                                win32print.StartDocPrinter(hPrinter, 1, doc_info)
+                                win32print.StartPagePrinter(hPrinter)
+                                win32print.WritePrinter(hPrinter, contenido_bytes)
+                                win32print.EndPagePrinter(hPrinter)
+                                win32print.EndDocPrinter(hPrinter)
+                                return True
+                            finally:
+                                win32print.ClosePrinter(hPrinter)
+                        else:
+                            import win32ui
                             hdc = win32ui.CreateDC()
                             hdc.CreatePrinterDC(dispositivo)
                             hdc.StartDoc("Prueba Impresión")
@@ -1017,8 +1039,6 @@ class Impresoras(QWidget):
                             hdc.EndPage()
                             hdc.EndDoc()
                             return True
-                        finally:
-                            win32print.ClosePrinter(hPrinter)
                     return False
                 except Exception as e:
                     print(f"Error impresión Windows: {e}")

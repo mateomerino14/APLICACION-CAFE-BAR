@@ -122,16 +122,19 @@ class RegistroEmpleados(QWidget):
         self.campo1.setStyleSheet(camposEstilo)
         letras_regex = QRegExp("[A-Za-záéíóúÁÉÍÓÚñÑ\\s]+")
         self.campo1.setValidator(QRegExpValidator(letras_regex))
+        self.campo1.setMaxLength(30)
         apellido = QLabel("APELLIDO PATERNO")
         apellido.setStyleSheet(labelEstilo)
         self.campo2 = QLineEdit()
         self.campo2.setStyleSheet(camposEstilo)
         self.campo2.setValidator(QRegExpValidator(letras_regex))
+        self.campo2.setMaxLength(30)
         apellido2 = QLabel("APELLIDO MATERNO")
         apellido2.setStyleSheet(labelEstilo)
         self.campo3 = QLineEdit()
         self.campo3.setStyleSheet(camposEstilo)
         self.campo3.setValidator(QRegExpValidator(letras_regex))
+        self.campo3.setMaxLength(30)
         
         def crear_grupo_campo(label, campo):
             grupo = QVBoxLayout()
@@ -149,14 +152,15 @@ class RegistroEmpleados(QWidget):
         ci.setStyleSheet(labelEstilo)
         self.campo4 = QLineEdit()
         self.campo4.setStyleSheet(camposEstilo)
-        self.campo4.setValidator(QIntValidator())
+        digitos_regex = QRegExp("[0-9]*")
+        self.campo4.setValidator(QRegExpValidator(digitos_regex))
         self.campo4.setMaxLength(7)
         numCelular = QLabel("NÚMERO DE CELULAR")
         numCelular.setStyleSheet(labelEstilo)
         self.campo5 = QLineEdit()
         self.campo5.setStyleSheet(camposEstilo)
         self.campo5.setMaxLength(8)
-        self.campo5.setValidator(QIntValidator())
+        self.campo5.setValidator(QRegExpValidator(digitos_regex))
         idCargo = QLabel("CARGO")
         idCargo.setStyleSheet(labelEstilo)
         self.campo8 = QComboBox()
@@ -172,12 +176,16 @@ class RegistroEmpleados(QWidget):
         direccion.setStyleSheet(labelEstilo)
         self.campo6 = QLineEdit()
         self.campo6.setStyleSheet(camposEstilo)
+        direccion_regex = QRegExp("[A-Za-záéíóúÁÉÍÓÚñÑ0-9#.,\\-\\s]*")
+        self.campo6.setValidator(QRegExpValidator(direccion_regex))
+        self.campo6.setMaxLength(30)
         correoElectronico = QLabel("CORREO ELECTRÓNICO")
         correoElectronico.setStyleSheet(labelEstilo)
         self.campo7 = QLineEdit()
         self.campo7.setStyleSheet(camposEstilo)
         regex_correo = QRegExpValidator(QRegExp(r"^[a-zA-Z][a-zA-Z0-9._-]*@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"))
         self.campo7.setValidator(regex_correo)
+        self.campo7.setMaxLength(30)
         layoutH3.addLayout(crear_grupo_campo(direccion, self.campo6))
         layoutH3.addLayout(crear_grupo_campo(correoElectronico, self.campo7))
         layoutCampos.addLayout(layoutH3)
@@ -232,10 +240,20 @@ class RegistroEmpleados(QWidget):
         resultado = c.execute(consulta)
         for id, cargo in resultado.fetchall():
             self.campo8.addItem(cargo)
+        conn.close()
         
     def activarPantallaPequena(self, c1, c2, c3, c4, c5, c6, c7, c8):
-        if not c1 or not c2 or not c3 or not c4 or not c5 or c8 == "":
+        if not c1 or not c2 or not c3:
             QMessageBox.warning(self, "Advertencia", "Ingrese los campos obligatorios")
+            return
+        if not c4 or len(c4) < 5:
+            QMessageBox.warning(self, "Advertencia", "Ingrese un CI válido (mínimo 5 dígitos)")
+            return
+        if not c5 or len(c5) < 7:
+            QMessageBox.warning(self, "Advertencia", "Ingrese un número de celular válido (mínimo 7 dígitos)")
+            return
+        if not c8:
+            QMessageBox.warning(self, "Advertencia", "Seleccione un cargo")
             return
         lista = [c1, c2, c3, c4, c5, c6, c7, c8]
         pixmap = self.foto.pixmap()

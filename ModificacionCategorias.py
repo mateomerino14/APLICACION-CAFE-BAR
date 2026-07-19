@@ -387,6 +387,11 @@ class ModificarCategoriaDialog(QDialog):
             QPushButton:hover {
                 background-color: #2980b9;
             }
+            QCompleter {
+                background-color: white;
+                border: 1px solid #bdc3c7;
+                border-radius: 4px;
+            }
         """)
         layout = QVBoxLayout()
         layout.setSpacing(15)
@@ -406,6 +411,13 @@ class ModificarCategoriaDialog(QDialog):
         label_nombre.setFixedWidth(120)
         self.input_nombre = QLineEdit()
         self.input_nombre.setText(nombre_actual)
+        
+        categorias = self.obtenerCategoriasExistentes()
+        completer = QCompleter(categorias)
+        completer.setCaseSensitivity(Qt.CaseInsensitive)
+        completer.setFilterMode(Qt.MatchContains)
+        self.input_nombre.setCompleter(completer)
+        
         layout_nombre.addWidget(label_nombre)
         layout_nombre.addWidget(self.input_nombre)
         layout_imagen = QHBoxLayout()
@@ -468,6 +480,17 @@ class ModificarCategoriaDialog(QDialog):
         layout.addLayout(layout_botones)
         self.setLayout(layout)
     
+    def obtenerCategoriasExistentes(self):
+        try:
+            conn = sqlite3.connect(DB_PATH)
+            c = conn.cursor()
+            c.execute("SELECT nomCategoria FROM Categoria WHERE activa = 1 ORDER BY nomCategoria")
+            categorias = [row[0] for row in c.fetchall()]
+            conn.close()
+            return categorias
+        except Exception as e:
+            print(f"Error al obtener categorías: {e}")
+            return []
     
     def cargarImagenActual(self):
         try:
@@ -1077,6 +1100,11 @@ class EditarSubcategoriaDialog(QDialog):
             QPushButton:hover {
                 background-color: #2980b9;
             }
+            QCompleter {
+                background-color: white;
+                border: 1px solid #bdc3c7;
+                border-radius: 4px;
+            }
         """)
         
         layout = QVBoxLayout()
@@ -1099,6 +1127,12 @@ class EditarSubcategoriaDialog(QDialog):
         
         self.input_nombre = QLineEdit()
         self.input_nombre.setText(nombre_actual)
+        
+        subcategorias = self.obtenerSubcategoriasExistentes()
+        completer = QCompleter(subcategorias)
+        completer.setCaseSensitivity(Qt.CaseInsensitive)
+        completer.setFilterMode(Qt.MatchContains)
+        self.input_nombre.setCompleter(completer)
         
         layout_nombre.addWidget(label_nombre)
         layout_nombre.addWidget(self.input_nombre)
@@ -1174,6 +1208,18 @@ class EditarSubcategoriaDialog(QDialog):
         layout.addLayout(layout_botones)
         
         self.setLayout(layout)
+    
+    def obtenerSubcategoriasExistentes(self):
+        try:
+            conn = sqlite3.connect(DB_PATH)
+            c = conn.cursor()
+            c.execute("SELECT nombre FROM Subcategoria WHERE activa = 1 ORDER BY nombre")
+            subcategorias = [row[0] for row in c.fetchall()]
+            conn.close()
+            return subcategorias
+        except Exception as e:
+            print(f"Error al obtener subcategorías: {e}")
+            return []
     
     def cargarImagenActual(self):
         try:

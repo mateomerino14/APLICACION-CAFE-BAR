@@ -9,8 +9,9 @@ import escpos.printer
 from datetime import datetime, time
 from Impresion import ManejadorImpresion
 from PyQt5.QtCore import QObject, pyqtSignal, pyqtSlot
-
 from decimal import Decimal, ROUND_HALF_UP
+from DialogoCobroVenta import DialogoCobroVenta
+from SeguridadUtils import verificar_password
 
 def q2(x) -> float:
     return float(Decimal(str(x)).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP))
@@ -45,12 +46,26 @@ class RegistrarPedidos(QWidget):
         self.validar_stock = False
         self.banderaTicket = False
         self.enviada = False
-        self.ticket_print_count = 0    
+        self.ticket_print_count = 0
         self.cocina_print_count = 0
         self.manejador_impresion = ManejadorImpresion()
         self.signals = ImpresionSignals()
         self.signals.resultado_ticket.connect(self._procesar_resultado_ticket)
         self.signals.resultado_cocina.connect(self._procesar_resultado_cocina)
+        self.dialogo_detalles = None
+        self.fecha_actual_dialogo = None
+        self.temporizador_dialogo = None
+        self.idSeccionActual = None
+        self.dialogo_cards = None
+        self.numMesa_actual = None
+        self.idSeccion_actual = None
+        self.timer_unico = None
+        self.tabla_pedidos_pendientes = None
+        self.fechas_por_fila = {}
+        self.productos_faltantes_global = []
+        self.actualizar_al_cerrar = False
+        self.exclusiones_por_fila = {}
+        self.extras_por_fila = {}
         self.setStyleSheet("""
             QWidget {
                 font-family: 'Segoe UI', Arial, sans-serif;
@@ -65,7 +80,6 @@ class RegistrarPedidos(QWidget):
             }
             QPushButton:hover { opacity: 0.9; }
             QPushButton:pressed { opacity: 0.8; }
-            
             QLineEdit {
                 background-color: white;
                 border: 2px solid #e2e8f0;
@@ -131,7 +145,7 @@ class RegistrarPedidos(QWidget):
                 font-weight: 500;
             }
             QMessageBox QDialogButtonBox {
-                background: #f5f7fa;              
+                background: #f5f7fa;
                 border-top: 1px solid #e2e8f0;
                 padding: 10px 16px;
             }
@@ -143,12 +157,69 @@ class RegistrarPedidos(QWidget):
                 min-width: 110px;
                 font-weight: bold;
             }
-            QMessageBox QPushButton:hover { 
-               background-color: #2980b9; 
+            QMessageBox QPushButton:hover {
+               background-color: #2980b9;
+            }
+            QProgressBar {
+                border: 1px solid #ddd;
+                border-radius: 6px;
+                text-align: center;
+                font-weight: bold;
+                background-color: white;
+            }
+            QProgressBar::chunk {
+                border-radius: 6px;
+            }
+            QSpinBox {
+                background-color: white;
+                border: 2px solid #e2e8f0;
+                border-radius: 6px;
+                padding: 8px;
+                font-size: 14px;
+                min-height: 40px;
+            }
+            QSpinBox:focus {
+                border: 2px solid #4a89dc;
+                background-color: #f0f7ff;
+            }
+            QSpinBox::up-button {
+                background-color: #3498db;
+                border: none;
+                border-radius: 4px;
+                width: 30px;
+                height: 20px;
+            }
+            QSpinBox::up-button:hover {
+                background-color: #2980b9;
+            }
+            QSpinBox::down-button {
+                background-color: #e74c3c;
+                border: none;
+                border-radius: 4px;
+                width: 30px;
+                height: 20px;
+            }
+            QSpinBox::down-button:hover {
+                background-color: #c0392b;
+            }
+            QSpinBox::up-arrow {
+                image: none;
+                border-left: 5px solid transparent;
+                border-right: 5px solid transparent;
+                border-bottom: 5px solid white;
+                width: 0;
+                height: 0;
+            }
+            QSpinBox::down-arrow {
+                image: none;
+                border-left: 5px solid transparent;
+                border-right: 5px solid transparent;
+                border-top: 5px solid white;
+                width: 0;
+                height: 0;
             }
         """)
         self.set_up()
-        
 
     def set_up(self):
         self.layoutDatos = QHBoxLayout()
@@ -160,7 +231,6 @@ class RegistrarPedidos(QWidget):
         self.iniciarPagina()
         self.nuevaVenta = False
         self.showMaximized()
-
 
     def iniciarPagina(self):
         self.conn = sqlite3.connect(DB_PATH)
@@ -184,7 +254,6 @@ class RegistrarPedidos(QWidget):
         layoutElemento.addWidget(self.etiquetaSeccion, alignment=Qt.AlignCenter)
         layoutElemento.addWidget(self.campoSeccion, alignment=Qt.AlignCenter)
         layoutCampo1.addLayout(layoutElemento)
-        
         layoutElemento = QVBoxLayout()
         self.campoMesa = QLabel("")
         self.campoMesa.setStyleSheet("""
@@ -198,7 +267,6 @@ class RegistrarPedidos(QWidget):
         layoutElemento.addWidget(self.etiquetaMesa, alignment=Qt.AlignCenter)
         layoutElemento.addWidget(self.campoMesa, alignment=Qt.AlignCenter)
         layoutCampo1.addLayout(layoutElemento)
-        
         layoutElemento = QVBoxLayout()
         self.campoEncargado = QLabel("")
         self.campoEncargado.setStyleSheet("""
@@ -267,26 +335,22 @@ class RegistrarPedidos(QWidget):
             QPushButton:hover { background-color: #2980b9; }
         """)
         self.botonEmpleados.clicked.connect(self.mostrarEmpleados)
-        
         self.botonMesas = QPushButton("Salones/Mesas")
         self.botonMesas.setStyleSheet("""
             QPushButton { background-color: #3498db; color: white; border-radius: 8px; padding: 12px 24px; font-size: 14px; font-weight: bold; }
             QPushButton:hover { background-color: #2980b9; }
         """)
         self.botonMesas.clicked.connect(self.mostrarMesas)
-        
         self.botonProductos = QPushButton("Productos")
         self.botonProductos.setStyleSheet("""
             QPushButton { background-color: #3498db; color: white; border-radius: 8px; padding: 12px 24px; font-size: 14px; font-weight: bold; }
             QPushButton:hover { background-color: #2980b9; }
         """)
         self.botonProductos.clicked.connect(self.cargarCategorias)
-        
         layoutCampo2.addWidget(self.botonEmpleados)
         layoutCampo2.addWidget(self.botonMesas)
         layoutCampo2.addWidget(self.botonProductos)
         layoutDer.addLayout(layoutCampo2)
-       
         campoTabla = QWidget()
         layoutTabla = QVBoxLayout()
         campoTabla.setLayout(layoutTabla)
@@ -312,8 +376,8 @@ class RegistrarPedidos(QWidget):
         self.tabla.verticalHeader().setVisible(False)
         self.tabla.setFocusPolicy(Qt.NoFocus)
         self.tabla.setSelectionMode(QTableWidget.NoSelection)
+        self.tabla.cellClicked.connect(self.mostrarDetalleFilaPedido)
         layoutIzq.addWidget(campoTabla)
-        
         layoutTotal = QHBoxLayout()
         self.totalVentaEtiqueta = QLabel("Total:")
         self.totalVentaEtiqueta.setStyleSheet("""
@@ -327,24 +391,18 @@ class RegistrarPedidos(QWidget):
         layoutTotal.addWidget(self.totalVentaEtiqueta, alignment=Qt.AlignCenter)
         layoutTotal.addWidget(self.totalVenta, alignment=Qt.AlignCenter)
         layoutIzq.addLayout(layoutTotal)
-        
-
         layoutCampo4 = QVBoxLayout()
         self.construirSeccionProductos(layoutCampo4)
         layoutDer.addLayout(layoutCampo4)
-        
-  
         self.layoutPrincipal.addLayout(layoutCampo)
-        
         layoutParteInferior = QHBoxLayout()
-        botonEnviarCocina = QPushButton("Enviar Cocina/Barra")
+        botonEnviarCocina = QPushButton("Enviar Cocina")
         botonEnviarCocina.setStyleSheet("""
             QPushButton { background-color: #2ecc71; color: white; border-radius: 8px; padding: 12px 24px; font-size: 16px; font-weight: bold; }
             QPushButton:hover { background-color: #27ae60; }
         """)
         botonEnviarCocina.clicked.connect(self.enviarVentaCocina)
         botonEnviarCocina.setCursor(Qt.PointingHandCursor)
-        
         botonImprimirTicket = QPushButton("Imprimir Ticket")
         botonImprimirTicket.setStyleSheet("""
             QPushButton { background-color: #f39c12; color: white; border-radius: 8px; padding: 12px 24px; font-size: 16px; font-weight: bold; }
@@ -352,67 +410,719 @@ class RegistrarPedidos(QWidget):
         """)
         botonImprimirTicket.clicked.connect(self.imprimirTicket)
         botonImprimirTicket.setCursor(Qt.PointingHandCursor)
-        
         layoutParteInferior.addWidget(botonEnviarCocina)
         layoutParteInferior.addWidget(botonImprimirTicket)
-        
         self.layoutPrincipal.addLayout(layoutParteInferior)
         self.conn.close()
-    
+
+    def _obtenerIngredientesProducto(self, nombre_producto):
+        conn = sqlite3.connect(DB_PATH)
+        c = conn.cursor()
+        try:
+            c.execute("SELECT idProd FROM Producto WHERE nomProd=?", (nombre_producto,))
+            row = c.fetchone()
+            if not row:
+                return []
+            id_prod = row[0]
+            c.execute("""
+                SELECT s.idIng, s.nomIng, pi.cantidadIngNecesitada
+                FROM ProductosIngredientes pi
+                JOIN Stock s ON pi.idIng = s.idIng
+                WHERE pi.idProd = ?
+                ORDER BY s.nomIng
+            """, (id_prod,))
+            return [{"idIng": r[0], "nomIng": r[1], "cantidad": r[2]} for r in c.fetchall()]
+        finally:
+            conn.close()
+
+    def _obtenerIngredientesProductoParaExtra(self, nombre_producto):
+        """
+        A diferencia de _obtenerIngredientesProducto (que solo trae la receta
+        base), esta consulta trae ademas el precioExtra de cada ingrediente,
+        y solo devuelve ingredientes que YA pertenecen al producto — para que
+        al agregar "ingrediente extra" el usuario solo vea opciones que tienen
+        sentido para ese producto (ej: extra queso/carne en una hamburguesa),
+        no ingredientes de otros productos que no aplican.
+        """
+        conn = sqlite3.connect(DB_PATH)
+        c = conn.cursor()
+        try:
+            c.execute("SELECT idProd FROM Producto WHERE nomProd=?", (nombre_producto,))
+            row = c.fetchone()
+            if not row:
+                return []
+            id_prod = row[0]
+            c.execute("""
+                SELECT s.idIng, s.nomIng, COALESCE(s.precioExtra, 0)
+                FROM ProductosIngredientes pi
+                JOIN Stock s ON pi.idIng = s.idIng
+                WHERE pi.idProd = ?
+                ORDER BY s.nomIng
+            """, (id_prod,))
+            return c.fetchall()
+        finally:
+            conn.close()
+
+    def _textoExtras(self, extras):
+        if not extras:
+            return ""
+        partes = [f"+{e['cantidadExtra']} {e['nomIng']}" for e in extras]
+        return "extra: " + ", ".join(partes)
+
+    def _obtenerExtrasTextoPorDetalle(self, cursor, id_detalle):
+        """
+        Igual que consultar DetallesVentaExclusiones para armar el texto de
+        'sin: ...', pero para DetallesVentaExtras -> 'extra: ...'. Centralizado
+        aca para que todos los lugares que muestran/imprimen un detalle de
+        venta (ticket, cocina, pedidos pendientes, marcar listo) reflejen los
+        ingredientes extra igual que ya reflejan las exclusiones.
+        """
+        cursor.execute("""
+            SELECT nomIng, cantidadExtra FROM DetallesVentaExtras WHERE idDetalleVenta=?
+        """, (id_detalle,))
+        filas = cursor.fetchall()
+        if not filas:
+            return ""
+        return "extra: " + ", ".join(f"+{cant} {nom}" for nom, cant in filas)
+
+    def _dialogoExclusiones(self, nombre_producto, exclusiones_previas=None):
+        ingredientes = self._obtenerIngredientesProducto(nombre_producto)
+        if not ingredientes:
+            return []
+        exclusiones_previas = exclusiones_previas or []
+        ids_excluidos_prev = {e["idIng"] for e in exclusiones_previas}
+
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Personalizar pedido")
+        dialog.setMinimumWidth(500)
+        dialog.setMaximumWidth(580)
+        dialog.setStyleSheet("""
+            QDialog {
+                background-color: white;
+                font-family: 'Segoe UI', Arial, sans-serif;
+            }
+            QScrollArea {
+                border: none;
+                background: transparent;
+            }
+            QScrollBar:vertical {
+                border: none;
+                background: #f1f5f9;
+                width: 10px;
+                border-radius: 5px;
+            }
+            QScrollBar::handle:vertical {
+                background: #cbd5e1;
+                border-radius: 5px;
+                min-height: 30px;
+            }
+            QScrollBar::handle:vertical:hover { background: #94a3b8; }
+            QCheckBox {
+                spacing: 12px;
+                font-size: 14px;
+                color: #2c3e50;
+                background: transparent;
+            }
+            QCheckBox::indicator {
+                width: 20px;
+                height: 20px;
+                border-radius: 5px;
+                border: 2px solid #4a89dc;
+                background: white;
+            }
+            QCheckBox::indicator:checked {
+                background-color: #4a89dc;
+                border: 2px solid #4a89dc;
+            }
+            QCheckBox::indicator:unchecked:hover {
+                background-color: #e6f2ff;
+            }
+            QLabel {
+                color: #2c3e50;
+                font-size: 14px;
+                font-weight: 500;
+                background: transparent;
+            }
+        """)
+
+        layout = QVBoxLayout(dialog)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
+
+        header = QWidget()
+        header.setStyleSheet("""
+            QWidget {
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                    stop:0 #3498db, stop:1 #2980b9);
+            }
+        """)
+        header_layout = QVBoxLayout(header)
+        header_layout.setContentsMargins(24, 20, 24, 20)
+        header_layout.setSpacing(8)
+
+        titulo = QLabel("🍽️ Personalizar pedido")
+        titulo.setStyleSheet("""
+            QLabel {
+                color: white;
+                font-size: 18px;
+                font-weight: bold;
+                background: transparent;
+            }
+        """)
+        titulo.setAlignment(Qt.AlignCenter)
+        header_layout.addWidget(titulo)
+
+        subtitulo = QLabel(nombre_producto)
+        subtitulo.setStyleSheet("""
+            QLabel {
+                color: rgba(255,255,255,0.9);
+                font-size: 14px;
+                font-weight: 500;
+                background: transparent;
+            }
+        """)
+        subtitulo.setAlignment(Qt.AlignCenter)
+        header_layout.addWidget(subtitulo)
+        layout.addWidget(header)
+
+        ayuda_widget = QWidget()
+        ayuda_widget.setStyleSheet("""
+            QWidget {
+                background-color: #fef9e7;
+                border-bottom: 1px solid #f39c12;
+            }
+        """)
+        ayuda_layout = QHBoxLayout(ayuda_widget)
+        ayuda_layout.setContentsMargins(20, 10, 20, 10)
+        
+        ayuda_icon = QLabel("⚠️")
+        ayuda_icon.setStyleSheet("font-size: 14px; background: transparent;")
+        ayuda_layout.addWidget(ayuda_icon)
+        
+        ayuda_text = QLabel("Desmarca los ingredientes que el cliente NO quiere")
+        ayuda_text.setStyleSheet("""
+            background: transparent; 
+            font-size: 12px; 
+            color: #e67e22; 
+            font-weight: 500;
+        """)
+        ayuda_layout.addWidget(ayuda_text)
+        ayuda_layout.addStretch()
+        layout.addWidget(ayuda_widget)
+
+        body = QWidget()
+        body.setStyleSheet("background-color: #f8fafc;")
+        body_layout = QVBoxLayout(body)
+        body_layout.setContentsMargins(20, 16, 20, 16)
+        body_layout.setSpacing(12)
+
+        quick_row = QHBoxLayout()
+        quick_row.setSpacing(10)
+        
+        btn_todos = QPushButton("✓ Todos")
+        btn_todos.setStyleSheet("""
+            QPushButton {
+                background-color: #3498db;
+                color: white;
+                border: none;
+                border-radius: 6px;
+                font-size: 12px;
+                font-weight: bold;
+                padding: 8px 12px;
+                min-width: 80px;
+            }
+            QPushButton:hover {
+                background-color: #2980b9;
+            }
+        """)
+        
+        btn_ninguno = QPushButton("✗ Ninguno")
+        btn_ninguno.setStyleSheet("""
+            QPushButton {
+                background-color: #e74c3c;
+                color: white;
+                border: none;
+                border-radius: 6px;
+                font-size: 12px;
+                font-weight: bold;
+                padding: 8px 12px;
+                min-width: 80px;
+            }
+            QPushButton:hover {
+                background-color: #c0392b;
+            }
+        """)
+        
+        quick_row.addWidget(btn_todos)
+        quick_row.addWidget(btn_ninguno)
+        quick_row.addStretch()
+        body_layout.addLayout(quick_row)
+
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setMaximumHeight(300)
+        scroll.setStyleSheet("""
+            QScrollArea {
+                border: 1px solid #e2e8f0;
+                border-radius: 8px;
+                background-color: transparent;
+            }
+        """)
+
+        contenedor = QWidget()
+        contenedor.setStyleSheet("background: transparent;")
+        v_layout = QVBoxLayout(contenedor)
+        v_layout.setContentsMargins(8, 8, 8, 8)
+        v_layout.setSpacing(6)
+
+        checkboxes = []
+        for ing in ingredientes:
+            item_widget = QWidget()
+            item_widget.setStyleSheet("background: transparent;")
+            item_layout = QHBoxLayout(item_widget)
+            item_layout.setContentsMargins(8, 6, 8, 6)
+            item_layout.setSpacing(12)
+
+            cb = QCheckBox()
+            cb.setChecked(ing["idIng"] not in ids_excluidos_prev)
+            cb.idIng = ing["idIng"]
+            cb.nomIng = ing["nomIng"]
+            cb.setStyleSheet("""
+                QCheckBox {
+                    spacing: 10px;
+                    font-size: 13px;
+                    font-weight: 500;
+                    color: #2c3e50;
+                    background: transparent;
+                }
+                QCheckBox::indicator {
+                    width: 18px;
+                    height: 18px;
+                    border-radius: 4px;
+                    border: 2px solid #3498db;
+                    background: white;
+                }
+                QCheckBox::indicator:checked {
+                    background-color: #3498db;
+                    border: 2px solid #3498db;
+                }
+                QCheckBox::indicator:unchecked {
+                    background-color: white;
+                }
+            """)
+            
+            ing_nombre = QLabel(ing["nomIng"])
+            ing_nombre.setStyleSheet("""
+                background: transparent; 
+                font-size: 13px; 
+                color: #2c3e50; 
+                font-weight: 500;
+                border: none;
+            """)
+            
+            estado_label = QLabel()
+            estado_label.setStyleSheet("""
+                background: transparent; 
+                font-size: 11px; 
+                font-weight: bold;
+                border: none;
+                padding: 3px 8px;
+                border-radius: 4px;
+            """)
+
+            def actualizar_estado(checked, lbl=estado_label, widget=item_widget):
+                if checked:
+                    lbl.setText("✓ Incluido")
+                    lbl.setStyleSheet("""
+                        background: #e8f5e9; 
+                        font-size: 11px; 
+                        color: #2ecc71; 
+                        font-weight: bold; 
+                        border: none;
+                        padding: 3px 8px;
+                        border-radius: 4px;
+                    """)
+                    widget.setStyleSheet("""
+                        background: transparent;
+                        border-bottom: 1px solid #e2e8f0;
+                    """)
+                else:
+                    lbl.setText("✗ Excluido")
+                    lbl.setStyleSheet("""
+                        background: #ffebee; 
+                        font-size: 11px; 
+                        color: #e74c3c; 
+                        font-weight: bold; 
+                        border: none;
+                        padding: 3px 8px;
+                        border-radius: 4px;
+                    """)
+                    widget.setStyleSheet("""
+                        background: #fff5f5;
+                        border-bottom: 1px solid #ffcdd2;
+                    """)
+
+            actualizar_estado(cb.isChecked())
+            cb.toggled.connect(actualizar_estado)
+
+            item_layout.addWidget(cb)
+            item_layout.addWidget(ing_nombre, 1)
+            item_layout.addWidget(estado_label)
+            
+            checkboxes.append(cb)
+            v_layout.addWidget(item_widget)
+            
+
+        v_layout.addStretch()
+        scroll.setWidget(contenedor)
+        body_layout.addWidget(scroll)
+        layout.addWidget(body)
+
+        btn_todos.clicked.connect(lambda: [cb.setChecked(True) for cb in checkboxes])
+        btn_ninguno.clicked.connect(lambda: [cb.setChecked(False) for cb in checkboxes])
+
+        footer = QWidget()
+        footer.setStyleSheet("""
+            QWidget {
+                background-color: #f8f9fa;
+                border-top: 1px solid #e2e8f0;
+            }
+        """)
+        footer_layout = QHBoxLayout(footer)
+        footer_layout.setContentsMargins(20, 16, 20, 16)
+        footer_layout.setSpacing(12)
+
+        btn_cancelar = QPushButton("Cancelar")
+        btn_cancelar.setStyleSheet("""
+            QPushButton {
+                background-color: #95a5a6;
+                color: white;
+                border: none;
+                border-radius: 8px;
+                font-size: 14px;
+                font-weight: bold;
+                padding: 10px 16px;
+                min-width: 100px;
+            }
+            QPushButton:hover {
+                background-color: #7f8c8d;
+            }
+        """)
+        btn_cancelar.setCursor(Qt.PointingHandCursor)
+
+        btn_confirmar = QPushButton("Confirmar")
+        btn_confirmar.setStyleSheet("""
+            QPushButton {
+                background-color: #2ecc71;
+                color: white;
+                border: none;
+                border-radius: 8px;
+                font-size: 14px;
+                font-weight: bold;
+                padding: 10px 16px;
+                min-width: 120px;
+            }
+            QPushButton:hover {
+                background-color: #27ae60;
+            }
+        """)
+        btn_confirmar.setCursor(Qt.PointingHandCursor)
+
+        footer_layout.addStretch()
+        footer_layout.addWidget(btn_cancelar)
+        footer_layout.addWidget(btn_confirmar)
+        layout.addWidget(footer)
+
+        btn_cancelar.clicked.connect(dialog.reject)
+        btn_confirmar.clicked.connect(dialog.accept)
+
+        if dialog.exec_() != QDialog.Accepted:
+            return None
+
+        excluidos = [{"idIng": cb.idIng, "nomIng": cb.nomIng}
+                    for cb in checkboxes if not cb.isChecked()]
+        return excluidos
+
+    def _textoExclusiones(self, exclusiones):
+        if not exclusiones:
+            return ""
+        nombres = ", ".join(e["nomIng"] for e in exclusiones)
+        return f"sin: {nombres}"
 
     def verificarBloqueo(self, accion):
-        if (self.banderaCocina or self.banderaTicket) and not self.enviada:
-            QMessageBox.warning(self, "Venta Bloqueada", 
-                               f"No es posible {accion}. Debe completar el registro de la venta actual.")
+        if self.enviada:
+            QMessageBox.warning(self, "Venta Bloqueada",
+                            f"No es posible {accion}. La venta ya fue procesada.\nDebe completar el pago para iniciar una nueva venta.")
             return True
         return False
-
 
     def verificarImpresoraConfigurada(self, tipo):
         impresora = self.manejador_impresion.obtener_impresora(tipo)
         if not impresora:
             if tipo == "Barra":
-                mensaje = "No hay una impresora configurada para Barra/Ticket.\nPor favor, configure una impresora en la sección de configuración."
+                mensaje = "No hay una impresora configurada para Barra/Ticket.\nPor favor, configure una impresora en la seccion de configuracion."
             else:
-                mensaje = "No hay una impresora configurada para Cocina.\nPor favor, configure una impresora en la sección de configuración."
+                mensaje = "No hay una impresora configurada para Cocina.\nPor favor, configure una impresora en la seccion de configuracion."
             return False, mensaje
         return True, "Impresora configurada correctamente"
-    
+
+    def obtener_todos_items_venta(self):
+        items = []
+        try:
+            if self.campoMesa.text() and self.campoSeccion.text():
+                conn = sqlite3.connect(DB_PATH)
+                cursor = conn.cursor()
+                cursor.execute("""SELECT idSeccion FROM Seccion WHERE nombSeccion=?""", (self.campoSeccion.text(),))
+                resultado = cursor.fetchone()
+                if resultado:
+                    idSeccion = resultado[0]
+                    cursor.execute("""SELECT numVenta, fechaReg FROM Venta
+                                WHERE idMesa=? AND idSeccion=?
+                                ORDER BY fechaReg DESC LIMIT 1""",
+                                (int(self.campoMesa.text()), idSeccion))
+                    venta = cursor.fetchone()
+                    if venta:
+                        numVenta, fechaReg = venta
+                        cursor.execute("""
+                            SELECT
+                                DV.idDetalleVenta,
+                                COALESCE(P.nomProd, PR.nomProm) as nombre,
+                                DV.cantidadProdDet,
+                                DV.tipoConsumo,
+                                COALESCE(P.precioVenta, PR.precioProm) as precio,
+                                DV.subtotal
+                            FROM DetallesVenta DV
+                            LEFT JOIN Producto P ON DV.idProd = P.idProd
+                            LEFT JOIN Promocion PR ON DV.idProm = PR.idProm
+                            WHERE DV.numVenta=? AND DV.fechaRegVenta=?
+                            ORDER BY DV.fechaRegDetalleVenta
+                        """, (numVenta, fechaReg))
+                        items_raw = cursor.fetchall()
+                        dicc_items = {}
+                        for id_det, nombre, cantidad, tipo, precio, subtotal in items_raw:
+                            cursor.execute("""
+                                SELECT nomIng FROM DetallesVentaExclusiones
+                                WHERE idDetalleVenta=?
+                            """, (id_det,))
+                            excl_rows = cursor.fetchall()
+                            excl_texto = ("sin: " + ", ".join(r[0] for r in excl_rows)) if excl_rows else ""
+                            extras_texto = self._obtenerExtrasTextoPorDetalle(cursor, id_det)
+                            texto_personalizacion = " | ".join(t for t in [excl_texto, extras_texto] if t)
+                            clave = f"{nombre}_{tipo}_{texto_personalizacion}"
+                            if clave in dicc_items:
+                                dicc_items[clave]['cantidad'] += int(cantidad)
+                                dicc_items[clave]['subtotal'] += float(subtotal)
+                            else:
+                                dicc_items[clave] = {
+                                    'producto': nombre,
+                                    'cantidad': int(cantidad),
+                                    'tipo': tipo,
+                                    'precio': float(precio),
+                                    'subtotal': float(subtotal),
+                                    'exclusiones': texto_personalizacion
+                                }
+                        items = list(dicc_items.values())
+                conn.close()
+        except Exception as e:
+            print(f"Error al obtener items de venta: {e}")
+        return items
+
+    def verificar_contraseña_usuario(self, usuario):
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Autorizacion requerida")
+        dialog.setFixedWidth(480)
+        dialog.setStyleSheet("""
+            QDialog {
+                background-color: #ffffff;
+                border: 2px solid #e2e8f0;
+                border-radius: 10px;
+                font-family: 'Segoe UI', Arial, sans-serif;
+            }
+        """)
+        layout = QVBoxLayout(dialog)
+        layout.setSpacing(15)
+        layout.setContentsMargins(25, 25, 25, 25)
+        
+        lock_icon = QLabel("🔒")
+        lock_icon.setStyleSheet("""
+            QLabel {
+                font-size: 48px;
+                color: #f39c12;
+                background: transparent;
+                padding: 5px;
+            }
+        """)
+        lock_icon.setAlignment(Qt.AlignCenter)
+        layout.addWidget(lock_icon)
+        
+        label = QLabel(f"Se ha excedido el limite de 2 impresiones.\nIngrese la contrasena de {usuario}:")
+        label.setStyleSheet("""
+            QLabel {
+                color: #2c3e50;
+                font-size: 14px;
+                font-weight: 500;
+            }
+        """)
+        label.setAlignment(Qt.AlignCenter)
+        layout.addWidget(label)
+        
+        password_container = QWidget()
+        password_container.setStyleSheet("background: transparent;")
+        password_layout = QHBoxLayout(password_container)
+        password_layout.setContentsMargins(0, 0, 0, 0)
+        password_layout.setSpacing(4)
+        password_input = QLineEdit()
+        password_input.setEchoMode(QLineEdit.Password)
+        password_input.setMinimumHeight(40)
+        password_input.setStyleSheet("""
+            QLineEdit {
+                background-color: white;
+                border: 2px solid #e2e8f0;
+                border-radius: 8px;
+                padding: 2px 10px;
+                font-size: 14px;
+                selection-background-color: #4a89dc;
+            }
+            QLineEdit:focus {
+                border: 2px solid #4a89dc;
+                background-color: #f8fafc;
+            }
+        """)
+        password_layout.addWidget(password_input)
+        
+        toggle_password_btn = QPushButton()
+        toggle_password_btn.setFixedHeight(45)
+        toggle_password_btn.setFixedWidth(29)
+        toggle_password_btn.setCheckable(True)
+        toggle_password_btn.setCursor(Qt.PointingHandCursor)
+        toggle_password_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #f8f9fa;
+                border: 2px solid #e2e8f0;
+                border-radius: 8px;
+                margin: 0px;
+                padding: 10px;
+            }
+            QPushButton:hover {
+                background-color: #e6f2ff;
+                border: 2px solid #4a89dc;
+            }
+            QPushButton:checked {
+                background-color: #e6f2ff;
+                border: 2px solid #4a89dc;
+            }
+        """)
+        toggle_password_btn.setText("👁")
+        toggle_password_btn.setFont(QFont("Segoe UI", 15))
+
+        def toggle_password_visibility(checked):
+            if checked:
+                password_input.setEchoMode(QLineEdit.Normal)
+                toggle_password_btn.setText("🙈")
+            else:
+                password_input.setEchoMode(QLineEdit.Password)
+                toggle_password_btn.setText("👁")
+
+        toggle_password_btn.toggled.connect(toggle_password_visibility)
+        password_layout.addWidget(toggle_password_btn)
+        layout.addWidget(password_container)
+        
+        button_box = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        button_box.accepted.connect(dialog.accept)
+        button_box.rejected.connect(dialog.reject)
+        for button in button_box.buttons():
+            text = button.text().lower()
+            if 'ok' in text or 'aceptar' in text:
+                button.setStyleSheet("""
+                    QPushButton {
+                        background-color: #2ecc71;
+                        color: white;
+                        border-radius: 6px;
+                        padding: 10px 24px;
+                        font-weight: 600;
+                        font-size: 14px;
+                        min-width: 100px;
+                        margin-right: 10px;
+                    }
+                    QPushButton:hover { background-color: #27ae60; }
+                """)
+            elif 'cancelar' in text or 'cancel' in text:
+                button.setStyleSheet("""
+                    QPushButton {
+                        background-color: #e74c3c;
+                        color: white;
+                        border-radius: 6px;
+                        padding: 10px 24px;
+                        font-weight: 600;
+                        font-size: 14px;
+                        min-width: 100px;
+                        margin-left: 10px;
+                    }
+                    QPushButton:hover { background-color: #c0392b; }
+                """)
+        layout.addWidget(button_box, alignment=Qt.AlignCenter)
+        password_input.setFocus()
+        password_input.returnPressed.connect(dialog.accept)
+        if dialog.exec_() == QDialog.Accepted:
+            clave = password_input.text()
+            conn = sqlite3.connect(DB_PATH)
+            cur = conn.cursor()
+            if usuario == "DIRECTORIO":
+                cur.execute("SELECT contrasenaAdmin FROM Directorio")
+                resultado = cur.fetchone()
+                existe = resultado and verificar_password(clave, resultado[0])
+            else:
+                cur.execute("SELECT contEmp FROM Empleado WHERE aliasEmp = ?", (usuario,))
+                resultado = cur.fetchone()
+                existe = resultado and verificar_password(clave, resultado[0])
+            conn.close()
+            if existe:
+                return True
+            else:
+                QMessageBox.warning(self, "Error", "Contrasena incorrecta.")
+                return False
+        return False
 
     def imprimirTicket(self):
         self.conn = sqlite3.connect(DB_PATH)
         self.cursor = self.conn.cursor()
-        
         configurada, mensaje = self.verificarImpresoraConfigurada("Barra")
         if not configurada:
             QMessageBox.warning(self, "Impresora no configurada", mensaje)
             self.conn.close()
             return
         
-        if self.banderaCocina and not self.enviada:
-            if self.ticket_print_count >= 2:
-                if not self.solicitar_clave_admin():
-                    self.conn.close()
-                    return
-        elif self.banderaTicket and not self.banderaCocina and self.ticket_print_count >= 2:
-            if not self.solicitar_clave_admin():
+        if self.ticket_print_count >= 2:
+            if not self.verificar_contraseña_usuario(self.campoCajero.text()):
                 self.conn.close()
                 return
-        elif self.ticket_print_count >= 2:
-            if not self.solicitar_clave_admin():
-                self.conn.close()
-                return
-    
+        
         if self.campoEncargado.text() == "" or self.campoMesa.text() == "" or self.campoSeccion.text() == "":
             QMessageBox.information(self, "Advertencia", "Rellene los campos necesarios por favor")
             self.conn.close()
             return
         
-        if self.tabla.rowCount() == 0:
+        mesa_ocupada = False
+        if self.campoMesa.text() and self.campoSeccion.text():
+            try:
+                cursor = self.conn.cursor()
+                cursor.execute("""SELECT idSeccion FROM Seccion WHERE nombSeccion=?""", (self.campoSeccion.text(),))
+                res = cursor.fetchone()
+                if res:
+                    idSeccion = res[0]
+                    cursor.execute("""SELECT disponible FROM Mesa WHERE idMesa=? AND idSeccion=?""",
+                                (int(self.campoMesa.text()), idSeccion))
+                    disponible = cursor.fetchone()
+                    if disponible and not disponible[0]:
+                        mesa_ocupada = True
+            except Exception as e:
+                print(f"Error al verificar mesa ocupada: {e}")
+        
+        if self.tabla.rowCount() == 0 and not mesa_ocupada:
             QMessageBox.information(self, "Advertencia", "Debe contener por lo menos un producto la venta")
             self.conn.close()
             return
-
+        
         try:
             datos_venta = {
                 'num_venta': self.campoNumeroVenta.text(),
@@ -425,20 +1135,19 @@ class RegistrarPedidos(QWidget):
                 'total': self.totalVenta.text().replace(" Bs", "").strip()
             }
             
-            items = []
-            for i in range(self.tabla.rowCount()):
-                items.append({
-                    'cantidad': int(self.tabla.item(i, 0).text()),
-                    'tipo': self.tabla.item(i, 1).text(),
-                    'producto': self.tabla.item(i, 2).text(),
-                    'precio': float(self.tabla.item(i, 3).text()),
-                    'subtotal': float(self.tabla.item(i, 4).text())
-                })
+            if not self.enviada:
+                self.conn.close()
+                self.subirInformacion()
+                self.enviada = True
+                self.conn = sqlite3.connect(DB_PATH)
+                self.cursor = self.conn.cursor()
             
-            exito, mensaje = self.manejador_impresion.imprimir_ticket(datos_venta, items)
+            todos_items = self.obtener_todos_items_venta_ticket()
             
+            self._imprimir_en_consola("TICKET DE VENTA", datos_venta, todos_items)
+            exito, mensaje = self.manejador_impresion.imprimir_ticket(datos_venta, todos_items)
             if exito:
-                self.signals.resultado_ticket.emit(True, mensaje, datos_venta, items)
+                self.signals.resultado_ticket.emit(True, mensaje, datos_venta, todos_items)
             else:
                 self.signals.resultado_ticket.emit(False, mensaje, {}, [])
         except Exception as e:
@@ -447,6 +1156,68 @@ class RegistrarPedidos(QWidget):
             self.conn.close()
 
 
+    def obtener_todos_items_venta_ticket(self):
+        items = []
+        try:
+            if self.campoMesa.text() and self.campoSeccion.text():
+                conn = sqlite3.connect(DB_PATH)
+                cursor = conn.cursor()
+                cursor.execute("""SELECT idSeccion FROM Seccion WHERE nombSeccion=?""", (self.campoSeccion.text(),))
+                resultado = cursor.fetchone()
+                if resultado:
+                    idSeccion = resultado[0]
+                    cursor.execute("""SELECT numVenta, fechaReg FROM Venta
+                                WHERE idMesa=? AND idSeccion=?
+                                ORDER BY fechaReg DESC LIMIT 1""",
+                                (int(self.campoMesa.text()), idSeccion))
+                    venta = cursor.fetchone()
+                    if venta:
+                        numVenta, fechaReg = venta
+                        cursor.execute("""
+                            SELECT
+                                DV.idDetalleVenta,
+                                COALESCE(P.nomProd, PR.nomProm) as nombre,
+                                DV.cantidadProdDet,
+                                DV.tipoConsumo,
+                                COALESCE(P.precioVenta, PR.precioProm) as precio,
+                                DV.subtotal
+                            FROM DetallesVenta DV
+                            LEFT JOIN Producto P ON DV.idProd = P.idProd
+                            LEFT JOIN Promocion PR ON DV.idProm = PR.idProm
+                            WHERE DV.numVenta=? AND DV.fechaRegVenta=?
+                            ORDER BY DV.fechaRegDetalleVenta
+                        """, (numVenta, fechaReg))
+                        items_raw = cursor.fetchall()
+                        dicc_items = {}
+                        for id_det, nombre, cantidad, tipo, precio, subtotal in items_raw:
+                            cursor.execute("""
+                                SELECT nomIng FROM DetallesVentaExclusiones
+                                WHERE idDetalleVenta=?
+                            """, (id_det,))
+                            excl_rows = cursor.fetchall()
+                            excl_texto = ("sin: " + ", ".join(r[0] for r in excl_rows)) if excl_rows else ""
+                            extras_texto = self._obtenerExtrasTextoPorDetalle(cursor, id_det)
+                            texto_personalizacion = " | ".join(t for t in [excl_texto, extras_texto] if t)
+                            clave = f"{nombre}_{tipo}_{texto_personalizacion}"
+                            if clave in dicc_items:
+                                dicc_items[clave]['cantidad'] += int(cantidad)
+                                dicc_items[clave]['subtotal'] += float(subtotal)
+                            else:
+                                dicc_items[clave] = {
+                                    'producto': nombre,
+                                    'cantidad': int(cantidad),
+                                    'tipo': tipo,
+                                    'precio': float(precio),
+                                    'subtotal': float(subtotal),
+                                    'exclusiones': texto_personalizacion
+                                }
+                        items = list(dicc_items.values())
+                conn.close()
+        except Exception as e:
+            print(f"Error al obtener items de venta: {e}")
+        return items
+
+    
     def enviarVentaCocina(self):
         self.conn = sqlite3.connect(DB_PATH)
         self.cursor = self.conn.cursor()
@@ -455,27 +1226,22 @@ class RegistrarPedidos(QWidget):
             QMessageBox.warning(self, "Impresora no configurada", mensaje)
             self.conn.close()
             return
-        if self.banderaTicket and not self.enviada:
-            if self.cocina_print_count >= 2:
-                if not self.solicitar_clave_admin():
-                    self.conn.close()
-                    return
-        elif self.banderaCocina and not self.banderaTicket and self.cocina_print_count >= 2:
-            if not self.solicitar_clave_admin():
+        
+        if self.cocina_print_count >= 2:
+            if not self.verificar_contraseña_usuario(self.campoCajero.text()):
                 self.conn.close()
                 return
-        elif self.cocina_print_count >= 2:
-            if not self.solicitar_clave_admin():
-                self.conn.close()
-                return
+        
         if self.campoEncargado.text() == "" or self.campoMesa.text() == "" or self.campoSeccion.text() == "":
             QMessageBox.information(self, "Advertencia", "Rellene los campos necesarios por favor")
             self.conn.close()
             return
+        
         if self.tabla.rowCount() == 0:
             QMessageBox.information(self, "Advertencia", "Debe contener por lo menos un producto la venta")
             self.conn.close()
             return
+        
         try:
             datos_venta = {
                 'num_venta': self.campoNumeroVenta.text(),
@@ -488,12 +1254,46 @@ class RegistrarPedidos(QWidget):
             }
             items = []
             for i in range(self.tabla.rowCount()):
+                nombre_real = self._nombreRealDeFila(i)
+                excl_fila = self.exclusiones_por_fila.get(i, [])
+                if isinstance(excl_fila, list):
+                    excl_texto = self._textoExclusiones(excl_fila)
+                else:
+                    excl_texto = ""
+                extras_fila = self.extras_por_fila.get(i, [])
+                if isinstance(extras_fila, list):
+                    extras_texto_fila = self._textoExtras(extras_fila)
+                else:
+                    extras_texto_fila = ""
+                exclusiones_promo_fila = getattr(self, 'exclusiones_promo_por_fila', {}).get(i, {})
+                if isinstance(exclusiones_promo_fila, dict):
+                    exclusiones_promo = exclusiones_promo_fila.get('exclusiones', {})
+                    extras_promo = exclusiones_promo_fila.get('extras', {})
+                else:
+                    exclusiones_promo = {}
+                    extras_promo = {}
+                if exclusiones_promo:
+                    texto_promo = self._textoExclusionesPromoParaImpresion(exclusiones_promo)
+                    if excl_texto:
+                        exclusiones_texto = f"{excl_texto} | {texto_promo}"
+                    else:
+                        exclusiones_texto = texto_promo
+                else:
+                    exclusiones_texto = excl_texto
+                if extras_promo:
+                    texto_extra_promo = self._textoExtrasPromoParaImpresion(extras_promo)
+                    if extras_texto_fila:
+                        extras_texto_fila = f"{extras_texto_fila} | {texto_extra_promo}"
+                    else:
+                        extras_texto_fila = texto_extra_promo
+                texto_personalizacion_cocina = " | ".join(t for t in [exclusiones_texto, extras_texto_fila] if t)
                 items.append({
                     'cantidad': int(self.tabla.item(i, 0).text()),
                     'tipo': self.tabla.item(i, 1).text(),
-                    'producto': self.tabla.item(i, 2).text()
+                    'producto': nombre_real,
+                    'exclusiones': texto_personalizacion_cocina
                 })
-            
+            self._imprimir_en_consola("PEDIDO A COCINA", datos_venta, items)
             exito, mensaje = self.manejador_impresion.imprimir_cocina(datos_venta, items)
             if exito:
                 self.signals.resultado_cocina.emit(True, mensaje, datos_venta, items)
@@ -504,38 +1304,90 @@ class RegistrarPedidos(QWidget):
         finally:
             self.conn.close()
     
+    def _textoExtrasPromoParaImpresion(self, extras_por_producto):
+        if not extras_por_producto:
+            return ""
+        partes = []
+        for id_prod_str, unidades_data in extras_por_producto.items():
+            if not isinstance(unidades_data, list):
+                continue
+            conn = sqlite3.connect(DB_PATH)
+            cursor = conn.cursor()
+            cursor.execute("SELECT nomProd FROM Producto WHERE idProd=?", (int(id_prod_str),))
+            prod = cursor.fetchone()
+            conn.close()
+            nombre_prod = prod[0] if prod else id_prod_str
+            for unidad_data in unidades_data:
+                if not isinstance(unidad_data, dict):
+                    continue
+                extras = unidad_data.get('extras', [])
+                if not isinstance(extras, list):
+                    continue
+                nombres = []
+                for e in extras:
+                    if isinstance(e, dict) and 'nomIng' in e:
+                        nombres.append(f"+{e['cantidadExtra']} {e['nomIng']}")
+                if nombres:
+                    unidad_num = unidad_data.get('unidad', 0) + 1
+                    partes.append(f"U{unidad_num} {nombre_prod}: extra {', '.join(nombres)}")
+        return " | ".join(partes)
 
+    def _textoExclusionesPromoParaImpresion(self, exclusiones_por_producto):
+        if not exclusiones_por_producto:
+            return ""
+        partes = []
+        for id_prod_str, unidades_data in exclusiones_por_producto.items():
+            if not isinstance(unidades_data, list):
+                continue
+            conn = sqlite3.connect(DB_PATH)
+            cursor = conn.cursor()
+            cursor.execute("SELECT nomProd FROM Producto WHERE idProd=?", (int(id_prod_str),))
+            prod = cursor.fetchone()
+            conn.close()
+            nombre_prod = prod[0] if prod else id_prod_str
+            for unidad_data in unidades_data:
+                if not isinstance(unidad_data, dict):
+                    continue
+                excls = unidad_data.get('exclusiones', [])
+                if not isinstance(excls, list):
+                    continue
+                nombres = []
+                for e in excls:
+                    if isinstance(e, dict) and 'nomIng' in e:
+                        nombres.append(e['nomIng'])
+                if nombres:
+                    unidad_num = unidad_data.get('unidad', 0) + 1
+                    partes.append(f"U{unidad_num} {nombre_prod}: sin {', '.join(nombres)}")
+        return " | ".join(partes)
+    
+        
     @pyqtSlot(bool, str, dict, list)
     def _procesar_resultado_ticket(self, exito, mensaje, datos_venta, items):
         if exito:
-            QMessageBox.information(self, "Éxito", f"Ticket impreso correctamente\n{mensaje}")
-            if not self.banderaTicket and not self.banderaCocina:
-                self.subirInformacion()
+            QMessageBox.information(self, "Exito", f"Ticket impreso correctamente\n{mensaje}")
             self.banderaTicket = True
-            self.enviada = True if self.banderaCocina else False
             self.ticket_print_count += 1
             if self.banderaTicket and self.banderaCocina:
                 self.limpiarCampos()
                 self._clear_grid(self.layoutProductos)
         else:
             QMessageBox.warning(self, "Advertencia", f"No se pudo imprimir el ticket\n{mensaje}")
-    
 
     @pyqtSlot(bool, str, dict, list)
     def _procesar_resultado_cocina(self, exito, mensaje, datos_venta, items):
         if exito:
-            QMessageBox.information(self, "Éxito", f"Pedido cocina enviado correctamente\n{mensaje}")
-            if not self.banderaTicket and not self.banderaCocina:
+            QMessageBox.information(self, "Exito", f"Pedido cocina enviado correctamente\n{mensaje}")
+            if not self.enviada:
                 self.subirInformacion()
+                self.enviada = True
             self.banderaCocina = True
-            self.enviada = True if self.banderaTicket else False
             self.cocina_print_count += 1
             if self.banderaTicket and self.banderaCocina:
                 self.limpiarCampos()
                 self._clear_grid(self.layoutProductos)
         else:
             QMessageBox.warning(self, "Advertencia", f"No se pudo enviar pedido a cocina\n{mensaje}")
-    
+
 
     def subirInformacion(self):
         self.conn = sqlite3.connect(DB_PATH)
@@ -569,17 +1421,17 @@ class RegistrarPedidos(QWidget):
             resultados = self.cursor.fetchone()
             idSeccion = resultados[0]
             fechaRegistro = datetime.now()
-            self.cursor.execute("""SELECT disponible FROM Mesa WHERE idMesa=? AND idSeccion=?""", (idMesa,int(idSeccion)))
+            self.cursor.execute("""SELECT disponible FROM Mesa WHERE idMesa=? AND idSeccion=?""", (idMesa, int(idSeccion)))
             resultado = self.cursor.fetchone()
             estado = resultado[0]
             if not estado:
-                self.cursor.execute("""SELECT numVenta, fechaReg FROM Venta WHERE idMesa=? AND idSeccion=? ORDER BY fechaReg DESC LIMIT 1""", 
-                   (idMesa, idSeccion))
+                self.cursor.execute("""SELECT numVenta, fechaReg FROM Venta WHERE idMesa=? AND idSeccion=? ORDER BY fechaReg DESC LIMIT 1""",
+                (idMesa, idSeccion))
                 resultados = self.cursor.fetchone()
                 nVenta, fVenta = resultados[0], resultados[1]
                 for i in range(self.tabla.rowCount()):
                     cantidad = self.tabla.item(i, 0).text()
-                    nombre = self.tabla.item(i, 2).text()
+                    nombre = self._nombreRealDeFila(i)
                     subtotal = self.tabla.item(i, 4).text()
                     tipoConsumo = self.tabla.item(i, 1).text()
                     self.cursor.execute("""SELECT * FROM Promocion WHERE nomProm=?""", (nombre,))
@@ -587,18 +1439,51 @@ class RegistrarPedidos(QWidget):
                     if resultados:
                         self.cursor.execute("""SELECT idProm FROM Promocion WHERE nomProm=?""", (nombre,))
                         idPromocion = self.cursor.fetchone()[0]
-                        self.cursor.execute("""INSERT INTO DetallesVenta 
-                            (numVenta, fechaRegVenta, fechaRegDetalleVenta, idProm, subtotal, cantidadProdDet, tipoConsumo, estadoDetalleVenta,idMeseroActual) 
+                        self.cursor.execute("""INSERT INTO DetallesVenta
+                            (numVenta, fechaRegVenta, fechaRegDetalleVenta, idProm, subtotal, cantidadProdDet, tipoConsumo, estadoDetalleVenta, idMeseroActual)
                             VALUES(?,?,?,?,?,?,?,?,?)""",
-                            (nVenta, fVenta, fechaRegistro, idPromocion, float(subtotal), int(cantidad), tipoConsumo, estadoVenta,idEmpleado))
+                            (nVenta, fVenta, fechaRegistro, idPromocion, float(subtotal), int(cantidad), tipoConsumo, estadoVenta, idEmpleado))
+                        id_detalle = self.cursor.lastrowid
+                        self.cursor.execute("""
+                            SELECT pp.idProd, pp.cantidadProdProm
+                            FROM PromocionProd pp
+                            WHERE pp.idProm = ?
+                        """, (idPromocion,))
+                        productos_promo = self.cursor.fetchall()
+                        unidades_creadas = 0
+                        for id_prod_p, cant_prod_p in productos_promo:
+                            for _ in range(cant_prod_p * int(cantidad)):
+                                self.cursor.execute("""
+                                    INSERT INTO DetallesVentaUnidades (idDetalleVenta, numUnidad, marcado, idProd)
+                                    VALUES (?, ?, ?, ?)
+                                """, (id_detalle, unidades_creadas, False, id_prod_p))
+                                unidades_creadas += 1
+                        exclusiones_promo_fila = getattr(self, 'exclusiones_promo_por_fila', {}).get(i, {})
+                        exclusiones_promo = exclusiones_promo_fila.get('exclusiones', {}) if isinstance(exclusiones_promo_fila, dict) else {}
+                        if exclusiones_promo:
+                            self._guardarExclusionesPromo(id_detalle, exclusiones_promo)
+                        extras_promo = exclusiones_promo_fila.get('extras', {}) if isinstance(exclusiones_promo_fila, dict) else {}
+                        if extras_promo:
+                            self._guardarExtrasPromo(id_detalle, extras_promo)
                     else:
                         self.cursor.execute("""SELECT idProd FROM Producto WHERE nomProd=?""", (nombre,))
-                        idProducto = self.cursor.fetchone()[0]
-                        self.cursor.execute("""INSERT INTO DetallesVenta 
-                             (numVenta, fechaRegVenta, fechaRegDetalleVenta, idProd, subtotal, cantidadProdDet, tipoConsumo, estadoDetalleVenta,idMeseroActual)
+                        row = self.cursor.fetchone()
+                        if row is None:
+                            print(f"Producto no encontrado en BD: {nombre}")
+                            continue
+                        idProducto = row[0]
+                        self.cursor.execute("""INSERT INTO DetallesVenta
+                            (numVenta, fechaRegVenta, fechaRegDetalleVenta, idProd, subtotal, cantidadProdDet, tipoConsumo, estadoDetalleVenta, idMeseroActual)
                             VALUES(?,?,?,?,?,?,?,?,?)""",
-                            (nVenta, fVenta, fechaRegistro, idProducto, float(subtotal), int(cantidad), tipoConsumo, estadoVenta,idEmpleado))
-                
+                            (nVenta, fVenta, fechaRegistro, idProducto, float(subtotal), int(cantidad), tipoConsumo, estadoVenta, idEmpleado))
+                        id_detalle = self.cursor.lastrowid
+                        for unidad_num in range(int(cantidad)):
+                            self.cursor.execute("""
+                                INSERT INTO DetallesVentaUnidades (idDetalleVenta, numUnidad, marcado, idProd)
+                                VALUES (?, ?, ?, ?)
+                            """, (id_detalle, unidad_num, False, idProducto))
+                        self._guardarExclusiones(id_detalle, i)
+                        self._guardarExtras(id_detalle, i)
                 self.cursor.execute("""SELECT totalVenta FROM Venta WHERE numVenta=? AND fechaReg=?""", (nVenta, fVenta))
                 totalAnterior = self.cursor.fetchone()[0]
                 nuevoTotal = float(totalAnterior) + float(totalVenta)
@@ -606,45 +1491,76 @@ class RegistrarPedidos(QWidget):
             else:
                 numVenta = self.campoNumeroVenta.text()
                 self.cursor.execute("""INSERT INTO Venta(
-                    numVenta, fechaReg, horaReg, codEmp, codEmp2, totalVenta, 
+                    numVenta, fechaReg, horaReg, codEmp, codEmp2, totalVenta,
                     idMesa, idSeccion
                 ) VALUES (?,?,?,?,?,?,?,?)""",
-                    (int(numVenta), fechaRegistro, horaRegistro, int(idEmpleado), int(idCajero), 
-                     float(totalVenta), idMesa, int(idSeccion)))
-                
-                self.cursor.execute("""UPDATE Mesa SET disponible=FALSE WHERE idMesa=? AND idSeccion=?""", (idMesa,int(idSeccion)))
+                    (int(numVenta), fechaRegistro, horaRegistro, int(idEmpleado), int(idCajero),
+                    float(totalVenta), idMesa, int(idSeccion)))
+                self.cursor.execute("""UPDATE Mesa SET disponible=FALSE WHERE idMesa=? AND idSeccion=?""", (idMesa, int(idSeccion)))
                 self.cursor.execute("""SELECT MAX(numVenta) FROM Venta WHERE fechaReg = ?""", (fechaRegistro,))
                 resultado = self.cursor.fetchone()
                 numVenta = resultado[0]
                 for i in range(self.tabla.rowCount()):
                     cantidad = self.tabla.item(i, 0).text()
-                    nombre = self.tabla.item(i, 2).text()
+                    nombre = self._nombreRealDeFila(i)
                     subtotal = self.tabla.item(i, 4).text()
                     tipoConsumo = self.tabla.item(i, 1).text()
-                    
                     self.cursor.execute("""SELECT * FROM Promocion WHERE nomProm=?""", (nombre,))
                     resultados = self.cursor.fetchall()
                     if resultados:
                         self.cursor.execute("""SELECT idProm FROM Promocion WHERE nomProm=?""", (nombre,))
                         idPromocion = self.cursor.fetchone()[0]
-                        self.cursor.execute("""INSERT INTO DetallesVenta 
-                             (numVenta, fechaRegVenta, fechaRegDetalleVenta, idProm, subtotal, cantidadProdDet, tipoConsumo, estadoDetalleVenta,idMeseroActual)
+                        self.cursor.execute("""INSERT INTO DetallesVenta
+                            (numVenta, fechaRegVenta, fechaRegDetalleVenta, idProm, subtotal, cantidadProdDet, tipoConsumo, estadoDetalleVenta, idMeseroActual)
                             VALUES(?,?,?,?,?,?,?,?,?)""",
-                            (int(numVenta), fechaRegistro, fechaRegistro, idPromocion, float(subtotal), int(cantidad), tipoConsumo, estadoVenta,idEmpleado))
+                            (int(numVenta), fechaRegistro, fechaRegistro, idPromocion, float(subtotal), int(cantidad), tipoConsumo, estadoVenta, idEmpleado))
+                        id_detalle = self.cursor.lastrowid
+                        self.cursor.execute("""
+                            SELECT pp.idProd, pp.cantidadProdProm
+                            FROM PromocionProd pp
+                            WHERE pp.idProm = ?
+                        """, (idPromocion,))
+                        productos_promo = self.cursor.fetchall()
+                        unidades_creadas = 0
+                        for id_prod_p, cant_prod_p in productos_promo:
+                            for _ in range(cant_prod_p * int(cantidad)):
+                                self.cursor.execute("""
+                                    INSERT INTO DetallesVentaUnidades (idDetalleVenta, numUnidad, marcado, idProd)
+                                    VALUES (?, ?, ?, ?)
+                                """, (id_detalle, unidades_creadas, False, id_prod_p))
+                                unidades_creadas += 1
+                        exclusiones_promo_fila = getattr(self, 'exclusiones_promo_por_fila', {}).get(i, {})
+                        exclusiones_promo = exclusiones_promo_fila.get('exclusiones', {}) if isinstance(exclusiones_promo_fila, dict) else {}
+                        if exclusiones_promo:
+                            self._guardarExclusionesPromo(id_detalle, exclusiones_promo)
+                        extras_promo = exclusiones_promo_fila.get('extras', {}) if isinstance(exclusiones_promo_fila, dict) else {}
+                        if extras_promo:
+                            self._guardarExtrasPromo(id_detalle, extras_promo)
                     else:
                         self.cursor.execute("""SELECT idProd FROM Producto WHERE nomProd=?""", (nombre,))
-                        idProducto = self.cursor.fetchone()[0]
-                        self.cursor.execute("""INSERT INTO DetallesVenta 
-                             (numVenta, fechaRegVenta, fechaRegDetalleVenta, idProd, subtotal, cantidadProdDet, tipoConsumo, estadoDetalleVenta,idMeseroActual)
+                        row = self.cursor.fetchone()
+                        if row is None:
+                            print(f"Producto no encontrado en BD: {nombre}")
+                            continue
+                        idProducto = row[0]
+                        self.cursor.execute("""INSERT INTO DetallesVenta
+                            (numVenta, fechaRegVenta, fechaRegDetalleVenta, idProd, subtotal, cantidadProdDet, tipoConsumo, estadoDetalleVenta, idMeseroActual)
                             VALUES(?,?,?,?,?,?,?,?,?)""",
-                            (int(numVenta), fechaRegistro, fechaRegistro, idProducto, float(subtotal), int(cantidad), tipoConsumo, estadoVenta,idEmpleado))
-                
+                            (int(numVenta), fechaRegistro, fechaRegistro, idProducto, float(subtotal), int(cantidad), tipoConsumo, estadoVenta, idEmpleado))
+                        id_detalle = self.cursor.lastrowid
+                        for unidad_num in range(int(cantidad)):
+                            self.cursor.execute("""
+                                INSERT INTO DetallesVentaUnidades (idDetalleVenta, numUnidad, marcado, idProd)
+                                VALUES (?, ?, ?, ?)
+                            """, (id_detalle, unidad_num, False, idProducto))
+                        self._guardarExclusiones(id_detalle, i)
+                        self._guardarExtras(id_detalle, i)
                 self.nuevaVenta = True
             self.enviada = True
             self.actualizarStock('restar', conn=self.conn)
             self.conn.commit()
         except Exception as e:
-            print(f"Error al subir información: {str(e)}")
+            print(f"Error al subir informacion: {str(e)}")
             import traceback
             traceback.print_exc()
             try:
@@ -656,12 +1572,27 @@ class RegistrarPedidos(QWidget):
                 self.conn.close()
             except Exception:
                 pass
-    
+
+    def _guardarExclusiones(self, id_detalle_venta, indice_fila):
+        exclusiones = self.exclusiones_por_fila.get(indice_fila, [])
+        for excl in exclusiones:
+            self.cursor.execute("""
+                INSERT INTO DetallesVentaExclusiones (idDetalleVenta, idIng, nomIng)
+                VALUES (?, ?, ?)
+            """, (id_detalle_venta, excl["idIng"], excl["nomIng"]))
+
+    def _guardarExtras(self, id_detalle_venta, indice_fila):
+        extras = self.extras_por_fila.get(indice_fila, [])
+        for extra in extras:
+            self.cursor.execute("""
+                INSERT INTO DetallesVentaExtras (idDetalleVenta, idIng, nomIng, cantidadExtra, precioExtra)
+                VALUES (?, ?, ?, ?, ?)
+            """, (id_detalle_venta, extra["idIng"], extra["nomIng"], extra["cantidadExtra"], extra["precioExtra"]))
 
     def cancelarVenta(self):
-        if self.banderaTicket or self.banderaCocina:
-            QMessageBox.warning(self, "Venta Bloqueada", 
-                               "No se puede limpiar los campos porque ya se ha enviado a impresión/cocina.")
+        if self.enviada:
+            QMessageBox.warning(self, "Venta Bloqueada",
+                            "No se puede limpiar los campos porque la venta ya fue procesada.\nDebe completar el pago para iniciar una nueva venta.")
             return
         if self.tabla.rowCount() == 0:
             self.limpiarCampos()
@@ -669,15 +1600,14 @@ class RegistrarPedidos(QWidget):
         respuesta = QMessageBox.question(
             self,
             "Confirmar limpieza",
-            "¿Está seguro de que desea limpiar todos los campos?\n\n" +
-            "Se perderán todos los productos agregados.",
+            "Esta seguro de que desea limpiar todos los campos?\n\nSe perderan todos los productos agregados.",
             QMessageBox.Yes | QMessageBox.No,
             QMessageBox.No
         )
         if respuesta == QMessageBox.No:
             return
         self.limpiarCampos()
-    
+
 
     def limpiarCampos(self):
         self.conn = sqlite3.connect(DB_PATH)
@@ -693,6 +1623,9 @@ class RegistrarPedidos(QWidget):
         self.ticket_print_count = 0
         self.modificacion = False
         self.cocina_print_count = 0
+        self.exclusiones_por_fila = {}
+        self.extras_por_fila = {}
+        self.exclusiones_promo_por_fila = {}
         fecha = datetime.now().date()
         if self.nuevaVenta == True:
             self.cursor.execute("""SELECT COUNT(*) FROM Venta WHERE DATE(fechaReg)=?""", (fecha,))
@@ -702,228 +1635,28 @@ class RegistrarPedidos(QWidget):
             self.campoNumeroVenta.setText(str(numVenta))
             self.nuevaVenta = False
         self.conn.close()
-    
-    
-    def actualizarNumeroVenta(self,fecha):
-        self.conn=sqlite3.connect(DB_PATH)
-        self.cursor=self.conn.cursor()
+
+    def actualizarNumeroVenta(self, fecha):
+        self.conn = sqlite3.connect(DB_PATH)
+        self.cursor = self.conn.cursor()
         self.cursor.execute("""SELECT COUNT(*) FROM Venta WHERE DATE(fechaReg)=?""", (fecha,))
         resultados = self.cursor.fetchone()
         cantidad = resultados[0]
         numVenta = 1 if cantidad == 0 else cantidad + 1
         self.campoNumeroVenta.setText(str(numVenta))
         self.conn.close()
-        
-        
-    def solicitar_clave_admin(self) -> bool:
-        dialog = QDialog(self)
-        dialog.setWindowTitle("Autorización requerida")
-        dialog.setFixedWidth(480)
-        dialog.setStyleSheet("""
-            QDialog {
-                background-color: #ffffff;
-                border: 2px solid #e2e8f0;
-                border-radius: 10px;
-                font-family: 'Segoe UI', Arial, sans-serif;
-            }
-        """)
-        layout = QVBoxLayout(dialog)
-        layout.setSpacing(15)
-        layout.setContentsMargins(25, 25, 25, 25)
-        
-        label = QLabel("Ingrese la contraseña de administrador:")
-        label.setStyleSheet("""
-            QLabel {
-                color: #2c3e50;
-                font-size: 14px;
-                font-weight: 500;
-            }
-        """)
-        layout.addWidget(label)
-        password_container = QWidget()
-        password_container.setStyleSheet("background: transparent;")
-        password_layout = QHBoxLayout(password_container)
-        password_layout.setContentsMargins(0, 0, 0, 0)
-        password_layout.setSpacing(4)
-        password_input = QLineEdit()
-        password_input.setEchoMode(QLineEdit.Password)
-        password_input.setMinimumHeight(5)
-        password_input.setStyleSheet("""
-            QLineEdit {
-                background-color: white; 
-                border: 2px solid #e2e8f0;
-                border-radius: 8px;
-                padding: 5px 14px;
-                font-size: 14px;
-                selection-background-color: #4a89dc;
-            }
-            QLineEdit:focus {
-                border: 2px solid #4a89dc;
-                background-color: #f8fafc;
-            }
-        """)
-        password_layout.addWidget(password_input)
-        toggle_password_btn = QPushButton()
-        toggle_password_btn.setFixedHeight(48)
-        toggle_password_btn.setFixedWidth(34)
-        toggle_password_btn.setCheckable(True)
-        toggle_password_btn.setCursor(Qt.PointingHandCursor)
-        toggle_password_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #f8f9fa;
-                border: 2px solid #e2e8f0;
-                border-radius: 8px;
-                margin: 0px;
-                padding: 5px;
-            }
-            QPushButton:hover {
-                background-color: #e6f2ff;
-                border: 2px solid #4a89dc;
-            }
-            QPushButton:pressed {
-                background-color: #d0e7ff;
-            }
-            QPushButton:checked {
-                background-color: #e6f2ff;
-                border: 2px solid #4a89dc;
-            }
-        """)
-        toggle_password_btn.setText("🔒")
-        toggle_password_btn.setFont(QFont("Segoe UI Emoji", 12))
-        def toggle_password_visibility(checked):
-            if checked:
-                password_input.setEchoMode(QLineEdit.Normal)
-                toggle_password_btn.setText("🔓")
-            else:
-                password_input.setEchoMode(QLineEdit.Password)
-                toggle_password_btn.setText("🔒")
-        toggle_password_btn.toggled.connect(toggle_password_visibility)
-        password_layout.addWidget(toggle_password_btn)
-        layout.addWidget(password_container)
-        button_box = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
-        button_box.accepted.connect(dialog.accept)
-        button_box.rejected.connect(dialog.reject)
-        for button in button_box.buttons():
-            text = button.text().lower()
-            if 'ok' in text or 'aceptar' in text or 'entrar' in text:
-                button.setStyleSheet("""
-                    QPushButton {
-                        background-color: #2ecc71; 
-                        color: white; 
-                        border-radius: 6px; 
-                        padding: 10px 24px; 
-                        font-weight: 600;
-                        font-size: 14px;
-                        min-width: 100px;
-                        margin-right: 10px;
-                    }
-                    QPushButton:hover {
-                        background-color: #27ae60;
-                    }
-                    QPushButton:pressed {
-                        background-color: #229954;
-                        padding-top: 11px;
-                        padding-bottom: 9px;
-                    }
-                """)
-            elif 'cancelar' in text or 'cancel' in text:
-                button.setStyleSheet("""
-                    QPushButton {
-                        background-color: #e74c3c; 
-                        color: white; 
-                        border-radius: 6px; 
-                        padding: 10px 24px; 
-                        font-weight: 600;
-                        font-size: 14px;
-                        min-width: 100px;
-                        margin-left: 10px;
-                    }
-                    QPushButton:hover {
-                        background-color: #c0392b;
-                    }
-                    QPushButton:pressed {
-                        background-color: #a93226;
-                        padding-top: 11px;
-                        padding-bottom: 9px;
-                    }
-                """)
-        layout.addWidget(button_box, alignment=Qt.AlignCenter)
-        password_input.setFocus()
-        password_input.returnPressed.connect(dialog.accept)
-        if dialog.exec_() == QDialog.Accepted:
-            clave = password_input.text()
-            conn = sqlite3.connect(DB_PATH)
-            cur = conn.cursor()
-            cur.execute("""SELECT 1 FROM Directorio WHERE contrasenaAdmin = ?""", (clave,))
-            existe = cur.fetchone()
-            conn.close()
-            if existe:
-                return True
-            else:
-                msg_box = QMessageBox(self)
-                msg_box.setIcon(QMessageBox.Warning)
-                msg_box.setWindowTitle("Error")
-                msg_box.setText("Contraseña incorrecta.")
-                msg_box.setStyleSheet("""
-                    QMessageBox {
-                        background-color: #ffffff;
-                        border: 2px solid #e2e8f0;
-                        border-radius: 10px;
-                    }
-                    QMessageBox QLabel {
-                        color: #2c3e50;
-                        font-size: 14px;
-                        font-weight: 500;
-                        padding: 10px;
-                    }
-                    QMessageBox QPushButton {
-                        background-color: #3498db; 
-                        color: white; 
-                        border-radius: 6px; 
-                        padding: 8px 20px; 
-                        font-weight: 600;
-                        font-size: 14px;
-                        min-width: 90px;
-                    }
-                    QMessageBox QPushButton:hover {
-                        background-color: #2980b9;
-                    }
-                """)
-                msg_box.exec_()
-                return False
-        else:
-            return False
-
 
     def construirSeccionProductos(self, layoutCampo4):
         contCat = QHBoxLayout()
         self.btnPrevCat1 = QPushButton("◀")
         self.btnPrevCat1.setStyleSheet("""
-            QPushButton {
-                background-color: #3498db;
-                color: white;
-                border-radius: 6px;
-                padding: 8px 16px;
-                font-size: 16px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #2980b9;
-            }
+            QPushButton { background-color: #3498db; color: white; border-radius: 6px; padding: 8px 16px; font-size: 16px; font-weight: bold; }
+            QPushButton:hover { background-color: #2980b9; }
         """)
         self.btnNextCat1 = QPushButton("▶")
         self.btnNextCat1.setStyleSheet("""
-            QPushButton {
-                background-color: #3498db;
-                color: white;
-                border-radius: 6px;
-                padding: 8px 16px;
-                font-size: 16px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #2980b9;
-            }
+            QPushButton { background-color: #3498db; color: white; border-radius: 6px; padding: 8px 16px; font-size: 16px; font-weight: bold; }
+            QPushButton:hover { background-color: #2980b9; }
         """)
         self.scrollCat = QScrollArea()
         self.scrollCat.setWidgetResizable(True)
@@ -948,31 +1681,13 @@ class RegistrarPedidos(QWidget):
         contSub = QHBoxLayout()
         self.btnPrevSub = QPushButton("◀")
         self.btnPrevSub.setStyleSheet("""
-            QPushButton {
-                background-color: #3498db;
-                color: white;
-                border-radius: 6px;
-                padding: 8px 16px;
-                font-size: 16px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #2980b9;
-            }
+            QPushButton { background-color: #3498db; color: white; border-radius: 6px; padding: 8px 16px; font-size: 16px; font-weight: bold; }
+            QPushButton:hover { background-color: #2980b9; }
         """)
         self.btnNextSub = QPushButton("▶")
         self.btnNextSub.setStyleSheet("""
-            QPushButton {
-                background-color: #3498db;
-                color: white;
-                border-radius: 6px;
-                padding: 8px 16px;
-                font-size: 16px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #2980b9;
-            }
+            QPushButton { background-color: #3498db; color: white; border-radius: 6px; padding: 8px 16px; font-size: 16px; font-weight: bold; }
+            QPushButton:hover { background-color: #2980b9; }
         """)
         self.scrollSub = QScrollArea()
         self.scrollSub.setWidgetResizable(True)
@@ -1002,66 +1717,18 @@ class RegistrarPedidos(QWidget):
             border-radius: 8px;
             padding: 2px;
         }
-        QScrollArea > QWidget > QWidget { 
-        background-color: transparent; 
-        }
-
-        QScrollBar:vertical { 
-            border: none; 
-            background: #f8f9fa; 
-            width: 14px; 
-            margin: 0px; 
-            border-radius: 7px; 
-        }
-
-        QScrollBar::handle:vertical { 
-            background: #c0c7d4; 
-            min-height: 40px; 
-            border-radius: 7px; 
-            margin: 3px; 
-        }
-
-        QScrollBar::handle:vertical:hover { 
-            background: #a0b0c4; 
-        }
-
-        QScrollBar::handle:vertical:pressed { 
-            background: #8090b0; 
-        }
-
-        QScrollBar::sub-line:vertical, 
-        QScrollBar::add-line:vertical { 
-            height: 0px; 
-        }
-
-        QScrollBar:horizontal { 
-            border: none; 
-            background: #f8f9fa; 
-            height: 14px; 
-            margin: 0px; 
-            border-radius: 7px; 
-        }
-
-        QScrollBar::handle:horizontal { 
-            background: #c0c7d4; 
-            min-width: 40px; 
-            border-radius: 7px; 
-            margin: 3px; 
-        }
-
-        QScrollBar::handle:horizontal:hover { 
-            background: #a0b0c4; 
-        }
-
-        QScrollBar::handle:horizontal:pressed { 
-            background: #8090b0; 
-        }
-
-        QScrollBar::sub-line:horizontal, 
-        QScrollBar::add-line:horizontal { 
-            width: 0px; 
-        }
-    """)
+        QScrollArea > QWidget > QWidget { background-color: transparent; }
+        QScrollBar:vertical { border: none; background: #f8f9fa; width: 14px; margin: 0px; border-radius: 7px; }
+        QScrollBar::handle:vertical { background: #c0c7d4; min-height: 40px; border-radius: 7px; margin: 3px; }
+        QScrollBar::handle:vertical:hover { background: #a0b0c4; }
+        QScrollBar::handle:vertical:pressed { background: #8090b0; }
+        QScrollBar::sub-line:vertical, QScrollBar::add-line:vertical { height: 0px; }
+        QScrollBar:horizontal { border: none; background: #f8f9fa; height: 14px; margin: 0px; border-radius: 7px; }
+        QScrollBar::handle:horizontal { background: #c0c7d4; min-width: 40px; border-radius: 7px; margin: 3px; }
+        QScrollBar::handle:horizontal:hover { background: #a0b0c4; }
+        QScrollBar::handle:horizontal:pressed { background: #8090b0; }
+        QScrollBar::sub-line:horizontal, QScrollBar::add-line:horizontal { width: 0px; }
+        """)
         self.scrollProductos.setWidgetResizable(True)
         self.widgetProductos = QWidget()
         self.widgetProductos.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Expanding)
@@ -1072,7 +1739,6 @@ class RegistrarPedidos(QWidget):
         self.scrollProductos.setWidget(self.widgetProductos)
         layoutCampo4.addWidget(self.scrollProductos, 1)
         self.cargarCategorias()
-        
 
     def _clear_layout(self, layout):
         while layout.count():
@@ -1080,7 +1746,6 @@ class RegistrarPedidos(QWidget):
             w = item.widget()
             if w:
                 w.deleteLater()
-    
 
     def _clear_grid(self, grid):
         while grid.count():
@@ -1088,71 +1753,69 @@ class RegistrarPedidos(QWidget):
             w = item.widget()
             if w:
                 w.deleteLater()
-    
 
     def cargarCategorias(self):
-            self.conn = sqlite3.connect(DB_PATH)
-            self.cursor = self.conn.cursor()
-            self.scrollCat.setVisible(True)
-            self.scrollSub.setVisible(True)
-            self.btnPrevSub.setVisible(True)
-            self.btnNextSub.setVisible(True)
-            self.btnPrevCat1.setVisible(True)
-            self.btnNextCat1.setVisible(True)
-            self._clear_layout(self.layoutCategorias)
-            btn_prom = self.crearBotonCategoria("PROMOCIONES", "#9b59b6")
-            btn_prom.setMinimumSize(160, 120)
-            btn_prom.setMaximumSize(160, 120)
-            btn_prom.clicked.connect(self.mostrarPromociones)
-            self.layoutCategorias.addWidget(btn_prom)
-            self.cursor.execute("SELECT idCategoria, nomCategoria, imagenCategoria FROM Categoria WHERE activa=1 ORDER BY nomCategoria")
-            for idCat, nombre, imagen in self.cursor.fetchall():
-                btn = self.crearBotonCategoria(nombre, "#3498db", imagen)
-                btn.setMinimumSize(160, 120)
-                btn.setMaximumSize(160, 120)
-                btn.clicked.connect(lambda checked, idCat=idCat: self.cargarSubcategorias(idCat))
-                self.layoutCategorias.addWidget(btn)
-            self.layoutCategorias.addStretch()
-            self._clear_layout(self.layoutSubcategorias)
-            self._clear_grid(self.layoutProductos)
-            self.conn.close()
-
+        self.conn = sqlite3.connect(DB_PATH)
+        self.cursor = self.conn.cursor()
+        self.scrollCat.setVisible(True)
+        self.scrollSub.setVisible(True)
+        self.btnPrevSub.setVisible(True)
+        self.btnNextSub.setVisible(True)
+        self.btnPrevCat1.setVisible(True)
+        self.btnNextCat1.setVisible(True)
+        self._clear_layout(self.layoutCategorias)
+        btn_prom = self.crearBotonCategoria("PROMOCIONES", "#9b59b6")
+        btn_prom.setMinimumSize(160, 120)
+        btn_prom.setMaximumSize(160, 120)
+        btn_prom.clicked.connect(self.mostrarPromociones)
+        self.layoutCategorias.addWidget(btn_prom)
+        self.cursor.execute("SELECT idCategoria, nomCategoria, imagenCategoria FROM Categoria WHERE activa=1 ORDER BY nomCategoria")
+        for idCat, nombre, imagen in self.cursor.fetchall():
+            btn = self.crearBotonCategoria(nombre, "#3498db", imagen)
+            btn.setMinimumSize(160, 120)
+            btn.setMaximumSize(160, 120)
+            btn.clicked.connect(lambda checked, idCat=idCat: self.cargarSubcategorias(idCat))
+            self.layoutCategorias.addWidget(btn)
+        self.layoutCategorias.addStretch()
+        self._clear_layout(self.layoutSubcategorias)
+        self._clear_grid(self.layoutProductos)
+        self.conn.close()
 
     def crearBotonCategoria(self, texto, color_base, imagen_blob=None):
         btn = QPushButton()
-        btn.setFixedSize(160,120)
+        btn.setFixedSize(160, 120)
         btn.setCursor(Qt.PointingHandCursor)
         btn.setStyleSheet("QPushButton{background:transparent;border:none;}")
         layout = QVBoxLayout(btn)
-        layout.setContentsMargins(0,0,0,0)
+        layout.setContentsMargins(0, 0, 0, 0)
         lbl_bg = QLabel()
-        lbl_bg.setFixedSize(160,120)
+        lbl_bg.setFixedSize(160, 120)
         lbl_bg.setAlignment(Qt.AlignCenter)
         lbl_bg.setStyleSheet("background:transparent;")
         if imagen_blob:
             pix = QPixmap.fromImage(QImage.fromData(imagen_blob))
         else:
             pix = QPixmap(get_resource_path("Imagenes/camara.png"))
-        pix = pix.scaled(160,120, Qt.KeepAspectRatio, Qt.SmoothTransformation)
-        rounded = QPixmap(160,120)
+        pix = pix.scaled(160, 120, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+        rounded = QPixmap(160, 120)
         rounded.fill(Qt.transparent)
         p = QPainter(rounded)
         p.setRenderHint(QPainter.Antialiasing)
         path = QPainterPath()
-        path.addRoundedRect(0,0,160,120,12,12)
+        path.addRoundedRect(0, 0, 160, 120, 12, 12)
         p.setClipPath(path)
-        x = (160 - pix.width())//2
-        y = (120 - pix.height())//2
-        p.drawPixmap(x,y,pix)
-        grad = QLinearGradient(0,0,0,120)
-        grad.setColorAt(0, QColor(0,0,0,30))
-        grad.setColorAt(1, QColor(0,0,0,140))
+        x = (160 - pix.width()) // 2
+        y = (120 - pix.height()) // 2
+        p.drawPixmap(x, y, pix)
+        grad = QLinearGradient(0, 0, 0, 120)
+        grad.setColorAt(0, QColor(0, 0, 0, 30))
+        grad.setColorAt(1, QColor(0, 0, 0, 140))
         p.fillPath(path, grad)
         p.end()
         lbl_bg.setPixmap(rounded)
         layout.addWidget(lbl_bg)
         lbl_text = QLabel(texto.upper(), lbl_bg)
-        lbl_text.setGeometry(0,0,160,120)
+        lbl_text.setGeometry(0, 0, 160, 120)
         lbl_text.setAlignment(Qt.AlignCenter)
         lbl_text.setWordWrap(True)
         lbl_text.setStyleSheet("""
@@ -1165,7 +1828,6 @@ class RegistrarPedidos(QWidget):
             }
         """)
         return btn
-        
 
     def cargarSubcategorias(self, idCategoria):
         self.conn = sqlite3.connect(DB_PATH)
@@ -1188,7 +1850,6 @@ class RegistrarPedidos(QWidget):
         else:
             self.mostrarProductosDeCategoria(idCategoria)
         self.conn.close()
-        
 
     def mostrarProductos(self, idSubcategoria):
         self.conn = sqlite3.connect(DB_PATH)
@@ -1213,7 +1874,6 @@ class RegistrarPedidos(QWidget):
             self.layoutProductos.addWidget(QLabel("No hay productos disponibles"), 0, 0, 1, max_cols)
         self.layoutProductos.setRowStretch(row + 1, 1)
         self.conn.close()
-
 
     def mostrarProductosDeCategoria(self, idCategoria):
         self.conn = sqlite3.connect(DB_PATH)
@@ -1241,7 +1901,6 @@ class RegistrarPedidos(QWidget):
             self.layoutProductos.addWidget(QLabel("No hay productos disponibles"), 0, 0, 1, max_cols)
         self.layoutProductos.setRowStretch(row + 1, 1)
         self.conn.close()
-        
 
     def mostrarPromociones(self):
         self.conn = sqlite3.connect(DB_PATH)
@@ -1254,9 +1913,9 @@ class RegistrarPedidos(QWidget):
         current_weekday = now.weekday()
         try:
             self.cursor.execute("""
-                SELECT idProm, nomProm, imgProm, fechaEspecifica, 
+                SELECT idProm, nomProm, imgProm, fechaEspecifica,
                        fechaInicio, fechaFin, horaInicio, horaFin
-                FROM Promocion 
+                FROM Promocion
                 WHERE activo=1
                 ORDER BY nomProm
             """)
@@ -1279,7 +1938,7 @@ class RegistrarPedidos(QWidget):
                                 pass
                         if hora_valida:
                             promos_filtradas.append((nomProm, imgProm))
-                            continue  
+                            continue
                     except:
                         pass
                 fecha_valida = False
@@ -1305,12 +1964,12 @@ class RegistrarPedidos(QWidget):
                 else:
                     hora_valida = True
                 self.cursor.execute("""
-                    SELECT COUNT(*) FROM PromocionDias 
+                    SELECT COUNT(*) FROM PromocionDias
                     WHERE idProm = ? AND diaSemana = ?
                 """, (idProm, current_weekday))
                 tiene_dia = self.cursor.fetchone()[0] > 0
                 self.cursor.execute("""
-                    SELECT COUNT(*) FROM PromocionDias 
+                    SELECT COUNT(*) FROM PromocionDias
                     WHERE idProm = ?
                 """, (idProm,))
                 total_dias = self.cursor.fetchone()[0]
@@ -1351,22 +2010,21 @@ class RegistrarPedidos(QWidget):
             self.layoutProductos.setRowStretch(row + 1, 1)
         finally:
             self.conn.close()
-    
 
     def crearItem(self, nombre, imgBlob, bandera):
-        contenedor = QPushButton() 
+        contenedor = QPushButton()
         contenedor.setFixedSize(150, 160)
         contenedor.setCursor(Qt.PointingHandCursor)
         contenedor.setStyleSheet("""
             QPushButton {
-                background: #ffffff; 
-                border: 1px solid #e2e8f0; 
+                background: #ffffff;
+                border: 1px solid #e2e8f0;
                 border-radius: 10px;
                 text-align: center;
             }
-            QPushButton:hover { 
+            QPushButton:hover {
                 border: 1px solid #cbd5e1;
-                background: #f8fafc; 
+                background: #f8fafc;
             }
         """)
         layout = QVBoxLayout(contenedor)
@@ -1394,9 +2052,11 @@ class RegistrarPedidos(QWidget):
         labelNom.setWordWrap(True)
         labelNom.setStyleSheet("QLabel { color: #2c3e50; font-size: 14px; font-weight: 500; }")
         layout.addWidget(labelNom)
-        contenedor.clicked.connect(lambda: self.dialogProducto(nombre, bandera))
+        if bandera:
+            contenedor.clicked.connect(lambda: self.dialogProducto(nombre, bandera))
+        else:
+            contenedor.clicked.connect(lambda: self.dialogPromocion(nombre))
         return contenedor
-
 
     def dialogProducto(self, nombre, bandera):
         if self.verificarBloqueo("agregar productos"):
@@ -1404,157 +2064,700 @@ class RegistrarPedidos(QWidget):
         dialog = QDialog(self)
         dialog.setWindowTitle("Añadir producto")
         dialog.setStyleSheet("""
-             QDialog { 
-                background-color: #f8fafc; 
-                border-radius: 10px; 
-                font-family: 'Segoe UI', Arial, sans-serif; 
-            }
-
-            QLabel { 
-                color: #2c3e50; 
-                font-size: 14px; 
-                font-weight: 500; 
-                margin-bottom: 6px; 
-            }
-
-            QLabel[hint="true"] { 
-                color: #475569; 
-                font-size: 12px; 
-                font-weight: 400; 
-                margin-top: -2px; 
-                margin-bottom: 10px; 
-            }
-
-            QSpinBox { 
-                background-color: #ffffff; 
-                border: 2px solid #e2e8f0; 
-                border-radius: 6px; 
-                padding: 6px 10px; 
-                font-size: 14px; 
-                min-height: 40px; 
-            }
-
-            QSpinBox:focus { 
-                border: 2px solid #4a89dc; 
-                background-color: #f0f7ff; 
-            }
-
-            QSpinBox::up-button, 
-            QSpinBox::down-button { 
-                width: 24px; 
-                border: none; 
-                background: transparent; 
-                padding: 0px; 
-                margin: 0px; 
-                border-top-right-radius: 6px; 
-                border-bottom-right-radius: 6px; 
-            }
-
-            QSpinBox::up-button:hover, 
-            QSpinBox::down-button:hover { 
-                background: #eef2f7; 
-            }
-
-            QSpinBox::up-arrow, 
-            QSpinBox::down-arrow { 
-                width: 0; 
-                height: 0; 
-                border-left: 5px solid transparent; 
-                border-right: 5px solid transparent; 
-            }
-
-            QSpinBox::up-arrow { 
-                border-bottom: 7px solid #4a89dc; 
-                margin-right: 6px; 
-            }
-
-            QSpinBox::down-arrow { 
-                border-top: 7px solid #4a89dc; 
-                margin-right: 6px; 
-            }
-
-            QRadioButton { 
-                font-size: 14px; 
-                color: #2c3e50; 
-                padding: 6px 2px; 
-                spacing: 8px; 
-            }
-
-            QRadioButton::indicator { 
-                width: 18px; 
-                height: 18px; 
-                border-radius: 9px; 
-                border: 2px solid #4a89dc; 
-                background: #ffffff; 
-                margin-right: 6px; 
-            }
-
-            QRadioButton::indicator:hover { 
-                background: #f0f7ff; 
-            }
-
-            QRadioButton::indicator:checked { 
-                background-color: #4a89dc; 
-                border: 2px solid #4a89dc; 
-            }
-
-            QDialogButtonBox { 
-                background: #f5f7fa; 
-                border-top: 1px solid #e2e8f0; 
-                padding: 12px 16px; 
-                border-bottom-left-radius: 10px; 
-                border-bottom-right-radius: 10px; 
-            }
-
-            QDialogButtonBox QPushButton { 
-                background-color: #3498db; 
-                color: #ffffff; 
-                border: none; 
-                border-radius: 8px; 
-                padding: 10px 18px; 
-                min-width: 110px; 
-                font-weight: bold; 
-            }
-
-            QDialogButtonBox QPushButton:hover { 
-                background-color: #2980b9; 
-            }
-
-            QDialogButtonBox QPushButton:disabled { 
-                background-color: #bdc3c7; 
-                color: #ffffff; 
-            }
+        QDialog {
+            background-color: #f8fafc;
+            border-radius: 10px;
+            font-family: 'Segoe UI', Arial, sans-serif;
+        }
+        QLabel {
+            color: #2c3e50;
+            font-size: 14px;
+            font-weight: 500;
+            margin-bottom: 6px;
+        }
+        QSpinBox {
+            background-color: #ffffff;
+            border: 2px solid #e2e8f0;
+            border-radius: 6px;
+            padding: 6px 10px;
+            font-size: 14px;
+            min-height: 40px;
+            padding-right: 30px;
+        }
+        QSpinBox:focus {
+            border: 2px solid #4a89dc;
+            background-color: #f0f7ff;
+        }
+        QSpinBox::up-button {
+            background-color: #3498db;
+            border: none;
+            width: 35px;
+            height: 28px;
+            top: 0;
+            border-radius:0px 5px 0px 0px;
+            right: 0;
+            subcontrol-origin: border;
+            subcontrol-position: top right;
+        }
+        QSpinBox::up-button:hover { background-color: #2980b9; }
+        QSpinBox::up-button:pressed { background-color: #1f6a9a; }
+        QSpinBox::down-button {
+            background-color: #e74c3c;
+            border: none;
+            border-radius:0px 5px 0px 0px;
+            width: 35px;
+            height: 28px;
+            bottom: 0;
+            right: 0;
+            subcontrol-origin: border;
+            subcontrol-position: bottom right;
+        }
+        QSpinBox::down-button:hover { background-color: #c0392b; }
+        QSpinBox::down-button:pressed { background-color: #a93226; }
+        QRadioButton {
+            font-size: 14px;
+            color: #2c3e50;
+            padding: 6px 2px;
+            spacing: 8px;
+        }
+        QRadioButton::indicator {
+            width: 18px;
+            height: 18px;
+            border-radius: 9px;
+            border: 2px solid #4a89dc;
+            background: #ffffff;
+            margin-right: 6px;
+        }
+        QRadioButton::indicator:checked {
+            background-color: #4a89dc;
+            border: 2px solid #4a89dc;
+        }
+        QDialogButtonBox {
+            background: #f5f7fa;
+            border-top: 1px solid #e2e8f0;
+            padding: 12px 16px;
+        }
+        QDialogButtonBox QPushButton {
+            background-color: #3498db;
+            color: #ffffff;
+            border: none;
+            border-radius: 8px;
+            padding: 10px 18px;
+            min-width: 110px;
+            font-weight: bold;
+        }
+        QDialogButtonBox QPushButton:hover { background-color: #2980b9; }
+        QFrame { background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; }
+        QCheckBox { spacing: 10px; font-size: 12px; font-weight: 500; color: #2c3e50; background: transparent; }
+        QCheckBox::indicator { width: 18px; height: 18px; border-radius: 4px; border: 2px solid #3498db; background: white; }
+        QCheckBox::indicator:checked { background-color: #3498db; border: 2px solid #3498db; }
+        QCheckBox::indicator:unchecked { background-color: white; }
         """)
+
         layout = QVBoxLayout(dialog)
         if not getattr(self, "validar_stock", False):
             max_disponible = 9999
             info_texto = "Sin validar stock (entrada libre)"
         else:
             max_disponible = self.verificarStockDisponible(nombre, bandera)
-            info_texto = f"Máximo disponible: {max_disponible} unidades"
-    
+            info_texto = f"Maximo disponible: {max_disponible} unidades"
+
         spin = QSpinBox()
         spin.setRange(1, max_disponible if max_disponible > 0 else 1)
         spin.setValue(1)
         info_label = QLabel(info_texto)
-        info_label.setProperty("hint", True)
         layout.addWidget(QLabel(f"Producto: {nombre}"))
         layout.addWidget(info_label)
         layout.addWidget(QLabel("Cantidad:"))
         layout.addWidget(spin)
+
         tipoLocal = QRadioButton("Local")
         tipoLlevar = QRadioButton("Para llevar")
         tipoLocal.setChecked(True)
         layout.addWidget(tipoLocal)
         layout.addWidget(tipoLlevar)
-        btns = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
-        layout.addWidget(btns)
-        btns.accepted.connect(dialog.accept)
-        btns.rejected.connect(dialog.reject)
+
+        exclusiones_por_unidad_ref = [{}]
+        cantidad_al_personalizar = [0]
+
+        if bandera:
+            ingredientes = self._obtenerIngredientesProducto(nombre)
+            if ingredientes:
+                btn_personalizar = QPushButton("Personalizar ingredientes")
+                btn_personalizar.setStyleSheet("""
+                    QPushButton {
+                        background-color: #8e44ad;
+                        color: white;
+                        border-radius: 6px;
+                        padding: 8px 16px;
+                        font-weight: bold;
+                        font-size: 13px;
+                        min-width: 0;
+                    }
+                    QPushButton:hover { background-color: #7d3c98; }
+                """)
+
+                lbl_exclusiones = QLabel("Sin exclusiones")
+                lbl_exclusiones.setStyleSheet("""
+                    QLabel {
+                        font-size: 12px;
+                        color: #27ae60;
+                        padding: 4px 8px;
+                        background-color: #eafaf1;
+                        border-radius: 4px;
+                        border: 1px solid #a9dfbf;
+                    }
+                """)
+                lbl_exclusiones.setWordWrap(True)
+
+                def _texto_resumen_unidades(excl_por_unidad):
+                    if not excl_por_unidad:
+                        return ""
+                    partes = []
+                    for idx_u, excls in excl_por_unidad.items():
+                        if excls:
+                            nombres = ", ".join(e["nomIng"] for e in excls)
+                            partes.append(f"#{idx_u + 1}: sin {nombres}")
+                    return " | ".join(partes)
+
+                def abrir_personalizacion():
+                    cantidad_actual = spin.value()
+                    cantidad_al_personalizar[0] = cantidad_actual
+                    excl_previas = exclusiones_por_unidad_ref[0]
+
+                    subdialog = QDialog(dialog)
+                    subdialog.setWindowTitle(f"Personalizar ingredientes - {nombre}")
+                    subdialog.setMinimumWidth(400)
+                    subdialog.setMaximumWidth(500)
+                    subdialog.setStyleSheet("""
+                        QDialog { background-color: white; font-family: 'Segoe UI', Arial, sans-serif; }
+                        QScrollArea { border: none; background: transparent; }
+                        QScrollBar:vertical { border: none; background: #f1f5f9; width: 10px; border-radius: 5px; }
+                        QScrollBar::handle:vertical { background: #cbd5e1; border-radius: 5px; min-height: 30px; }
+                        QScrollBar::handle:vertical:hover { background: #94a3b8; }
+                        QCheckBox { spacing: 12px; font-size: 13px; color: #2c3e50; background: transparent; }
+                        QCheckBox::indicator { width: 18px; height: 18px; border-radius: 4px; border: 2px solid #3498db; background: white; }
+                        QCheckBox::indicator:checked { background-color: #3498db; border: 2px solid #3498db; }
+                        QCheckBox::indicator:unchecked { background-color: white; }
+                        QLabel { color: #2c3e50; font-size: 13px; font-weight: 500; background: transparent; }
+                        QFrame { background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; }
+                    """)
+
+                    sub_layout = QVBoxLayout(subdialog)
+                    sub_layout.setContentsMargins(0, 0, 0, 0)
+                    sub_layout.setSpacing(0)
+
+                    sub_header = QWidget()
+                    sub_header.setStyleSheet("QWidget { background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #3498db, stop:1 #2980b9); }")
+                    sub_header_layout = QVBoxLayout(sub_header)
+                    sub_header_layout.setContentsMargins(24, 20, 24, 20)
+                    sub_titulo = QLabel("🍽️ Personalizar ingredientes")
+                    sub_titulo.setStyleSheet("QLabel { color: white; font-size: 18px; font-weight: bold; background: transparent; }")
+                    sub_titulo.setAlignment(Qt.AlignCenter)
+                    sub_header_layout.addWidget(sub_titulo)
+                    sub_subtitulo = QLabel(nombre)
+                    sub_subtitulo.setStyleSheet("QLabel { color: rgba(255,255,255,0.9); font-size: 14px; font-weight: 500; background: transparent; }")
+                    sub_subtitulo.setAlignment(Qt.AlignCenter)
+                    sub_header_layout.addWidget(sub_subtitulo)
+                    sub_layout.addWidget(sub_header)
+
+                    ayuda_w = QWidget()
+                    ayuda_w.setStyleSheet("QWidget { background-color: #fef9e7; border-bottom: 1px solid #f39c12; }")
+                    ayuda_l = QHBoxLayout(ayuda_w)
+                    ayuda_l.setContentsMargins(20, 10, 20, 10)
+                    ayuda_lbl = QLabel("⚠️  Personaliza cada unidad individualmente — Desmarca los ingredientes que el cliente NO quiere")
+                    ayuda_lbl.setStyleSheet("background: transparent; font-size: 12px; color: #e67e22; font-weight: 500;")
+                    ayuda_l.addWidget(ayuda_lbl)
+                    sub_layout.addWidget(ayuda_w)
+
+                    scroll_principal = QScrollArea()
+                    scroll_principal.setWidgetResizable(True)
+                    scroll_principal.setStyleSheet("QScrollArea { border: none; background-color: #f8fafc; }")
+                    contenedor_principal = QWidget()
+                    contenedor_principal.setStyleSheet("background-color: #f8fafc;")
+                    contenedor_layout = QVBoxLayout(contenedor_principal)
+                    contenedor_layout.setContentsMargins(16, 16, 16, 16)
+                    contenedor_layout.setSpacing(15)
+
+                    unidades_checkboxes = []
+
+                    for idx_u in range(cantidad_actual):
+                        ids_excluidos_prev = set()
+                        if idx_u in excl_previas:
+                            ids_excluidos_prev = {e["idIng"] for e in excl_previas[idx_u]}
+
+                        unidad_frame = QFrame()
+                        unidad_frame.setStyleSheet("QFrame { background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; margin: 2px; }")
+                        unidad_frame_layout = QVBoxLayout(unidad_frame)
+                        unidad_frame_layout.setSpacing(8)
+                        unidad_frame_layout.setContentsMargins(12, 10, 12, 10)
+
+                        unidad_header = QWidget()
+                        unidad_header.setStyleSheet("background: transparent; border: none;")
+                        unidad_header_layout = QHBoxLayout(unidad_header)
+                        unidad_header_layout.setContentsMargins(0, 0, 0, 0)
+
+                        unidad_titulo = QLabel(f"Unidad #{idx_u + 1}")
+                        unidad_titulo.setStyleSheet("font-weight: bold; color: #3498db; font-size: 14px; background: transparent; border: none;")
+                        unidad_header_layout.addWidget(unidad_titulo)
+                        unidad_header_layout.addStretch()
+
+                        botones_rapidos = QWidget()
+                        botones_rapidos.setStyleSheet("background: transparent; border: none;")
+                        botones_layout = QHBoxLayout(botones_rapidos)
+                        botones_layout.setContentsMargins(0, 0, 0, 0)
+                        botones_layout.setSpacing(6)
+
+                        btn_todos_u = QPushButton("✓ Todos")
+                        btn_todos_u.setStyleSheet("""
+                            QPushButton { background-color: #3498db; color: white; border: none; border-radius: 6px;
+                                font-size: 11px; font-weight: bold; padding: 4px 8px; min-width: 60px; }
+                            QPushButton:hover { background-color: #2980b9; }
+                        """)
+                        btn_todos_u.setFixedSize(70, 28)
+
+                        btn_ninguno_u = QPushButton("✗ Ninguno")
+                        btn_ninguno_u.setStyleSheet("""
+                            QPushButton { background-color: #e74c3c; color: white; border: none; border-radius: 6px;
+                                font-size: 11px; font-weight: bold; padding: 4px 8px; min-width: 60px; }
+                            QPushButton:hover { background-color: #c0392b; }
+                        """)
+                        btn_ninguno_u.setFixedSize(70, 28)
+
+                        botones_layout.addWidget(btn_todos_u)
+                        botones_layout.addWidget(btn_ninguno_u)
+                        unidad_header_layout.addWidget(botones_rapidos)
+                        unidad_frame_layout.addWidget(unidad_header)
+
+                        separador = QWidget()
+                        separador.setFixedHeight(1)
+                        separador.setStyleSheet("background-color: #e2e8f0; border: none;")
+                        unidad_frame_layout.addWidget(separador)
+
+                        checkboxes = []
+                        for ing in ingredientes:
+                            item_w = QWidget()
+                            item_w.setStyleSheet("background: transparent;")
+                            item_l = QHBoxLayout(item_w)
+                            item_l.setContentsMargins(8, 4, 8, 4)
+                            item_l.setSpacing(10)
+
+                            cb = QCheckBox()
+                            cb.setChecked(ing["idIng"] not in ids_excluidos_prev)
+                            cb.idIng = ing["idIng"]
+                            cb.nomIng = ing["nomIng"]
+
+                            ing_lbl = QLabel(ing["nomIng"])
+                            ing_lbl.setStyleSheet("background: transparent; font-size: 13px; color: #2c3e50; font-weight: 500; border: none;")
+
+                            estado_lbl = QLabel()
+                            estado_lbl.setStyleSheet("background: transparent; font-size: 11px; font-weight: bold; border: none; padding: 2px 6px; border-radius: 4px;")
+
+                            def actualizar_estado(checked, lbl=estado_lbl, widget=item_w):
+                                if checked:
+                                    lbl.setText("✓ Incluido")
+                                    lbl.setStyleSheet("background: #e8f5e9; font-size: 11px; color: #2ecc71; font-weight: bold; border: none; padding: 2px 6px; border-radius: 4px;")
+                                    widget.setStyleSheet("background: transparent; border-bottom: 1px solid #e2e8f0;")
+                                else:
+                                    lbl.setText("✗ Excluido")
+                                    lbl.setStyleSheet("background: #ffebee; font-size: 11px; color: #e74c3c; font-weight: bold; border: none; padding: 2px 6px; border-radius: 4px;")
+                                    widget.setStyleSheet("background: #fff5f5; border-bottom: 1px solid #ffcdd2;")
+
+                            actualizar_estado(cb.isChecked())
+                            cb.toggled.connect(actualizar_estado)
+
+                            item_l.addWidget(cb)
+                            item_l.addWidget(ing_lbl, 1)
+                            item_l.addWidget(estado_lbl)
+                            checkboxes.append(cb)
+                            unidad_frame_layout.addWidget(item_w)
+
+                        def crear_todos(cbs):
+                            def fn(): [c.setChecked(True) for c in cbs]
+                            return fn
+                        def crear_ninguno(cbs):
+                            def fn(): [c.setChecked(False) for c in cbs]
+                            return fn
+
+                        btn_todos_u.clicked.connect(crear_todos(checkboxes))
+                        btn_ninguno_u.clicked.connect(crear_ninguno(checkboxes))
+
+                        contenedor_layout.addWidget(unidad_frame)
+                        unidades_checkboxes.append(checkboxes)
+
+                    contenedor_layout.addStretch()
+                    scroll_principal.setWidget(contenedor_principal)
+                    sub_layout.addWidget(scroll_principal, 1)
+
+                    sub_footer = QWidget()
+                    sub_footer.setStyleSheet("QWidget { background-color: #f8f9fa; border-top: 1px solid #e2e8f0; }")
+                    sub_footer_layout = QHBoxLayout(sub_footer)
+                    sub_footer_layout.setContentsMargins(20, 16, 20, 16)
+                    sub_footer_layout.setSpacing(12)
+
+                    btn_cancelar_sub = QPushButton("Cancelar")
+                    btn_cancelar_sub.setStyleSheet("""
+                        QPushButton { background-color: #95a5a6; color: white; border: none; border-radius: 8px;
+                            font-size: 14px; font-weight: bold; padding: 10px 16px; min-width: 100px; }
+                        QPushButton:hover { background-color: #7f8c8d; }
+                    """)
+                    btn_cancelar_sub.setCursor(Qt.PointingHandCursor)
+
+                    btn_confirmar_sub = QPushButton("Confirmar")
+                    btn_confirmar_sub.setStyleSheet("""
+                        QPushButton { background-color: #2ecc71; color: white; border: none; border-radius: 8px;
+                            font-size: 14px; font-weight: bold; padding: 10px 16px; min-width: 120px; }
+                        QPushButton:hover { background-color: #27ae60; }
+                    """)
+                    btn_confirmar_sub.setCursor(Qt.PointingHandCursor)
+
+                    sub_footer_layout.addStretch()
+                    sub_footer_layout.addWidget(btn_cancelar_sub)
+                    sub_footer_layout.addWidget(btn_confirmar_sub)
+                    sub_layout.addWidget(sub_footer)
+
+                    btn_cancelar_sub.clicked.connect(subdialog.reject)
+                    btn_confirmar_sub.clicked.connect(subdialog.accept)
+
+                    if subdialog.exec_() == QDialog.Accepted:
+                        nuevo_excl = {}
+                        for idx_u, checkboxes in enumerate(unidades_checkboxes):
+                            excls = [{"idIng": cb.idIng, "nomIng": cb.nomIng} for cb in checkboxes if not cb.isChecked()]
+                            if excls:
+                                nuevo_excl[idx_u] = excls
+                        exclusiones_por_unidad_ref[0] = nuevo_excl
+                        texto = _texto_resumen_unidades(nuevo_excl)
+                        if texto:
+                            lbl_exclusiones.setText(texto)
+                            lbl_exclusiones.setStyleSheet("""
+                                QLabel { font-size: 12px; color: #c0392b; padding: 4px 8px;
+                                    background-color: #fdecea; border-radius: 4px; border: 1px solid #f5c6cb; }
+                            """)
+                        else:
+                            lbl_exclusiones.setText("Sin exclusiones")
+                            lbl_exclusiones.setStyleSheet("""
+                                QLabel { font-size: 12px; color: #27ae60; padding: 4px 8px;
+                                    background-color: #eafaf1; border-radius: 4px; border: 1px solid #a9dfbf; }
+                            """)
+
+                def on_spin_changed(nuevo_valor):
+                    if exclusiones_por_unidad_ref[0] and cantidad_al_personalizar[0] > 0 and nuevo_valor != cantidad_al_personalizar[0]:
+                        lbl_exclusiones.setText(f"⚠ Personalizaste para {cantidad_al_personalizar[0]} unidad(es) — la cantidad cambio, personaliza de nuevo si es necesario")
+                        lbl_exclusiones.setStyleSheet("""
+                            QLabel { font-size: 12px; color: #e67e22; padding: 4px 8px;
+                                background-color: #fef9e7; border-radius: 4px; border: 1px solid #f39c12; }
+                        """)
+
+                spin.valueChanged.connect(on_spin_changed)
+                btn_personalizar.clicked.connect(abrir_personalizacion)
+                layout.addWidget(btn_personalizar)
+                layout.addWidget(lbl_exclusiones)
+
+            extras_por_unidad_ref = [{}]
+            cantidad_al_personalizar_extra = [0]
+            ingredientes_para_extra = self._obtenerIngredientesProductoParaExtra(nombre)
+
+            if ingredientes_para_extra:
+                btn_extra = QPushButton("Agregar ingrediente extra")
+                btn_extra.setStyleSheet("""
+                    QPushButton {
+                        background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
+                            stop: 0 #2ecc71, stop: 1 #27ae60);
+                        color: white; border: none; border-radius: 6px;
+                        padding: 8px 16px; font-weight: bold; font-size: 13px; min-width: 0;
+                    }
+                    QPushButton:hover {
+                        background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
+                            stop: 0 #32ff7e, stop: 1 #3ae374);
+                    }
+                """)
+                lbl_extras = QLabel("Sin ingredientes extra")
+                lbl_extras.setStyleSheet("""
+                    QLabel { font-size: 12px; color: #27ae60; padding: 4px 8px;
+                        background-color: #eafaf1; border-radius: 4px; border: 1px solid #a9dfbf; }
+                """)
+                lbl_extras.setWordWrap(True)
+
+                def _texto_resumen_unidades_extra(extras_por_unidad):
+                    if not extras_por_unidad:
+                        return ""
+                    partes = []
+                    for idx_u, extras_u in extras_por_unidad.items():
+                        if extras_u:
+                            nombres = ", ".join(f"{e['cantidadExtra']}x {e['nomIng']}" for e in extras_u)
+                            partes.append(f"#{idx_u + 1}: {nombres}")
+                    return " | ".join(partes)
+
+                def abrir_personalizacion_extra():
+                    cantidad_actual = spin.value()
+                    cantidad_al_personalizar_extra[0] = cantidad_actual
+                    extras_previas = extras_por_unidad_ref[0]
+
+                    subdialog = QDialog(dialog)
+                    subdialog.setWindowTitle(f"Ingredientes extra - {nombre}")
+                    subdialog.setMinimumWidth(420)
+                    subdialog.setMaximumWidth(520)
+                    subdialog.setStyleSheet("""
+                        QDialog { background-color: white; font-family: 'Segoe UI', Arial, sans-serif; }
+                        QScrollArea { border: none; background: transparent; }
+                        QScrollBar:vertical { border: none; background: #f1f5f9; width: 10px; border-radius: 5px; }
+                        QScrollBar::handle:vertical { background: #cbd5e1; border-radius: 5px; min-height: 30px; }
+                        QScrollBar::handle:vertical:hover { background: #94a3b8; }
+                        QLabel { color: #2c3e50; font-size: 13px; font-weight: 500; background: transparent; }
+                        QFrame { background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; }
+                        QSpinBox {
+                            background-color: white; border: 2px solid #e2e8f0; border-radius: 6px;
+                            padding: 2px 6px; font-size: 13px; min-height: 30px; max-width: 70px;
+                        }
+                        QSpinBox:focus { border: 2px solid #27ae60; }
+                        QSpinBox::up-button {
+                            background-color: #3498db; border: none;
+                            width: 22px; height: 19px;
+                            border-radius: 0px 4px 0px 0px;
+                            subcontrol-origin: border; subcontrol-position: top right;
+                        }
+                        QSpinBox::up-button:hover { background-color: #2980b9; }
+                        QSpinBox::down-button {
+                            background-color: #e74c3c; border: none;
+                            width: 22px; height: 19px;
+                            border-radius: 0px 0px 4px 0px;
+                            subcontrol-origin: border; subcontrol-position: bottom right;
+                        }
+                        QSpinBox::down-button:hover { background-color: #c0392b; }
+                        QSpinBox::up-arrow {
+                            image: none; border-left: 3px solid transparent; border-right: 3px solid transparent;
+                            border-bottom: 3px solid white; width: 0; height: 0;
+                        }
+                        QSpinBox::down-arrow {
+                            image: none; border-left: 3px solid transparent; border-right: 3px solid transparent;
+                            border-top: 3px solid white; width: 0; height: 0;
+                        }
+                    """)
+
+                    sub_layout = QVBoxLayout(subdialog)
+                    sub_layout.setContentsMargins(0, 0, 0, 0)
+                    sub_layout.setSpacing(0)
+
+                    sub_header = QWidget()
+                    sub_header.setStyleSheet("QWidget { background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #2ecc71, stop:1 #27ae60); }")
+                    sub_header_layout = QVBoxLayout(sub_header)
+                    sub_header_layout.setContentsMargins(24, 20, 24, 20)
+                    sub_titulo = QLabel("➕ Ingredientes extra")
+                    sub_titulo.setStyleSheet("QLabel { color: white; font-size: 18px; font-weight: bold; background: transparent; }")
+                    sub_titulo.setAlignment(Qt.AlignCenter)
+                    sub_header_layout.addWidget(sub_titulo)
+                    sub_subtitulo = QLabel(nombre)
+                    sub_subtitulo.setStyleSheet("QLabel { color: rgba(255,255,255,0.9); font-size: 14px; font-weight: 500; background: transparent; }")
+                    sub_subtitulo.setAlignment(Qt.AlignCenter)
+                    sub_header_layout.addWidget(sub_subtitulo)
+                    sub_layout.addWidget(sub_header)
+
+                    ayuda_w = QWidget()
+                    ayuda_w.setStyleSheet("QWidget { background-color: #fef9e7; border-bottom: 1px solid #f39c12; }")
+                    ayuda_l = QHBoxLayout(ayuda_w)
+                    ayuda_l.setContentsMargins(20, 10, 20, 10)
+                    ayuda_lbl = QLabel("⚠️  Personaliza cada unidad individualmente — indica cuánto extra quieres de cada ingrediente")
+                    ayuda_lbl.setWordWrap(True)
+                    ayuda_lbl.setStyleSheet("background: transparent; font-size: 12px; color: #e67e22; font-weight: 500;")
+                    ayuda_l.addWidget(ayuda_lbl)
+                    sub_layout.addWidget(ayuda_w)
+
+                    scroll_principal = QScrollArea()
+                    scroll_principal.setWidgetResizable(True)
+                    scroll_principal.setStyleSheet("QScrollArea { border: none; background-color: #f8fafc; }")
+                    contenedor_principal = QWidget()
+                    contenedor_principal.setStyleSheet("background-color: #f8fafc;")
+                    contenedor_layout = QVBoxLayout(contenedor_principal)
+                    contenedor_layout.setContentsMargins(16, 16, 16, 16)
+                    contenedor_layout.setSpacing(15)
+
+                    unidades_spinboxes = []
+
+                    for idx_u in range(cantidad_actual):
+                        cantidades_prev = {}
+                        if idx_u in extras_previas:
+                            cantidades_prev = {e["idIng"]: e["cantidadExtra"] for e in extras_previas[idx_u]}
+
+                        unidad_frame = QFrame()
+                        unidad_frame.setStyleSheet("QFrame { background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; margin: 2px; }")
+                        unidad_frame_layout = QVBoxLayout(unidad_frame)
+                        unidad_frame_layout.setSpacing(8)
+                        unidad_frame_layout.setContentsMargins(12, 10, 12, 10)
+
+                        unidad_header = QWidget()
+                        unidad_header.setStyleSheet("background: transparent; border: none;")
+                        unidad_header_layout = QHBoxLayout(unidad_header)
+                        unidad_header_layout.setContentsMargins(0, 0, 0, 0)
+
+                        unidad_titulo = QLabel(f"Unidad #{idx_u + 1}")
+                        unidad_titulo.setStyleSheet("font-weight: bold; color: #27ae60; font-size: 14px; background: transparent; border: none;")
+                        unidad_header_layout.addWidget(unidad_titulo)
+                        unidad_header_layout.addStretch()
+
+                        btn_limpiar_u = QPushButton("Limpiar")
+                        btn_limpiar_u.setStyleSheet("""
+                            QPushButton { background-color: #95a5a6; color: white; border: none; border-radius: 6px;
+                                font-size: 11px; font-weight: bold; padding: 4px 8px; min-width: 60px; }
+                            QPushButton:hover { background-color: #7f8c8d; }
+                        """)
+                        btn_limpiar_u.setFixedSize(70, 28)
+                        unidad_header_layout.addWidget(btn_limpiar_u)
+                        unidad_frame_layout.addWidget(unidad_header)
+
+                        separador = QWidget()
+                        separador.setFixedHeight(1)
+                        separador.setStyleSheet("background-color: #e2e8f0; border: none;")
+                        unidad_frame_layout.addWidget(separador)
+
+                        spinboxes_unidad = []
+                        for ing in ingredientes_para_extra:
+                            idIng_ing, nomIng_ing, precioExtra_ing = ing
+                            item_w = QWidget()
+                            item_w.setStyleSheet("background: transparent;")
+                            item_l = QHBoxLayout(item_w)
+                            item_l.setContentsMargins(8, 4, 8, 4)
+                            item_l.setSpacing(10)
+
+                            ing_lbl = QLabel(f"{nomIng_ing}  (+{precioExtra_ing:.2f} Bs c/u)")
+                            ing_lbl.setStyleSheet("background: transparent; font-size: 13px; color: #2c3e50; font-weight: 500; border: none;")
+
+                            sp = QSpinBox()
+                            sp.setRange(0, 20)
+                            sp.setValue(cantidades_prev.get(idIng_ing, 0))
+                            sp.idIng = idIng_ing
+                            sp.nomIng = nomIng_ing
+                            sp.precioExtra = precioExtra_ing
+
+                            item_l.addWidget(ing_lbl, 1)
+                            item_l.addWidget(sp)
+                            spinboxes_unidad.append(sp)
+                            unidad_frame_layout.addWidget(item_w)
+
+                        def crear_limpiar(sps):
+                            def fn():
+                                for s in sps:
+                                    s.setValue(0)
+                            return fn
+
+                        btn_limpiar_u.clicked.connect(crear_limpiar(spinboxes_unidad))
+
+                        contenedor_layout.addWidget(unidad_frame)
+                        unidades_spinboxes.append(spinboxes_unidad)
+
+                    contenedor_layout.addStretch()
+                    scroll_principal.setWidget(contenedor_principal)
+                    sub_layout.addWidget(scroll_principal, 1)
+
+                    sub_footer = QWidget()
+                    sub_footer.setStyleSheet("QWidget { background-color: #f8f9fa; border-top: 1px solid #e2e8f0; }")
+                    sub_footer_layout = QHBoxLayout(sub_footer)
+                    sub_footer_layout.setContentsMargins(20, 16, 20, 16)
+                    sub_footer_layout.setSpacing(12)
+
+                    btn_cancelar_sub = QPushButton("Cancelar")
+                    btn_cancelar_sub.setStyleSheet("""
+                        QPushButton { background-color: #95a5a6; color: white; border: none; border-radius: 8px;
+                            font-size: 14px; font-weight: bold; padding: 10px 16px; min-width: 100px; }
+                        QPushButton:hover { background-color: #7f8c8d; }
+                    """)
+                    btn_cancelar_sub.setCursor(Qt.PointingHandCursor)
+
+                    btn_confirmar_sub = QPushButton("Confirmar")
+                    btn_confirmar_sub.setStyleSheet("""
+                        QPushButton { background-color: #2ecc71; color: white; border: none; border-radius: 8px;
+                            font-size: 14px; font-weight: bold; padding: 10px 16px; min-width: 120px; }
+                        QPushButton:hover { background-color: #27ae60; }
+                    """)
+                    btn_confirmar_sub.setCursor(Qt.PointingHandCursor)
+
+                    sub_footer_layout.addStretch()
+                    sub_footer_layout.addWidget(btn_cancelar_sub)
+                    sub_footer_layout.addWidget(btn_confirmar_sub)
+                    sub_layout.addWidget(sub_footer)
+
+                    btn_cancelar_sub.clicked.connect(subdialog.reject)
+                    btn_confirmar_sub.clicked.connect(subdialog.accept)
+
+                    if subdialog.exec_() == QDialog.Accepted:
+                        nuevo_extras = {}
+                        for idx_u, spinboxes_u in enumerate(unidades_spinboxes):
+                            extras_u = [
+                                {"idIng": sp.idIng, "nomIng": sp.nomIng, "cantidadExtra": sp.value(), "precioExtra": sp.precioExtra}
+                                for sp in spinboxes_u if sp.value() > 0
+                            ]
+                            if extras_u:
+                                nuevo_extras[idx_u] = extras_u
+                        extras_por_unidad_ref[0] = nuevo_extras
+                        texto = _texto_resumen_unidades_extra(nuevo_extras)
+                        if texto:
+                            lbl_extras.setText(texto)
+                            lbl_extras.setStyleSheet("""
+                                QLabel { font-size: 12px; color: #27ae60; padding: 4px 8px;
+                                    background-color: #eafaf1; border-radius: 4px; border: 1px solid #a9dfbf; }
+                            """)
+                        else:
+                            lbl_extras.setText("Sin ingredientes extra")
+
+                def on_spin_changed_extra(nuevo_valor):
+                    if extras_por_unidad_ref[0] and cantidad_al_personalizar_extra[0] > 0 and nuevo_valor != cantidad_al_personalizar_extra[0]:
+                        lbl_extras.setText(f"⚠ Personalizaste para {cantidad_al_personalizar_extra[0]} unidad(es) — la cantidad cambió, personaliza de nuevo si es necesario")
+                        lbl_extras.setStyleSheet("""
+                            QLabel { font-size: 12px; color: #e67e22; padding: 4px 8px;
+                                background-color: #fef9e7; border-radius: 4px; border: 1px solid #f39c12; }
+                        """)
+
+                spin.valueChanged.connect(on_spin_changed_extra)
+                btn_extra.clicked.connect(abrir_personalizacion_extra)
+                layout.addWidget(btn_extra)
+                layout.addWidget(lbl_extras)
+
+        footer_dialog_producto = QHBoxLayout()
+        footer_dialog_producto.setSpacing(12)
+        btn_cancelar_producto = QPushButton("Cancelar")
+        btn_cancelar_producto.setCursor(Qt.PointingHandCursor)
+        btn_cancelar_producto.setStyleSheet("""
+            QPushButton { background-color: #95a5a6; color: white; border: none; border-radius: 8px;
+                font-size: 14px; font-weight: bold; padding: 10px 16px; min-width: 100px; }
+            QPushButton:hover { background-color: #7f8c8d; }
+        """)
+        btn_confirmar_producto = QPushButton("Confirmar")
+        btn_confirmar_producto.setCursor(Qt.PointingHandCursor)
+        btn_confirmar_producto.setStyleSheet("""
+            QPushButton { background-color: #2ecc71; color: white; border: none; border-radius: 8px;
+                font-size: 14px; font-weight: bold; padding: 10px 16px; min-width: 100px; }
+            QPushButton:hover { background-color: #27ae60; }
+        """)
+        footer_dialog_producto.addStretch()
+        footer_dialog_producto.addWidget(btn_cancelar_producto)
+        footer_dialog_producto.addWidget(btn_confirmar_producto)
+        layout.addLayout(footer_dialog_producto)
+        btn_cancelar_producto.clicked.connect(dialog.reject)
+        btn_confirmar_producto.clicked.connect(dialog.accept)
+
         if dialog.exec_() == QDialog.Accepted:
             tipo = "Local" if tipoLocal.isChecked() else "Para llevar"
-            self.agregarProductoTabla(nombre, spin.value(), tipo, bandera)
-    
+            cantidad_final = spin.value()
+
+            tiene_exclusiones = bandera and self._obtenerIngredientesProducto(nombre) and exclusiones_por_unidad_ref[0]
+            tiene_extras = bandera and extras_por_unidad_ref[0]
+
+            if tiene_exclusiones or tiene_extras:
+                excl_por_unidad = exclusiones_por_unidad_ref[0]
+                extras_por_unidad = extras_por_unidad_ref[0]
+                grupos = {}
+                for idx_u in range(cantidad_final):
+                    excls = excl_por_unidad.get(idx_u, [])
+                    extras_u = extras_por_unidad.get(idx_u, [])
+                    clave_excl = frozenset(e["idIng"] for e in excls)
+                    clave_extra = frozenset((e["idIng"], e["cantidadExtra"]) for e in extras_u)
+                    clave = (clave_excl, clave_extra)
+                    if clave not in grupos:
+                        grupos[clave] = {"exclusiones": excls, "extras": extras_u, "cantidad": 0}
+                    grupos[clave]["cantidad"] += 1
+                for grupo in grupos.values():
+                    self.agregarProductoTabla(nombre, grupo["cantidad"], tipo, bandera, grupo["exclusiones"], grupo["extras"])
+            else:
+                self.agregarProductoTabla(nombre, cantidad_final, tipo, bandera, [], [])
 
     def verificarStockDisponible(self, nombre, bandera):
         self.conn = sqlite3.connect(DB_PATH)
@@ -1585,11 +2788,10 @@ class RegistrarPedidos(QWidget):
                     WHERE pp.idProm = ?
                 """, (id_promocion,))
                 productos_promocion = self.cursor.fetchall()
-
                 dicc = {}
                 for id_prod, cant_prod in productos_promocion:
                     self.cursor.execute("""
-                        SELECT pi.idIng, (pi.cantidadIngNecesitada * ?) AS cantidad_necesaria, 
+                        SELECT pi.idIng, (pi.cantidadIngNecesitada * ?) AS cantidad_necesaria,
                                s.cantidadStock, s.unidadMedida
                         FROM ProductosIngredientes pi
                         JOIN Stock s ON pi.idIng = s.idIng
@@ -1623,54 +2825,84 @@ class RegistrarPedidos(QWidget):
             return 0
         finally:
             self.conn.close()
-    
 
     def calcularIngredientesReservados(self, id_ingrediente):
         cantidad_reservada = 0
         try:
             for fila in range(self.tabla.rowCount()):
-                nombre_producto = self.tabla.item(fila, 2).text()
+                nombre_producto = self._nombreRealDeFila(fila)
                 cantidad = int(self.tabla.item(fila, 0).text())
-                self.conn = sqlite3.connect(DB_PATH)
-                self.cursor = self.conn.cursor()
-                self.cursor.execute("SELECT idProm FROM Promocion WHERE nomProm=?", (nombre_producto,))
-                es_promocion = self.cursor.fetchone() is not None
+                excl_fila = self.exclusiones_por_fila.get(fila, [])
+                if isinstance(excl_fila, list):
+                    ids_excluidos = {e["idIng"] for e in excl_fila if isinstance(e, dict) and "idIng" in e}
+                else:
+                    ids_excluidos = set()
+                if id_ingrediente in ids_excluidos:
+                    continue
+                exclusiones_promo_fila = getattr(self, 'exclusiones_promo_por_fila', {}).get(fila, {})
+                if isinstance(exclusiones_promo_fila, dict):
+                    exclusiones_promo = exclusiones_promo_fila.get('exclusiones', {})
+                else:
+                    exclusiones_promo = {}
+                conn = sqlite3.connect(DB_PATH)
+                cursor = conn.cursor()
+                cursor.execute("SELECT idProm FROM Promocion WHERE nomProm=?", (nombre_producto,))
+                es_promocion = cursor.fetchone()
                 if es_promocion:
-                    self.cursor.execute("SELECT idProm FROM Promocion WHERE nomProm=?", (nombre_producto,))
-                    id_promocion = self.cursor.fetchone()[0]
-                    self.cursor.execute("""
-                        SELECT pp.idProd, pp.cantidadProdProm 
-                        FROM PromocionProd pp 
+                    id_promocion = es_promocion[0]
+                    cursor.execute("""
+                        SELECT pp.idProd, pp.cantidadProdProm
+                        FROM PromocionProd pp
                         WHERE pp.idProm = ?
                     """, (id_promocion,))
-                    productos_promocion = self.cursor.fetchall()
-                    for id_prod, cant_prod in productos_promocion:
-                        self.cursor.execute("""
-                            SELECT cantidadIngNecesitada 
-                            FROM ProductosIngredientes 
+                    for id_prod, cant_prod in cursor.fetchall():
+                        unidades_data_prod = []
+                        if isinstance(exclusiones_promo, dict) and str(id_prod) in exclusiones_promo:
+                            raw = exclusiones_promo[str(id_prod)]
+                            if isinstance(raw, list):
+                                for item in raw:
+                                    if isinstance(item, dict) and 'exclusiones' in item:
+                                        unidades_data_prod.append(item)
+                        total_unidades = cant_prod * cantidad
+                        unidades_excluidas = 0
+                        for ud in unidades_data_prod:
+                            excls = ud.get('exclusiones', [])
+                            if isinstance(excls, list):
+                                if any(
+                                    isinstance(e, dict) and e.get("idIng") == id_ingrediente
+                                    for e in excls
+                                ):
+                                    unidades_excluidas += 1
+                        unidades_activas = total_unidades - unidades_excluidas
+                        if unidades_activas <= 0:
+                            continue
+                        cursor.execute("""
+                            SELECT cantidadIngNecesitada
+                            FROM ProductosIngredientes
                             WHERE idProd = ? AND idIng = ?
                         """, (id_prod, id_ingrediente))
-                        resultado = self.cursor.fetchone()
+                        resultado = cursor.fetchone()
                         if resultado:
-                            cantidad_reservada += float(resultado[0] or 0) * cant_prod * cantidad
+                            cantidad_reservada += float(resultado[0] or 0) * unidades_activas
                 else:
-                    self.cursor.execute("SELECT idProd FROM Producto WHERE nomProd=?", (nombre_producto,))
-                    id_producto = self.cursor.fetchone()[0]
-                    self.cursor.execute("""
-                        SELECT cantidadIngNecesitada 
-                        FROM ProductosIngredientes 
-                        WHERE idProd = ? AND idIng = ?
-                    """, (id_producto, id_ingrediente))
-                    resultado = self.cursor.fetchone()
-                    if resultado:
-                        cantidad_reservada += float(resultado[0] or 0) * cantidad
-                self.conn.close()
+                    cursor.execute("SELECT idProd FROM Producto WHERE nomProd=?", (nombre_producto,))
+                    r = cursor.fetchone()
+                    if r:
+                        id_producto = r[0]
+                        cursor.execute("""
+                            SELECT cantidadIngNecesitada
+                            FROM ProductosIngredientes
+                            WHERE idProd = ? AND idIng = ?
+                        """, (id_producto, id_ingrediente))
+                        resultado = cursor.fetchone()
+                        if resultado:
+                            cantidad_reservada += float(resultado[0] or 0) * cantidad
+                conn.close()
         except Exception as e:
             print(f"Error al calcular ingredientes reservados: {e}")
-            if self.conn:
-                self.conn.close()
+            import traceback
+            traceback.print_exc()
         return cantidad_reservada
-    
 
     def actualizarStock(self, operacion='restar', conn=None):
         if not self.enviada:
@@ -1684,50 +2916,81 @@ class RegistrarPedidos(QWidget):
                 cur = conn.cursor()
             signo = -1 if operacion == 'restar' else 1
             for fila in range(self.tabla.rowCount()):
-                nombre_producto = self.tabla.item(fila, 2).text()
+                nombre_producto = self._nombreRealDeFila(fila)
                 cantidad_linea = int(self.tabla.item(fila, 0).text())
+                excl_fila = self.exclusiones_por_fila.get(fila, [])
+                ids_excluidos = {e["idIng"] for e in excl_fila}
+                exclusiones_promo_fila = getattr(self, 'exclusiones_promo_por_fila', {}).get(fila, {})
+                exclusiones_promo = exclusiones_promo_fila.get('exclusiones', {})
                 cur.execute("SELECT idProm FROM Promocion WHERE nomProm=?", (nombre_producto,))
                 prom = cur.fetchone()
                 if prom:
                     id_prom = prom[0]
                     cur.execute("""
-                        SELECT pp.idProd, pp.cantidadProdProm 
-                        FROM PromocionProd pp 
+                        SELECT pp.idProd, pp.cantidadProdProm
+                        FROM PromocionProd pp
                         WHERE pp.idProm = ?
                     """, (id_prom,))
                     for id_prod, cant_prod in cur.fetchall():
+                        unidades_data_prod = []
+                        if str(id_prod) in exclusiones_promo:
+                            unidades_data_prod = exclusiones_promo[str(id_prod)]
+                        total_unidades = cant_prod * cantidad_linea
                         cur.execute("""
-                            SELECT idIng, cantidadIngNecesitada 
-                            FROM ProductosIngredientes 
+                            SELECT idIng, cantidadIngNecesitada
+                            FROM ProductosIngredientes
                             WHERE idProd = ?
                         """, (id_prod,))
                         for id_ing, cant_ing in cur.fetchall():
+                            if id_ing in ids_excluidos:
+                                continue
+                            unidades_excluidas = sum(
+                                1 for ud in unidades_data_prod
+                                if any(e["idIng"] == id_ing for e in ud['exclusiones'])
+                            )
+                            unidades_activas = total_unidades - unidades_excluidas
+                            if unidades_activas <= 0:
+                                continue
                             cant_ing_valor = float(cant_ing or 0)
                             if cant_ing_valor > 0:
-                                delta = q2(cant_ing_valor * cant_prod * cantidad_linea * signo)
+                                delta = q2(cant_ing_valor * unidades_activas * signo)
                                 cur.execute("""
                                     UPDATE Stock
-                                       SET cantidadStock = MAX(0, ROUND(cantidadStock + ?, 2))
-                                     WHERE idIng = ?
+                                    SET cantidadStock = MAX(0, ROUND(cantidadStock + ?, 2))
+                                    WHERE idIng = ?
                                 """, (delta, id_ing))
                 else:
                     cur.execute("SELECT idProd FROM Producto WHERE nomProd=?", (nombre_producto,))
-                    id_prod = cur.fetchone()[0]
+                    r = cur.fetchone()
+                    if not r:
+                        continue
+                    id_prod = r[0]
                     cur.execute("""
-                        SELECT idIng, cantidadIngNecesitada 
-                        FROM ProductosIngredientes 
+                        SELECT idIng, cantidadIngNecesitada
+                        FROM ProductosIngredientes
                         WHERE idProd = ?
                     """, (id_prod,))
                     for id_ing, cant_ing in cur.fetchall():
+                        if id_ing in ids_excluidos:
+                            continue
                         cant_ing_valor = float(cant_ing or 0)
                         if cant_ing_valor > 0:
                             delta = q2(cant_ing_valor * cantidad_linea * signo)
                             cur.execute("""
                                 UPDATE Stock
-                                   SET cantidadStock = MAX(0, ROUND(cantidadStock + ?, 2))
-                                 WHERE idIng = ?
+                                SET cantidadStock = MAX(0, ROUND(cantidadStock + ?, 2))
+                                WHERE idIng = ?
                             """, (delta, id_ing))
-    
+                    extras_fila = self.extras_por_fila.get(fila, [])
+                    for extra in extras_fila:
+                        cant_extra_valor = float(extra.get("cantidadExtra") or 0)
+                        if cant_extra_valor > 0:
+                            delta_extra = q2(cant_extra_valor * cantidad_linea * signo)
+                            cur.execute("""
+                                UPDATE Stock
+                                SET cantidadStock = MAX(0, ROUND(cantidadStock + ?, 2))
+                                WHERE idIng = ?
+                            """, (delta_extra, extra["idIng"]))
             if local_conn is not None:
                 local_conn.commit()
         except Exception as e:
@@ -1738,22 +3001,44 @@ class RegistrarPedidos(QWidget):
         finally:
             if local_conn is not None:
                 local_conn.close()
-    
 
-    def agregarProductoTabla(self, nombre, cantidad, tipo, bandera):
+    def agregarProductoTabla(self, nombre, cantidad, tipo, bandera, exclusiones=None, extras=None):
         if self.verificarBloqueo("agregar productos"):
             return
+        exclusiones = exclusiones or []
+        extras = extras or []
         self.conn = sqlite3.connect(DB_PATH)
         self.cursor = self.conn.cursor()
         if bandera:
-            self.cursor.execute("""SELECT precioVenta FROM Producto WHERE nomProd=?""",(nombre,))
+            self.cursor.execute("""SELECT precioVenta FROM Producto WHERE nomProd=?""", (nombre,))
             resultados = self.cursor.fetchone()
         else:
-            self.cursor.execute("""SELECT precioProm FROM Promocion WHERE nomProm=?""",(nombre,))
+            self.cursor.execute("""SELECT precioProm FROM Promocion WHERE nomProm=?""", (nombre,))
             resultados = self.cursor.fetchone()
-        precio_unitario = float(resultados[0])
+        precio_base = float(resultados[0])
+        precio_extra_unitario = sum(float(e["precioExtra"]) * float(e["cantidadExtra"]) for e in extras)
+        precio_unitario = precio_base + precio_extra_unitario
+        excl_texto = self._textoExclusiones(exclusiones)
+        extras_texto = self._textoExtras(extras)
+        texto_completo = " | ".join(t for t in [excl_texto, extras_texto] if t)
         for row in range(self.tabla.rowCount()):
-            if self.tabla.item(row, 1).text() == tipo and self.tabla.item(row, 2).text() == nombre:
+            excl_fila = self.exclusiones_por_fila.get(row, [])
+            extras_fila = self.extras_por_fila.get(row, [])
+            if not isinstance(excl_fila, list):
+                continue
+            ids_fila = set()
+            for e in excl_fila:
+                if isinstance(e, dict) and "idIng" in e:
+                    ids_fila.add(e["idIng"])
+            ids_nuevas = set()
+            for e in exclusiones:
+                if isinstance(e, dict) and "idIng" in e:
+                    ids_nuevas.add(e["idIng"])
+            mismo_excl = ids_fila == ids_nuevas
+            mismo_extra = extras_fila == extras
+            if (self.tabla.item(row, 1).text() == tipo and
+                    self.tabla.item(row, 2).data(Qt.UserRole) == nombre and
+                    mismo_excl and mismo_extra):
                 cant_actual = int(self.tabla.item(row, 0).text()) + cantidad
                 self.tabla.item(row, 0).setText(str(cant_actual))
                 self.tabla.item(row, 4).setText(f"{cant_actual * precio_unitario:.2f}")
@@ -1762,55 +3047,349 @@ class RegistrarPedidos(QWidget):
                 return
         row = self.tabla.rowCount()
         self.tabla.insertRow(row)
+        nombre_display = nombre if not texto_completo else f"{nombre}\n({texto_completo})"
+        tooltip_cantidad = f"Cantidad: {cantidad}"
+        tooltip_tipo = f"Tipo de consumo: {tipo}"
+        tooltip_producto = "🖱 Haga clic para ver el detalle completo" + (f"\n({texto_completo})" if texto_completo else "")
+        tooltip_precio = f"Precio unitario: {precio_unitario:.2f} Bs"
+        tooltip_subtotal = f"Subtotal: {cantidad * precio_unitario:.2f} Bs"
         item_cantidad = QTableWidgetItem(str(cantidad))
         item_cantidad.setTextAlignment(Qt.AlignCenter)
+        item_cantidad.setToolTip(tooltip_cantidad)
         self.tabla.setItem(row, 0, item_cantidad)
         item_tipo = QTableWidgetItem(tipo)
         item_tipo.setTextAlignment(Qt.AlignCenter)
+        item_tipo.setToolTip(tooltip_tipo)
         self.tabla.setItem(row, 1, item_tipo)
-        item_nombre = QTableWidgetItem(nombre)
+        item_nombre = QTableWidgetItem(nombre_display)
         item_nombre.setTextAlignment(Qt.AlignCenter)
+        item_nombre.setData(Qt.UserRole, nombre)
+        item_nombre.setToolTip(tooltip_producto)
+        if texto_completo:
+            item_nombre.setForeground(QColor("#c0392b"))
         self.tabla.setItem(row, 2, item_nombre)
         item_precio = QTableWidgetItem(f"{precio_unitario:.2f}")
         item_precio.setTextAlignment(Qt.AlignCenter)
+        item_precio.setToolTip(tooltip_precio)
         self.tabla.setItem(row, 3, item_precio)
         total = cantidad * precio_unitario
         item_total = QTableWidgetItem(f"{total:.2f}")
         item_total.setTextAlignment(Qt.AlignCenter)
+        item_total.setToolTip(tooltip_subtotal)
         self.tabla.setItem(row, 4, item_total)
+        btn_container = QWidget()
+        btn_container.setStyleSheet("background: transparent;")
+        btn_layout = QVBoxLayout(btn_container)
+        btn_layout.setContentsMargins(0, 0, 0, 0)
+        btn_layout.setSpacing(0)
         btn = QPushButton("🗑️")
-        btn.setFixedSize(30, 30) 
-        btn.setStyleSheet("border: none; padding: 0px; margin-left: -20px; background-color: transparent; font-size: 16px; margin-top:-10px;")
+        btn.setFixedSize(90, 30)
+        btn.setStyleSheet("""
+            QPushButton { background-color: #e74c3c; color: white; border: none; border-radius: 6px; font-size: 14px; font-weight: bold; min-width: 90px; margin: 0px; padding: 0px; }
+            QPushButton:hover { background-color: #c0392b; }
+            QPushButton:pressed { background-color: #a93226; }
+        """)
+        btn.setCursor(Qt.PointingHandCursor)
+        btn.setToolTip("Eliminar producto")
         btn.clicked.connect(lambda _, r=row: self.eliminarFila(r))
-        self.tabla.setCellWidget(row, 5, btn)
+        btn_layout.addWidget(btn, 0, Qt.AlignCenter)
+        self.tabla.setCellWidget(row, 5, btn_container)
+        self.exclusiones_por_fila[row] = exclusiones
+        self.extras_por_fila[row] = extras
+        self.tabla.setRowHeight(row, 60 if texto_completo else 50)
+        self.tabla.horizontalHeader().setSectionResizeMode(5, QHeaderView.Fixed)
+        self.tabla.setColumnWidth(5, 110)
         self.recalcularTotal()
         self.conn.close()
-    
 
     def recalcularTotal(self):
         totalVenta = 0.0
         for i in range(self.tabla.rowCount()):
-            totalVenta += float(self.tabla.item(i,4).text())
+            totalVenta += float(self.tabla.item(i, 4).text())
         self.totalVenta.setText(f"{totalVenta:.2f} Bs")
-    
 
     def eliminarFila(self, row):
         if self.verificarBloqueo("eliminar productos"):
             return
         self.tabla.removeRow(row)
+        nuevas_exclusiones = {}
+        for idx, excl in self.exclusiones_por_fila.items():
+            if idx < row:
+                nuevas_exclusiones[idx] = excl
+            elif idx > row:
+                nuevas_exclusiones[idx - 1] = excl
+        self.exclusiones_por_fila = nuevas_exclusiones
+        nuevos_extras = {}
+        for idx, extra in self.extras_por_fila.items():
+            if idx < row:
+                nuevos_extras[idx] = extra
+            elif idx > row:
+                nuevos_extras[idx - 1] = extra
+        self.extras_por_fila = nuevos_extras
+        if hasattr(self, 'exclusiones_promo_por_fila'):
+            nuevas_exclusiones_promo = {}
+            for idx, excl in self.exclusiones_promo_por_fila.items():
+                if idx < row:
+                    nuevas_exclusiones_promo[idx] = excl
+                elif idx > row:
+                    nuevas_exclusiones_promo[idx - 1] = excl
+            self.exclusiones_promo_por_fila = nuevas_exclusiones_promo
         for i in range(self.tabla.rowCount()):
-            btn = self.tabla.cellWidget(i, 5)
-            if btn is None:
+            btn_container = self.tabla.cellWidget(i, 5)
+            if btn_container is None:
                 continue
-            try:
-                btn.clicked.disconnect()
-            except Exception:
-                pass
-            btn.clicked.connect(lambda _, r=i: self.eliminarFila(r))
+            btn_layout = btn_container.layout()
+            if btn_layout and btn_layout.count() > 0:
+                btn = btn_layout.itemAt(0).widget()
+                if btn and isinstance(btn, QPushButton):
+                    try:
+                        btn.clicked.disconnect()
+                    except Exception:
+                        pass
+                    btn.clicked.connect(lambda _, r=i: self.eliminarFila(r))
         self.recalcularTotal()
-    
+
+    def mostrarDetalleFilaPedido(self, row, column):
+        if column != 2:
+            return
+        item_nombre = self.tabla.item(row, 2)
+        if item_nombre is None:
+            return
+        nombre = item_nombre.data(Qt.UserRole) or item_nombre.text().split("\n")[0]
+        item_tipo = self.tabla.item(row, 1)
+        item_cantidad = self.tabla.item(row, 0)
+        item_precio = self.tabla.item(row, 3)
+        item_subtotal = self.tabla.item(row, 4)
+        if not (item_tipo and item_cantidad and item_precio and item_subtotal):
+            return
+        tipo = item_tipo.text()
+        cantidad = item_cantidad.text()
+        precio_unitario = item_precio.text()
+        subtotal = item_subtotal.text()
+
+        es_promo = hasattr(self, 'exclusiones_promo_por_fila') and row in self.exclusiones_promo_por_fila
+
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Detalle del producto")
+        dialog.setMinimumWidth(440)
+        dialog.setMaximumWidth(560)
+        dialog.setStyleSheet("""
+            QDialog { background-color: white; font-family: 'Segoe UI', Arial, sans-serif; }
+            QLabel { color: #2c3e50; font-size: 14px; background: transparent; }
+        """)
+        layout = QVBoxLayout(dialog)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
+
+        header = QWidget()
+        header.setStyleSheet("QWidget { background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #3498db, stop:1 #2980b9); }")
+        header_layout = QVBoxLayout(header)
+        header_layout.setContentsMargins(24, 20, 24, 20)
+        titulo = QLabel(nombre)
+        titulo.setStyleSheet("QLabel { color: white; font-size: 19px; font-weight: bold; background: transparent; }")
+        titulo.setAlignment(Qt.AlignCenter)
+        titulo.setWordWrap(True)
+        header_layout.addWidget(titulo)
+        subtitulo = QLabel("Promoción" if es_promo else "Producto")
+        subtitulo.setStyleSheet("QLabel { color: rgba(255,255,255,0.9); font-size: 13px; font-weight: 500; background: transparent; }")
+        subtitulo.setAlignment(Qt.AlignCenter)
+        header_layout.addWidget(subtitulo)
+        layout.addWidget(header)
+
+        cuerpo = QWidget()
+        cuerpo_layout = QVBoxLayout(cuerpo)
+        cuerpo_layout.setContentsMargins(24, 20, 24, 20)
+        cuerpo_layout.setSpacing(10)
+
+        def fila_info(etiqueta, valor):
+            w = QWidget()
+            l = QHBoxLayout(w)
+            l.setContentsMargins(0, 0, 0, 0)
+            lbl1 = QLabel(f"<b>{etiqueta}:</b>")
+            lbl1.setStyleSheet("font-size: 14px;")
+            lbl2 = QLabel(str(valor))
+            lbl2.setStyleSheet("font-size: 14px;")
+            lbl2.setAlignment(Qt.AlignRight)
+            l.addWidget(lbl1)
+            l.addStretch()
+            l.addWidget(lbl2)
+            return w
+
+        cuerpo_layout.addWidget(fila_info("Cantidad", cantidad))
+        cuerpo_layout.addWidget(fila_info("Tipo de consumo", tipo))
+        cuerpo_layout.addWidget(fila_info("Precio unitario", f"{precio_unitario} Bs"))
+        cuerpo_layout.addWidget(fila_info("Subtotal", f"{subtotal} Bs"))
+
+        separador = QFrame()
+        separador.setFrameShape(QFrame.HLine)
+        separador.setStyleSheet("background-color: #e2e8f0; margin-top: 4px; margin-bottom: 4px;")
+        cuerpo_layout.addWidget(separador)
+
+        def bloque_personalizacion(titulo_texto, texto, color_fondo, color_texto, color_borde):
+            titulo_lbl = QLabel(titulo_texto)
+            titulo_lbl.setStyleSheet(f"font-weight: bold; color: {color_texto}; font-size: 14px; margin-top: 4px;")
+            cuerpo_layout.addWidget(titulo_lbl)
+            contenido_lbl = QLabel(texto)
+            contenido_lbl.setWordWrap(True)
+            contenido_lbl.setStyleSheet(f"""
+                color: {color_texto}; font-size: 14px; font-weight: 500;
+                padding: 8px 12px; background-color: {color_fondo};
+                border-radius: 6px; border-left: 4px solid {color_borde};
+            """)
+            cuerpo_layout.addWidget(contenido_lbl)
+
+        if es_promo:
+            datos_promo = self.exclusiones_promo_por_fila.get(row, {})
+            productos_promo_lista = datos_promo.get('productos_promo', [])
+            excl_por_producto = datos_promo.get('exclusiones', {})
+            extras_por_producto = datos_promo.get('extras', {})
+            cantidad_combos = datos_promo.get('cantidad_promociones', 1)
+
+            nombres_por_id = {str(p['idProd']): p['nombre'] for p in productos_promo_lista}
+            unidades_por_id = {str(p['idProd']): p.get('cantidad', 1) * cantidad_combos for p in productos_promo_lista}
+
+            ids_con_personalizacion = sorted(
+                set(excl_por_producto.keys()) | set(extras_por_producto.keys()),
+                key=lambda x: nombres_por_id.get(x, x)
+            )
+
+            if not ids_con_personalizacion:
+                lbl_vacio = QLabel("Sin personalización — todos los productos de la promoción están con sus ingredientes originales")
+                lbl_vacio.setWordWrap(True)
+                lbl_vacio.setStyleSheet("""
+                    color: #27ae60; font-size: 14px; font-weight: 500; padding: 8px 12px;
+                    background-color: #eafaf1; border-radius: 6px; border-left: 4px solid #2ecc71;
+                """)
+                cuerpo_layout.addWidget(lbl_vacio)
+            else:
+                titulo_seccion = QLabel("Detalle por producto:")
+                titulo_seccion.setStyleSheet("font-weight: bold; font-size: 14px; color: #2c3e50; margin-top: 4px;")
+                cuerpo_layout.addWidget(titulo_seccion)
+
+                for id_prod_str in ids_con_personalizacion:
+                    nombre_prod = nombres_por_id.get(id_prod_str, f"Producto {id_prod_str}")
+                    total_unidades_prod = unidades_por_id.get(id_prod_str, "?")
+
+                    prod_frame = QFrame()
+                    prod_frame.setStyleSheet("""
+                        QFrame { background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; }
+                    """)
+                    prod_layout = QVBoxLayout(prod_frame)
+                    prod_layout.setContentsMargins(12, 10, 12, 10)
+                    prod_layout.setSpacing(6)
+
+                    prod_titulo = QLabel(f"🍔 {nombre_prod}  ({total_unidades_prod} unidad(es) en total)")
+                    prod_titulo.setStyleSheet("font-weight: bold; font-size: 15px; color: #2c3e50; background: transparent; border: none;")
+                    prod_titulo.setWordWrap(True)
+                    prod_layout.addWidget(prod_titulo)
+
+                    excl_unidades = {u['unidad']: u['exclusiones'] for u in excl_por_producto.get(id_prod_str, [])}
+                    extra_unidades = {u['unidad']: u['extras'] for u in extras_por_producto.get(id_prod_str, [])}
+                    todas_unidades_idx = sorted(set(excl_unidades.keys()) | set(extra_unidades.keys()))
+
+                    for idx_u in todas_unidades_idx:
+                        lbl_unidad = QLabel(f"Unidad #{idx_u + 1}")
+                        lbl_unidad.setStyleSheet("font-weight: 600; font-size: 13px; color: #7f8c8d; background: transparent; border: none; margin-top: 4px;")
+                        prod_layout.addWidget(lbl_unidad)
+
+                        if excl_unidades.get(idx_u):
+                            nombres_excl = ", ".join(e['nomIng'] for e in excl_unidades[idx_u])
+                            lbl_e = QLabel(f"✗  Sin: {nombres_excl}")
+                            lbl_e.setWordWrap(True)
+                            lbl_e.setStyleSheet("""
+                                color: #c0392b; font-size: 14px; font-weight: 600; background: transparent;
+                                border: none; padding-left: 12px;
+                            """)
+                            prod_layout.addWidget(lbl_e)
+
+                        if extra_unidades.get(idx_u):
+                            nombres_extra = ", ".join(f"+{e['cantidadExtra']} {e['nomIng']}" for e in extra_unidades[idx_u])
+                            lbl_x = QLabel(f"➕  Extra: {nombres_extra}")
+                            lbl_x.setWordWrap(True)
+                            lbl_x.setStyleSheet("""
+                                color: #27ae60; font-size: 14px; font-weight: 600; background: transparent;
+                                border: none; padding-left: 12px;
+                            """)
+                            prod_layout.addWidget(lbl_x)
+
+                    if isinstance(total_unidades_prod, int):
+                        normales_prod = total_unidades_prod - len(todas_unidades_idx)
+                        if normales_prod > 0:
+                            lbl_normal = QLabel(f"{normales_prod} unidad(es) — sin ninguna personalización")
+                            lbl_normal.setWordWrap(True)
+                            lbl_normal.setStyleSheet("""
+                                color: #7f8c8d; font-size: 13px; font-style: italic; background: transparent;
+                                border: none; padding-left: 12px; margin-top: 4px;
+                            """)
+                            prod_layout.addWidget(lbl_normal)
+
+                    cuerpo_layout.addWidget(prod_frame)
+
+                unidades_sin_cambios = [
+                    p for p in productos_promo_lista
+                    if str(p['idProd']) not in ids_con_personalizacion
+                ]
+                if unidades_sin_cambios:
+                    nombres_sin_cambios = ", ".join(p['nombre'] for p in unidades_sin_cambios)
+                    lbl_resto = QLabel(f"El resto de productos de la promoción ({nombres_sin_cambios}) no tienen ninguna personalización.")
+                    lbl_resto.setWordWrap(True)
+                    lbl_resto.setStyleSheet("color: #7f8c8d; font-size: 13px; font-style: italic; margin-top: 6px;")
+                    cuerpo_layout.addWidget(lbl_resto)
+        else:
+            excl = self.exclusiones_por_fila.get(row, [])
+            extras = self.extras_por_fila.get(row, [])
+            texto_excl = ", ".join(e['nomIng'] for e in excl) if excl else ""
+            texto_extra = ", ".join(f"+{e['cantidadExtra']} {e['nomIng']}" for e in extras) if extras else ""
+
+            if not texto_excl and not texto_extra:
+                lbl_vacio = QLabel("Sin personalización — todos los ingredientes originales")
+                lbl_vacio.setWordWrap(True)
+                lbl_vacio.setStyleSheet("""
+                    color: #27ae60; font-size: 14px; font-weight: 500; padding: 8px 12px;
+                    background-color: #eafaf1; border-radius: 6px; border-left: 4px solid #2ecc71;
+                """)
+                cuerpo_layout.addWidget(lbl_vacio)
+            else:
+                if texto_excl:
+                    bloque_personalizacion(f"Ingredientes excluidos (aplica a las {cantidad} unidad(es)):", texto_excl, "#fdecea", "#c0392b", "#e74c3c")
+                if texto_extra:
+                    bloque_personalizacion(f"Ingredientes extra (aplica a las {cantidad} unidad(es)):", texto_extra, "#eafaf1", "#27ae60", "#2ecc71")
+
+        scroll_cuerpo = QScrollArea()
+        scroll_cuerpo.setWidgetResizable(True)
+        scroll_cuerpo.setMaximumHeight(420)
+        scroll_cuerpo.setStyleSheet("QScrollArea { border: none; background: transparent; }")
+        scroll_cuerpo.setWidget(cuerpo)
+        layout.addWidget(scroll_cuerpo)
+
+        footer = QWidget()
+        footer.setStyleSheet("QWidget { background-color: #f8f9fa; border-top: 1px solid #e2e8f0; }")
+        footer_layout = QHBoxLayout(footer)
+        footer_layout.setContentsMargins(20, 14, 20, 14)
+        btn_cerrar = QPushButton("Cerrar")
+        btn_cerrar.setCursor(Qt.PointingHandCursor)
+        btn_cerrar.setStyleSheet("""
+            QPushButton { background-color: #3498db; color: white; border: none; border-radius: 8px;
+                font-size: 14px; font-weight: bold; padding: 10px 20px; min-width: 100px; }
+            QPushButton:hover { background-color: #2980b9; }
+        """)
+        btn_cerrar.clicked.connect(dialog.accept)
+        footer_layout.addStretch()
+        footer_layout.addWidget(btn_cerrar)
+        layout.addWidget(footer)
+
+        dialog.exec_()
+
+    def _nombreRealDeFila(self, fila):
+        item = self.tabla.item(fila, 2)
+        if item:
+            dato = item.data(Qt.UserRole)
+            return dato if dato else item.text().split("\n")[0]
+        return ""
 
     def mostrarEmpleados(self):
+        if self.verificarBloqueo("ver empleados"):
+            return
         self.conn = sqlite3.connect(DB_PATH)
         self.cursor = self.conn.cursor()
         self.scrollCat.setVisible(False)
@@ -1840,14 +3419,14 @@ class RegistrarPedidos(QWidget):
         self.layoutProductos.setRowStretch(row + 1, 1)
         self.conn.close()
     
-
     def seleccionarEmpleado(self, alias):
         if self.verificarBloqueo("cambiar empleado"):
             return
         self.campoEncargado.setText(alias)
 
-
     def mostrarMesas(self):
+        if self.verificarBloqueo("ver mesas"):
+            return
         self.conn = sqlite3.connect(DB_PATH)
         self.cursor = self.conn.cursor()
         self.scrollCat.setVisible(True)
@@ -1863,7 +3442,7 @@ class RegistrarPedidos(QWidget):
         for idx, (idSec, nombre) in enumerate(secciones):
             color = colores[idx % len(colores)]
             btn = QPushButton(nombre.upper())
-            btn.setMinimumSize(180, 80) 
+            btn.setMinimumSize(180, 80)
             btn.setMaximumSize(180, 80)
             btn.setCursor(Qt.PointingHandCursor)
             btn.setStyleSheet(f"""
@@ -1879,12 +3458,9 @@ class RegistrarPedidos(QWidget):
                 }}
                 QPushButton:hover {{
                     background-color: {self._darken_color(color, 0.2)};
-                    transform: scale(1.02);
                 }}
                 QPushButton:pressed {{
                     background-color: {self._darken_color(color, 0.3)};
-                    padding-top: 12px;
-                    padding-bottom: 8px;
                 }}
             """)
             shadow = QGraphicsDropShadowEffect()
@@ -1900,14 +3476,14 @@ class RegistrarPedidos(QWidget):
         self._clear_layout(self.layoutSubcategorias)
         self.conn.close()
 
-
     def _darken_color(self, hex_color, factor):
-        from PyQt5.QtGui import QColor
         color = QColor(hex_color)
         return color.darker(int(100 + factor * 100)).name()
 
-
     def cargarSecciones(self, idSeccion):
+        if self.verificarBloqueo("cargar secciones"):
+            return
+        self.idSeccionActual = idSeccion
         self.conn = sqlite3.connect(DB_PATH)
         self.cursor = self.conn.cursor()
         self._clear_grid(self.layoutProductos)
@@ -1926,19 +3502,21 @@ class RegistrarPedidos(QWidget):
             else:
                 pix = QPixmap(img_path)
             btn = QPushButton()
-            btn.setFixedSize(150, 200)
+            btn.setFixedSize(150, 230)
             btn.setStyleSheet("""
-                QPushButton { 
-                        background: #ffffff; 
-                        border: 1px solid #e2e8f0; 
-                        border-radius: 10px; 
-                        text-align: center; }
-                QPushButton:hover { 
-                        border: 1px solid #cbd5e1; 
-                        background: #f8fafc; 
-                    }
+                QPushButton {
+                    background: #ffffff;
+                    border: 1px solid #e2e8f0;
+                    border-radius: 10px;
+                    text-align: center;
+                }
+                QPushButton:hover {
+                    border: 1px solid #cbd5e1;
+                    background: #f8fafc;
+                }
             """)
             vbox = QVBoxLayout(btn)
+            vbox.setSpacing(2)
             labImg = QLabel()
             labImg.setPixmap(pix.scaled(100, 100, Qt.KeepAspectRatio, Qt.SmoothTransformation))
             labImg.setAlignment(Qt.AlignCenter)
@@ -1947,30 +3525,51 @@ class RegistrarPedidos(QWidget):
             label.setAlignment(Qt.AlignCenter)
             vbox.addWidget(label)
             if not disponible:
-                self.cursor.execute("""SELECT E.aliasEmp 
-                                    FROM DetallesVenta DV 
-                                    INNER JOIN Empleado E ON DV.idMeseroActual=E.codEmp  
+                self.cursor.execute("""SELECT E.aliasEmp
+                                    FROM DetallesVenta DV
+                                    INNER JOIN Empleado E ON DV.idMeseroActual=E.codEmp
                                     INNER JOIN Venta V ON DV.fechaRegVenta=V.fechaReg
-                                    WHERE idMesa=? AND idSeccion=? 
-                                    ORDER BY DV.fechaRegDetalleVenta 
-                                    DESC LIMIT 1""",(idMesa,idSeccion))
-                meseroAsignado=self.cursor.fetchone()[0]
-                label2=QLabel(meseroAsignado)
-                label2.setStyleSheet("QLabel {color: #2c3e50; font-size: 14px; font-weight: 500; }")
-                botonPedidosTiempo=QPushButton("Ver Mas")
-                botonPedidosTiempo.setFixedSize(20, 30)
-                botonPedidosTiempo.setStyleSheet("""QPushButton{
-                    color:white;
-                    background:green;
-                    font-size:12px;
-                    padding:0px;
-                   margin:0px;
-                   border-radius:15px;
-                    }""")
-                botonPedidosTiempo.setCursor(Qt.PointingHandCursor)
-                botonPedidosTiempo.clicked.connect(lambda  checked, idSecc=idSeccion, m=idMesa:self.mostrarDetallesVentaMesa(m,idSecc))
-                vbox.addWidget(label2,alignment=Qt.AlignCenter)
-                vbox.addWidget(botonPedidosTiempo,alignment=Qt.AlignCenter)
+                                    WHERE idMesa=? AND idSeccion=?
+                                    ORDER BY DV.fechaRegDetalleVenta
+                                    DESC LIMIT 1""", (idMesa, idSeccion))
+                resultado_mesero = self.cursor.fetchone()
+                meseroAsignado = resultado_mesero[0] if resultado_mesero else "Sin asignar"
+                label2 = QLabel(meseroAsignado)
+                label2.setStyleSheet("QLabel {color: #2c3e50; font-size: 12px; font-weight: 500; }")
+                label2.setAlignment(Qt.AlignCenter)
+                vbox.addWidget(label2)
+                botonPedidos = QPushButton("Ver Pedidos")
+                botonPedidos.setFixedHeight(25)
+                botonPedidos.setStyleSheet("""
+                    QPushButton{
+                        background-color: #3498db;
+                        color: white;
+                        border-radius: 4px;
+                        padding: 3px;
+                        font-size: 10px;
+                        font-weight: bold;
+                    }
+                    QPushButton:hover{ background-color: #2980b9; }
+                """)
+                botonPedidos.setCursor(Qt.PointingHandCursor)
+                botonPedidos.clicked.connect(lambda checked, idSecc=idSeccion, m=idMesa: self.mostrarDetallesVentaMesa(m, idSecc))
+                vbox.addWidget(botonPedidos)
+                botonCobrar = QPushButton("Cobrar")
+                botonCobrar.setFixedHeight(25)
+                botonCobrar.setStyleSheet("""
+                    QPushButton{
+                        background-color: #2ecc71;
+                        color: white;
+                        border-radius: 4px;
+                        padding: 3px;
+                        font-size: 10px;
+                        font-weight: bold;
+                    }
+                    QPushButton:hover{ background-color: #27ae60; }
+                """)
+                botonCobrar.setCursor(Qt.PointingHandCursor)
+                botonCobrar.clicked.connect(lambda checked, idSecc=idSeccion, m=idMesa: self.cobrarMesa(m, idSecc))
+                vbox.addWidget(botonCobrar)
             btn.clicked.connect(lambda checked, idSecc=idSeccion, m=idMesa: self.seleccionarMesa(m, idSecc))
             self.layoutProductos.addWidget(btn, row, col)
             col += 1
@@ -1981,44 +3580,73 @@ class RegistrarPedidos(QWidget):
             self.layoutProductos.addWidget(QLabel("No hay mesas disponibles"), 0, 0, 1, max_cols)
         self.layoutProductos.setRowStretch(row + 1, 1)
         self.conn.close()
-        
-        
+
+    def seleccionarMesa(self, idMesa, idSeccion):
+        if self.verificarBloqueo("cambiar mesa"):
+            return
+        self.conn = sqlite3.connect(DB_PATH)
+        self.cursor = self.conn.cursor()
+        self.campoMesa.setText(str(idMesa))
+        self.cursor.execute("""SELECT nombSeccion FROM Seccion WHERE idSeccion=?""", (idSeccion,))
+        resultados = self.cursor.fetchone()
+        self.campoSeccion.setText(str(resultados[0]))
+        self.conn.close()
+
     def mostrarDetallesVentaMesa(self, numMesa, idSeccion):
-        pantallaVentasMesa = QDialog(self)
-        pantallaVentasMesa.setFixedSize(1100, 700)
-        pantallaVentasMesa.setWindowTitle(f"Detalles de Pedidos - Mesa {numMesa}")
-        pantallaVentasMesa.setStyleSheet("""
-            QDialog {
-                background-color: #f5f7fa;
-                font-family: 'Segoe UI', Arial, sans-serif;
-            }
-        """)
-        layoutPantallaMesa = QVBoxLayout()
-        layoutPantallaMesa.setContentsMargins(20, 20, 20, 20)
-        layoutPantallaMesa.setSpacing(15)
-        pantallaVentasMesa.setLayout(layoutPantallaMesa)
-        titulo = QLabel(f"📋 Pedidos Pendientes - Mesa {numMesa}")
-        titulo.setStyleSheet("""
+        self.fecha_actual_dialogo = None
+        self.numMesa_actual = numMesa
+        self.idSeccion_actual = idSeccion
+        self.fila_expandida = -1
+        if self.dialogo_detalles is not None:
+            try:
+                self.dialogo_detalles.close()
+                self.dialogo_detalles.deleteLater()
+            except:
+                pass
+            self.dialogo_detalles = None
+        if self.timer_unico is not None:
+            try:
+                self.timer_unico.stop()
+                self.timer_unico.deleteLater()
+            except:
+                pass
+            self.timer_unico = None
+        
+        self.dialogo_detalles = QDialog(self)
+        self.dialogo_detalles.setWindowTitle(f"Pedidos Pendientes - Mesa {numMesa}")
+        self.dialogo_detalles.setFixedSize(1400, 800)
+        layoutPrincipal = QVBoxLayout()
+        self.dialogo_detalles.setLayout(layoutPrincipal)
+        
+        header = QLabel(f"PEDIDOS PENDIENTES - MESA {numMesa}")
+        header.setStyleSheet("""
             QLabel {
-                color: #2c3e50;
-                font-size: 22px;
+                font-size: 24px;
                 font-weight: bold;
-                padding: 10px;
-                background-color: #ffffff;
-                border-radius: 8px;
-                border: 2px solid #e2e8f0;
+                color: white;
+                padding: 15px;
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                    stop:0 #3498db, stop:1 #2980b9);
+                border-radius: 10px;
                 text-align: center;
             }
         """)
-        layoutPantallaMesa.addWidget(titulo)
-        tablaPedidosPendientes = QTableWidget()
-        tablaPedidosPendientes.setColumnCount(4)
-        tablaPedidosPendientes.setHorizontalHeaderLabels(["📅 Fecha", "🕒 Hora de Registro", "⏱️ Tiempo Transcurrido", "📦 Detalles"])
-        tablaPedidosPendientes.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
-        tablaPedidosPendientes.setSelectionMode(QTableWidget.NoSelection)
-        tablaPedidosPendientes.setFocusPolicy(Qt.NoFocus)
-        tablaPedidosPendientes.setEditTriggers(QTableWidget.NoEditTriggers)
-        tablaPedidosPendientes.setStyleSheet("""
+        header.setAlignment(Qt.AlignCenter)
+        layoutPrincipal.addWidget(header)
+        
+        self.tabla_pedidos_pendientes = QTableWidget()
+        self.tabla_pedidos_pendientes.setColumnCount(5)
+        self.tabla_pedidos_pendientes.setHorizontalHeaderLabels(["Fecha", "Hora", "Tiempo", "Detalles", "Accion"])
+        self.tabla_pedidos_pendientes.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.tabla_pedidos_pendientes.horizontalHeader().setSectionResizeMode(3, QHeaderView.Stretch)
+        self.tabla_pedidos_pendientes.verticalHeader().setVisible(True)
+        self.tabla_pedidos_pendientes.verticalHeader().setDefaultSectionSize(70)
+        self.tabla_pedidos_pendientes.verticalHeader().setMinimumSectionSize(60)
+        self.tabla_pedidos_pendientes.setSelectionMode(QTableWidget.NoSelection)
+        self.tabla_pedidos_pendientes.setFocusPolicy(Qt.NoFocus)
+        self.tabla_pedidos_pendientes.setEditTriggers(QTableWidget.NoEditTriggers)
+        self.tabla_pedidos_pendientes.setAlternatingRowColors(True)
+        self.tabla_pedidos_pendientes.setStyleSheet("""
             QTableWidget {
                 background-color: #ffffff;
                 border: 2px solid #e2e8f0;
@@ -2026,13 +3654,8 @@ class RegistrarPedidos(QWidget):
                 gridline-color: #e2e8f0;
                 font-size: 14px;
             }
-            QTableWidget::item {
-                padding: 12px 8px;
-                border-bottom: 1px solid #f1f5f9;
-            }
-            QTableWidget::item:hover {
-                background-color: #ffffff;
-            }
+            QTableWidget::item { padding: 8px 8px; border-bottom: 1px solid #f1f5f9; }
+            QTableWidget::item:hover { background-color: #f8fafc; }
             QHeaderView::section {
                 background-color: #3498db;
                 color: white;
@@ -2040,114 +3663,66 @@ class RegistrarPedidos(QWidget):
                 border: none;
                 font-weight: bold;
                 font-size: 15px;
-                border-radius: 0px;
-                margin: 0px;
             }
-            QHeaderView::section:first {
-                border-top-left-radius: 8px;
-            }
-            QHeaderView::section:last {
-                border-top-right-radius: 8px;
-            }
-            QScrollBar:vertical {
-                border: none;
-                background: #f8fafc;
-                width: 14px;
-                border-radius: 7px;
-            }
-            QScrollBar::handle:vertical {
-                background: #cbd5e1;
-                min-height: 30px;
-                border-radius: 7px;
-                margin: 2px;
-            }
-            QScrollBar::handle:vertical:hover {
-                background: #94a3b8;
-            }
-            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
-                height: 0px;
-            }
+            QScrollBar:vertical { border: none; background: #f8fafc; width: 14px; border-radius: 7px; }
+            QScrollBar::handle:vertical { background: #cbd5e1; min-height: 30px; border-radius: 7px; margin: 2px; }
+            QScrollBar::handle:vertical:hover { background: #94a3b8; }
         """)
-        layoutPantallaMesa.addWidget(tablaPedidosPendientes)
-        self.conn = sqlite3.connect(DB_PATH)
-        self.cursor = self.conn.cursor()
-        self.cursor.execute("""SELECT fechaReg, numVenta
-                               FROM Venta V
-                               WHERE idMesa=? AND idSeccion=?
-                               ORDER BY fechaReg DESC 
-                               LIMIT 1""", (numMesa, idSeccion))
-        resultados = self.cursor.fetchone()
-        if not resultados:
-            QMessageBox.information(self, "Información", "No hay pedidos pendientes para esta mesa.")
-            self.conn.close()
+        layoutPrincipal.addWidget(self.tabla_pedidos_pendientes)
+        
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT fechaReg, numVenta
+            FROM Venta
+            WHERE idMesa = ? AND idSeccion = ?
+            ORDER BY fechaReg DESC
+            LIMIT 1
+        """, (numMesa, idSeccion))
+        venta = cursor.fetchone()
+        if not venta:
+            QMessageBox.information(self, "Informacion", "No hay pedidos para esta mesa.")
+            conn.close()
             return
-        fechaRegVenta, numVenta = resultados
-        self.cursor.execute("""SELECT DISTINCT fechaRegDetalleVenta
-                               FROM DetallesVenta
-                               WHERE fechaRegVenta=? AND estadoDetalleVenta='Preparacion' """, (fechaRegVenta,))
-        fechaDetallesVenta = self.cursor.fetchall()
-        fechas_por_fila = {}
-        for fecha in fechaDetallesVenta:
-            self.cursor.execute("""SELECT nomProd, cantidadProdDet, tipoConsumo
-                                   FROM DetallesVenta Dt
-                                   INNER JOIN Producto P ON P.idProd=Dt.idProd
-                                   WHERE Dt.fechaRegDetalleVenta=?""", (fecha[0],))
-            productos = self.cursor.fetchall()
-            self.cursor.execute("""SELECT nomProm, cantidadProdDet, tipoConsumo
-                                   FROM DetallesVenta Dt
-                                   INNER JOIN Promocion P ON P.idProm=Dt.idProm
-                                   WHERE Dt.fechaRegDetalleVenta=?""", (fecha[0],))
-            promociones = self.cursor.fetchall()
-            detalles = ""
-            for i in range(len(productos)):
-                producto = productos[i]
-                if producto[2] == "Local":
-                    icono = "🏠"
-                    etiqueta = "[Local]"
-                else:
-                    icono = "🥡"
-                    etiqueta = "[Para llevar]"
-                
-                detalles += f"{icono} {producto[1]} {producto[0]} {etiqueta}"
-                if i < len(productos) - 1:
-                    detalles += "\n"
-            if productos and promociones:
-                detalles += "\n"
-            for i in range(len(promociones)):
-                promocion = promociones[i]
-                if promocion[2] == "Local":
-                    icono = "🏠🎁"
-                    etiqueta = "[Local]"
-                else:
-                    icono = "🥡🎁"
-                    etiqueta = "[Para llevar]"
-                
-                detalles += f"{icono} {promocion[1]} {promocion[0]} {etiqueta}"
-                if i < len(promociones) - 1:
-                    detalles += "\n"
-            fila = tablaPedidosPendientes.rowCount()
-            tablaPedidosPendientes.setRowCount(fila + 1)
-            fechaCompleta = datetime.strptime(fecha[0], "%Y-%m-%d %H:%M:%S.%f")
-            fechas_por_fila[fila] = fechaCompleta
+        
+        fechaRegVenta, numVenta = venta
+        
+        cursor.execute("""
+            SELECT DISTINCT fechaRegDetalleVenta
+            FROM DetallesVenta
+            WHERE numVenta = ? AND fechaRegVenta = ? AND estadoDetalleVenta = 'Preparacion'
+            ORDER BY fechaRegDetalleVenta DESC
+        """, (numVenta, fechaRegVenta))
+        fechas_detalles = cursor.fetchall()
+        
+        self.fechas_por_fila = {}
+        for fecha_tuple in fechas_detalles:
+            fecha_detalle = fecha_tuple[0]
+            fila = self.tabla_pedidos_pendientes.rowCount()
+            self.tabla_pedidos_pendientes.setRowCount(fila + 1)
+            fechaCompleta = datetime.strptime(fecha_detalle, "%Y-%m-%d %H:%M:%S.%f")
+            self.fechas_por_fila[fila] = fechaCompleta
             fechaMostrada = fechaCompleta.strftime("%d/%m/%Y")
             itemFecha = QTableWidgetItem(fechaMostrada)
             itemFecha.setTextAlignment(Qt.AlignCenter)
-            itemFecha.setFont(QFont("Segoe UI", 11))
+            itemFecha.setFont(QFont("Segoe UI", 12))
             itemFecha.setFlags(itemFecha.flags() & ~Qt.ItemIsSelectable)
-            tablaPedidosPendientes.setItem(fila, 0, itemFecha)
+            self.tabla_pedidos_pendientes.setItem(fila, 0, itemFecha)
+            
             hora = fechaCompleta.strftime("%I:%M %p")
             itemHora = QTableWidgetItem(hora)
             itemHora.setTextAlignment(Qt.AlignCenter)
-            itemHora.setFont(QFont("Segoe UI", 11))
+            itemHora.setFont(QFont("Segoe UI", 12))
             itemHora.setFlags(itemHora.flags() & ~Qt.ItemIsSelectable)
-            tablaPedidosPendientes.setItem(fila, 1, itemHora)
+            self.tabla_pedidos_pendientes.setItem(fila, 1, itemHora)
+            
             fechaActual = datetime.now()
             diferencia = (fechaActual - fechaCompleta).total_seconds()
             minutos = int(diferencia // 60)
-            icono_tiempo = "🟢" if minutos < 10 else "🟡" if minutos < 20 else "🔴"
-            itemDiferencia = QTableWidgetItem(f"{icono_tiempo} Hace {minutos} minutos")
+            estado_tiempo = "Reciente" if minutos < 10 else "En espera" if minutos < 20 else "Urgente"
+            itemDiferencia = QTableWidgetItem(f"{estado_tiempo} - Hace {minutos} min")
             itemDiferencia.setTextAlignment(Qt.AlignCenter)
-            itemDiferencia.setFont(QFont("Segoe UI", 11, QFont.Bold))
+            itemDiferencia.setFont(QFont("Segoe UI", 12, QFont.Bold))
             itemDiferencia.setFlags(itemDiferencia.flags() & ~Qt.ItemIsSelectable)
             if minutos < 10:
                 itemDiferencia.setForeground(QColor("#27ae60"))
@@ -2158,92 +3733,237 @@ class RegistrarPedidos(QWidget):
             else:
                 itemDiferencia.setForeground(QColor("#e74c3c"))
                 itemDiferencia.setBackground(QColor("#fdedec"))
-            tablaPedidosPendientes.setItem(fila, 2, itemDiferencia)
-            itemDetalles = QTableWidgetItem(detalles)
-            itemDetalles.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
-            itemDetalles.setFlags(itemDetalles.flags() | Qt.TextWordWrap)
-            itemDetalles.setFlags(itemDetalles.flags() & ~Qt.ItemIsSelectable)
-            itemDetalles.setFont(QFont("Segoe UI", 11))
-            if productos or promociones:
-                tiene_para_llevar = any(item[2] == "Para llevar" for item in productos + promociones)
-                tiene_local = any(item[2] == "Local" for item in productos + promociones)
-                if tiene_para_llevar and tiene_local:
-                    itemDetalles.setBackground(QColor("#fef9e7"))
-                elif tiene_para_llevar:
-                    itemDetalles.setBackground(QColor("#fdedec"))
+            self.tabla_pedidos_pendientes.setItem(fila, 2, itemDiferencia)
+            
+            cursor.execute("""
+                SELECT
+                    Dt.idDetalleVenta,
+                    COALESCE(P.nomProd, Prom.nomProm) as nombre,
+                    Dt.cantidadProdDet,
+                    Dt.tipoConsumo,
+                    Dt.cantidadMarcado,
+                    CASE WHEN Dt.idProd IS NOT NULL THEN 'producto' ELSE 'promocion' END as tipo_producto,
+                    Dt.idProm
+                FROM DetallesVenta Dt
+                LEFT JOIN Producto P ON P.idProd = Dt.idProd
+                LEFT JOIN Promocion Prom ON Prom.idProm = Dt.idProm
+                WHERE Dt.fechaRegDetalleVenta = ?
+                ORDER BY Dt.tipoConsumo, nombre
+            """, (fecha_detalle,))
+            productos_detalle = cursor.fetchall()
+            
+            exclusiones_por_detalle = {}
+            for row_det in productos_detalle:
+                id_det = row_det[0]
+                cursor.execute("""
+                    SELECT nomIng FROM DetallesVentaExclusiones WHERE idDetalleVenta=?
+                """, (id_det,))
+                excls = [r[0] for r in cursor.fetchall()]
+                if excls:
+                    exclusiones_por_detalle[id_det] = excls
+            
+            container_widget = QWidget()
+            container_layout = QVBoxLayout(container_widget)
+            container_layout.setContentsMargins(8, 6, 8, 6)
+            container_layout.setSpacing(4)
+            
+            header_widget = QWidget()
+            header_layout = QHBoxLayout(header_widget)
+            header_layout.setContentsMargins(0, 0, 0, 0)
+            header_layout.setSpacing(8)
+            
+            preview_widget = QWidget()
+            preview_layout = QVBoxLayout(preview_widget)
+            preview_layout.setContentsMargins(0, 0, 0, 0)
+            preview_layout.setSpacing(2)
+            
+            tiene_local = False
+            tiene_llevar = False
+            productos_mostrados = []
+            
+            for id_det, nombre, cantidad, tipo, marcado, tipo_prod, id_prom in productos_detalle:
+                if tipo_prod == 'promocion':
+                    cursor.execute("""
+                        SELECT pp.idProd, p.nomProd, pp.cantidadProdProm
+                        FROM PromocionProd pp
+                        JOIN Producto p ON pp.idProd = p.idProd
+                        WHERE pp.idProm = ?
+                    """, (id_prom,))
+                    productos_promo = cursor.fetchall()
+                    
+                    for id_prod_p, nom_prod_p, cant_prod_p in productos_promo:
+                        cursor.execute("""
+                            SELECT COUNT(*) FROM DetallesVentaUnidades
+                            WHERE idDetalleVenta = ? AND idProd = ?
+                        """, (id_det, id_prod_p))
+                        total_unidades = cursor.fetchone()[0]
+                        cursor.execute("""
+                            SELECT COUNT(*) FROM DetallesVentaUnidades
+                            WHERE idDetalleVenta = ? AND idProd = ? AND marcado = 1
+                        """, (id_det, id_prod_p))
+                        marcadas_unidades = cursor.fetchone()[0]
+                        restante = total_unidades - marcadas_unidades
+                        
+                        if restante > 0:
+                            cursor.execute("""
+                                SELECT DISTINCT nomIng FROM DetallesVentaExclusionesPromo
+                                WHERE idDetalleVenta=? AND idProd=?
+                            """, (id_det, id_prod_p))
+                            excl_rows_promo = cursor.fetchall()
+                            excl_texto_promo = ("sin: " + ", ".join(sorted(r[0] for r in excl_rows_promo))) if excl_rows_promo else ""
+
+                            cursor.execute("""
+                                SELECT nomIng, cantidadExtra FROM DetallesVentaExtras
+                                WHERE idDetalleVenta=? AND idProd=?
+                            """, (id_det, id_prod_p))
+                            extra_rows_promo = cursor.fetchall()
+                            extras_texto_promo = ("extra: " + ", ".join(f"+{c} {n}" for n, c in extra_rows_promo)) if extra_rows_promo else ""
+
+                            personalizacion_promo = " | ".join(t for t in [excl_texto_promo, extras_texto_promo] if t)
+
+                            productos_mostrados.append({
+                                'nombre': nom_prod_p,
+                                'tipo': tipo,
+                                'restante': restante,
+                                'total': total_unidades,
+                                'marcado': marcadas_unidades,
+                                'personalizacion': personalizacion_promo
+                            })
+                            if tipo == "Local":
+                                tiene_local = True
+                            else:
+                                tiene_llevar = True
                 else:
-                    itemDetalles.setBackground(QColor("#e6f2ff"))
-            tablaPedidosPendientes.setItem(fila, 3, itemDetalles)
-            tablaPedidosPendientes.resizeRowToContents(fila)
-        self.conn.close()
-        if tablaPedidosPendientes.rowCount() == 0:
-            tablaPedidosPendientes.setRowCount(1)
+                    restante = cantidad - marcado
+                    if restante > 0:
+                        cursor.execute("SELECT nomIng FROM DetallesVentaExclusiones WHERE idDetalleVenta=?", (id_det,))
+                        excl_rows = cursor.fetchall()
+                        excl_texto_prod = ("sin: " + ", ".join(r[0] for r in excl_rows)) if excl_rows else ""
+                        extras_texto_prod = self._obtenerExtrasTextoPorDetalle(cursor, id_det)
+                        personalizacion = " | ".join(t for t in [excl_texto_prod, extras_texto_prod] if t)
+                        productos_mostrados.append({
+                            'nombre': nombre,
+                            'tipo': tipo,
+                            'restante': restante,
+                            'total': cantidad,
+                            'marcado': marcado,
+                            'personalizacion': personalizacion
+                        })
+                        if tipo == "Local":
+                            tiene_local = True
+                        else:
+                            tiene_llevar = True
+            
+            preview_text = ""
+            for i, prod in enumerate(productos_mostrados[:3]):
+                tipo_texto = "[L]" if prod['tipo'] == "Local" else "[P]"
+                preview_text += f"{tipo_texto} {prod['restante']}/{prod['total']} {prod['nombre'][:15]}  "
+            if len(productos_mostrados) > 3:
+                preview_text += f"... (+{len(productos_mostrados) - 3})"
+            
+            preview_label = QLabel(preview_text if preview_text else "Completado")
+            preview_label.setStyleSheet("font-size: 13px; color: #2c3e50; font-weight: 500; border: 1px solid #e2e8f0; border-radius: 6px; padding: 6px;")
+            preview_layout.addWidget(preview_label)
+            header_layout.addWidget(preview_widget)
+            header_layout.addStretch()
+            expand_icon = QLabel("v")
+            expand_icon.setStyleSheet("font-size: 16px; color: #7f8c8d; padding: 2px 8px;")
+            header_layout.addWidget(expand_icon)
+            container_layout.addWidget(header_widget)
+            
+            expandido_widget = QWidget()
+            expandido_widget.setVisible(False)
+            expandido_layout = QVBoxLayout(expandido_widget)
+            expandido_layout.setContentsMargins(12, 8, 8, 4)
+            expandido_layout.setSpacing(6)
+            
+            for prod in productos_mostrados:
+                if prod['restante'] > 0:
+                    tipo_texto = "[Local]" if prod['tipo'] == "Local" else "[Llevar]"
+                    item_widget = QWidget()
+                    item_layout = QVBoxLayout(item_widget)
+                    item_layout.setContentsMargins(0, 0, 0, 0)
+                    item_layout.setSpacing(2)
+                    
+                    fila_prod = QWidget()
+                    fila_prod_layout = QHBoxLayout(fila_prod)
+                    fila_prod_layout.setContentsMargins(0, 0, 0, 0)
+                    fila_prod_layout.setSpacing(8)
+                    
+                    icono_label = QLabel(f"{tipo_texto}")
+                    icono_label.setStyleSheet("font-size: 12px; min-width: 70px; font-weight: bold;")
+                    fila_prod_layout.addWidget(icono_label)
+                    
+                    texto_label = QLabel(f"{prod['restante']}/{prod['total']}  x  {prod['nombre']}")
+                    texto_label.setWordWrap(True)
+                    texto_label.setStyleSheet("font-size: 12px; padding: 2px 0px; color: #2c3e50;")
+                    fila_prod_layout.addWidget(texto_label, 1)
+                    item_layout.addWidget(fila_prod)
+
+                    if prod.get('personalizacion'):
+                        personalizacion_label = QLabel(f"    {prod['personalizacion']}")
+                        personalizacion_label.setWordWrap(True)
+                        personalizacion_label.setStyleSheet("font-size: 11px; padding: 0px 0px 2px 0px; color: #c0392b; font-weight: 500;")
+                        item_layout.addWidget(personalizacion_label)
+
+                    expandido_layout.addWidget(item_widget)
+            
+            expandido_layout.addStretch()
+            container_layout.addWidget(expandido_widget)
+            
+            color_fondo = "#ffffff"
+            if tiene_llevar and tiene_local:
+                color_fondo = "#fef9e7"
+            elif tiene_llevar:
+                color_fondo = "#fdedec"
+            else:
+                color_fondo = "#e6f2ff"
+            
+            container_widget.setStyleSheet(f"QWidget {{ background-color: {color_fondo}; border-radius: 6px; }}")
+            container_widget.setCursor(Qt.PointingHandCursor)
+            
+            def make_toggle_function(f, icon_label):
+                def toggle(event):
+                    self.toggle_fila(f, icon_label)
+                return toggle
+            
+            container_widget.mousePressEvent = make_toggle_function(fila, expand_icon)
+            self.tabla_pedidos_pendientes.setCellWidget(fila, 3, container_widget)
+            
+            btn_marcar = QPushButton("Marcar Pendientes")
+            btn_marcar.setStyleSheet("""
+                QPushButton { background-color: #f39c12; color: white; border: none;
+                    border-radius: 6px; padding: 8px 16px; font-weight: bold; font-size: 13px; }
+                QPushButton:hover { background-color: #e67e22; }
+            """)
+            btn_marcar.clicked.connect(lambda checked, fecha=fecha_detalle: self.mostrarCardsParaMarcar(fecha, numMesa, idSeccion))
+            self.tabla_pedidos_pendientes.setCellWidget(fila, 4, btn_marcar)
+            self.tabla_pedidos_pendientes.setRowHeight(fila, 70)
+        
+        conn.close()
+        
+        if self.tabla_pedidos_pendientes.rowCount() == 0:
+            self.tabla_pedidos_pendientes.setRowCount(1)
             item = QTableWidgetItem("No hay pedidos pendientes para esta mesa")
             item.setTextAlignment(Qt.AlignCenter)
-            item.setFont(QFont("Segoe UI", 12, QFont.Bold))
+            item.setFont(QFont("Segoe UI", 14, QFont.Bold))
             item.setForeground(QColor("#7f8c8d"))
             item.setFlags(item.flags() & ~Qt.ItemIsSelectable)
-            tablaPedidosPendientes.setSpan(0, 0, 1, 4)
-            tablaPedidosPendientes.setItem(0, 0, item)
-        else:
-            leyenda_widget = QWidget()
-            leyenda_layout = QHBoxLayout()
-            leyenda_widget.setLayout(leyenda_layout)
-            
-            leyenda_local = QLabel("🏠 Local")
-            leyenda_local.setStyleSheet("""
-                QLabel {
-                    background-color: #e6f2ff;
-                    color: #2c3e50;
-                    padding: 6px 12px;
-                    border-radius: 6px;
-                    border: 1px solid #3498db;
-                    font-weight: bold;
-                    margin-right: 10px;
-                }
-            """)
-            
-            leyenda_llevar = QLabel("🥡 Para llevar")
-            leyenda_llevar.setStyleSheet("""
-                QLabel {
-                    background-color: #fdedec;
-                    color: #2c3e50;
-                    padding: 6px 12px;
-                    border-radius: 6px;
-                    border: 1px solid #e74c3c;
-                    font-weight: bold;
-                    margin-right: 10px;
-                }
-            """)
-            
-            leyenda_mixto = QLabel("🏠🥡 Mixto")
-            leyenda_mixto.setStyleSheet("""
-                QLabel {
-                    background-color: #fef9e7;
-                    color: #2c3e50;
-                    padding: 6px 12px;
-                    border-radius: 6px;
-                    border: 1px solid #f39c12;
-                    font-weight: bold;
-                }
-            """)
-            
-            leyenda_layout.addWidget(leyenda_local)
-            leyenda_layout.addWidget(leyenda_llevar)
-            leyenda_layout.addWidget(leyenda_mixto)
-            leyenda_layout.addStretch()
-            layoutPantallaMesa.insertWidget(1, leyenda_widget)
-            timer_unico = QTimer(pantallaVentasMesa)
-
-            def actualizar_todas_las_filas():
+            self.tabla_pedidos_pendientes.setSpan(0, 0, 1, 5)
+            self.tabla_pedidos_pendientes.setItem(0, 0, item)
+        
+        self.timer_unico = QTimer(self.dialogo_detalles)
+        
+        def actualizar_todas_las_filas():
+            if self.dialogo_detalles and self.dialogo_detalles.isVisible():
                 fecha_actual = datetime.now()
-                for fila, fecha_completa in fechas_por_fila.items():
+                for fila, fecha_completa in self.fechas_por_fila.items():
                     diferencia = (fecha_actual - fecha_completa).total_seconds()
                     minutos = int(diferencia // 60)
-                    icono_tiempo = "🟢" if minutos < 10 else "🟡" if minutos < 20 else "🔴"
-                    item = QTableWidgetItem(f"{icono_tiempo} Hace {minutos} minutos")
+                    estado_tiempo = "Reciente" if minutos < 10 else "En espera" if minutos < 20 else "Urgente"
+                    item = QTableWidgetItem(f"{estado_tiempo} - Hace {minutos} min")
                     item.setTextAlignment(Qt.AlignCenter)
-                    item.setFont(QFont("Segoe UI", 11, QFont.Bold))
+                    item.setFont(QFont("Segoe UI", 12, QFont.Bold))
                     item.setFlags(item.flags() & ~Qt.ItemIsSelectable)
                     if minutos < 10:
                         item.setForeground(QColor("#27ae60"))
@@ -2254,70 +3974,1467 @@ class RegistrarPedidos(QWidget):
                     else:
                         item.setForeground(QColor("#e74c3c"))
                         item.setBackground(QColor("#fdedec"))
-                    tablaPedidosPendientes.setItem(fila, 2, item)
-            timer_unico.timeout.connect(actualizar_todas_las_filas)
-            timer_unico.start(60000)
+                    self.tabla_pedidos_pendientes.setItem(fila, 2, item)
+        
+        self.timer_unico.timeout.connect(actualizar_todas_las_filas)
+        self.timer_unico.start(60000)
+        
         btn_cerrar = QPushButton("Cerrar")
         btn_cerrar.setStyleSheet("""
-            QPushButton {
-                background-color: #3498db;
-                color: white;
-                border: none;
-                border-radius: 8px;
-                padding: 12px 30px;
-                font-size: 16px;
-                font-weight: bold;
-                margin-top: 10px;
-            }
-            QPushButton:hover {
-                background-color: #2980b9;
-            }
-            QPushButton:pressed {
-                background-color: #21618c;
-                padding-top: 13px;
-                padding-bottom: 11px;
-            }
+            QPushButton { background-color: #3498db; color: white; border: none; border-radius: 8px;
+                padding: 12px 40px; font-size: 16px; font-weight: bold; margin-top: 10px; }
+            QPushButton:hover { background-color: #2980b9; }
         """)
         btn_cerrar.setCursor(Qt.PointingHandCursor)
-        btn_cerrar.clicked.connect(pantallaVentasMesa.accept)
-        layoutPantallaMesa.addWidget(btn_cerrar, alignment=Qt.AlignCenter)
-        pantallaVentasMesa.exec_()
-    
-
-    def actualizar_hora(self,fechaCompleta,fila,tablaPedidosPendientes):
-        fechaActual=datetime.now()
-        diferencia=(fechaActual-fechaCompleta).total_seconds()
-        minutos=int(diferencia//60)
-        itemDiferencia=QTableWidgetItem(f"Hace {minutos} minutos")
-        itemDiferencia.setTextAlignment(Qt.AlignCenter)   
-        if minutos<10:
-            itemDiferencia.setForeground(QColor("green"))
-        else:
-            if minutos>=10 and minutos<20:
-                itemDiferencia.setForeground(QColor("yellow"))
-            else:
-                itemDiferencia.setForeground(QColor("red"))
-        tablaPedidosPendientes.setItem(fila,2,itemDiferencia)
+        btn_cerrar.clicked.connect(self.cerrarDialogoDetalles)
+        layoutPrincipal.addWidget(btn_cerrar, alignment=Qt.AlignCenter)
         
+        self.dialogo_detalles.exec_()
 
-    def seleccionarMesa(self, idMesa, idSeccion):
-        if self.verificarBloqueo("cambiar mesa"):
+    def mostrarDetallePromocion(self, id_promocion):
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute("SELECT nomProm, precioProm FROM Promocion WHERE idProm = ?", (id_promocion,))
+        promo_data = cursor.fetchone()
+        if not promo_data:
+            conn.close()
             return
+        nombre_promo, precio = promo_data
+        cursor.execute("""
+            SELECT P.nomProd, PP.cantidadProdProm
+            FROM PromocionProd PP
+            JOIN Producto P ON PP.idProd = P.idProd
+            WHERE PP.idProm = ?
+            ORDER BY P.nomProd
+        """, (id_promocion,))
+        productos = cursor.fetchall()
+        conn.close()
+        dialog = QDialog(self.dialogo_cards if self.dialogo_cards else self)
+        dialog.setWindowTitle("Detalle de Promocion")
+        dialog.setFixedSize(500, 400)
+        layout = QVBoxLayout(dialog)
+        titulo = QLabel(f"{nombre_promo}")
+        titulo.setStyleSheet("""
+            QLabel { font-size: 20px; font-weight: bold; color: white;
+                background: qlineargradient(x1:0,y1:0,x2:1,y2:0,stop:0 #f39c12,stop:1 #e67e22);
+                padding: 15px; border-radius: 8px; }
+        """)
+        titulo.setAlignment(Qt.AlignCenter)
+        layout.addWidget(titulo)
+        info_precio = QLabel(f"Precio: {precio:.2f} Bs")
+        info_precio.setStyleSheet("font-size:16px;font-weight:bold;color:#2c3e50;padding:10px;background-color:#f8f9fa;border-radius:6px;")
+        info_precio.setAlignment(Qt.AlignCenter)
+        layout.addWidget(info_precio)
+        tabla = QTableWidget()
+        tabla.setColumnCount(2)
+        tabla.setHorizontalHeaderLabels(["Producto", "Cantidad"])
+        tabla.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        tabla.setEditTriggers(QTableWidget.NoEditTriggers)
+        tabla.setSelectionMode(QTableWidget.NoSelection)
+        tabla.setFocusPolicy(Qt.NoFocus)
+        tabla.setStyleSheet("""
+            QTableWidget { border: 2px solid #e2e8f0; border-radius: 6px; font-size: 14px; }
+            QHeaderView::section { background-color: #3498db; color: white; padding: 8px; font-weight: bold; }
+        """)
+        for i, (nom_prod, cant) in enumerate(productos):
+            tabla.insertRow(i)
+            it = QTableWidgetItem(nom_prod)
+            it.setTextAlignment(Qt.AlignCenter)
+            tabla.setItem(i, 0, it)
+            it = QTableWidgetItem(str(cant))
+            it.setTextAlignment(Qt.AlignCenter)
+            tabla.setItem(i, 1, it)
+        layout.addWidget(tabla)
+        btn_cerrar = QPushButton("Cerrar")
+        btn_cerrar.setStyleSheet("QPushButton{background-color:#3498db;color:white;border:none;border-radius:6px;padding:10px 30px;font-weight:bold;font-size:14px;margin-top:10px;}QPushButton:hover{background-color:#2980b9;}")
+        btn_cerrar.clicked.connect(dialog.accept)
+        layout.addWidget(btn_cerrar, alignment=Qt.AlignCenter)
+        dialog.exec_()
+
+    def cerrarDialogoDetalles(self):
+        if self.timer_unico is not None:
+            try:
+                self.timer_unico.stop()
+                self.timer_unico.deleteLater()
+            except:
+                pass
+            self.timer_unico = None
+        if self.dialogo_detalles:
+            self.dialogo_detalles.accept()
+            self.dialogo_detalles = None
+
+    def toggle_fila(self, fila, icon_label):
+        if self.fila_expandida == fila:
+            container = self.tabla_pedidos_pendientes.cellWidget(fila, 3)
+            if container:
+                expandido = container.layout().itemAt(1).widget()
+                if expandido:
+                    expandido.setVisible(False)
+                icon_label.setText("v")
+                self.tabla_pedidos_pendientes.setRowHeight(fila, 70)
+            self.fila_expandida = -1
+        else:
+            if self.fila_expandida != -1:
+                old_container = self.tabla_pedidos_pendientes.cellWidget(self.fila_expandida, 3)
+                if old_container:
+                    old_expandido = old_container.layout().itemAt(1).widget()
+                    if old_expandido:
+                        old_expandido.setVisible(False)
+                    old_header = old_container.layout().itemAt(0).widget()
+                    if old_header:
+                        old_icon = old_header.layout().itemAt(2).widget()
+                        if old_icon:
+                            old_icon.setText("v")
+                    self.tabla_pedidos_pendientes.setRowHeight(self.fila_expandida, 70)
+            container = self.tabla_pedidos_pendientes.cellWidget(fila, 3)
+            if container:
+                expandido = container.layout().itemAt(1).widget()
+                if expandido:
+                    expandido.setVisible(True)
+                    expandido.show()
+                    icon_label.setText("^")
+                    altura_expandido = expandido.sizeHint().height()
+                    nueva_altura = 70 + altura_expandido + 15
+                    self.tabla_pedidos_pendientes.setRowHeight(fila, nueva_altura)
+            self.fila_expandida = fila
+
+    def crearCardProducto(self, nombre, total, listos, faltan, entradas_str, tipo, exclusiones=None, excl_key=None, extras_texto=""):
+        exclusiones = exclusiones or []
+        excl_key = excl_key or ()
+        card = QFrame()
+        color_fondo = "#e6f2ff" if tipo == "Local" else "#fdedec"
+        color_borde = "#3498db" if tipo == "Local" else "#e74c3c"
+        card.setStyleSheet(f"QFrame{{background-color:{color_fondo};border:2px solid {color_borde};border-radius:10px;padding:10px;}}")
+        card_layout = QVBoxLayout(card)
+ 
+        titulo_label = QLabel(f"<b>{nombre}</b>")
+        titulo_label.setStyleSheet("font-size:14px;font-weight:bold;color:#2c3e50;")
+        titulo_label.setWordWrap(True)
+        card_layout.addWidget(titulo_label)
+ 
+        if exclusiones:
+            excl_label = QLabel("sin: " + ", ".join(exclusiones))
+            excl_label.setStyleSheet("QLabel{font-size:12px;color:#c0392b;font-weight:bold;padding:4px 8px;background-color:#fdecea;border-radius:4px;border-left:3px solid #e74c3c;}")
+            excl_label.setWordWrap(True)
+            card_layout.addWidget(excl_label)
+
+        if extras_texto:
+            extras_label = QLabel(extras_texto)
+            extras_label.setStyleSheet("QLabel{font-size:12px;color:#27ae60;font-weight:bold;padding:4px 8px;background-color:#eafaf1;border-radius:4px;border-left:3px solid #2ecc71;}")
+            extras_label.setWordWrap(True)
+            card_layout.addWidget(extras_label)
+ 
+        info_widget = QWidget()
+        info_layout = QHBoxLayout(info_widget)
+        info_layout.setContentsMargins(0, 0, 0, 0)
+        lbl_total = QLabel(f"<b>Total:</b> {total}")
+        lbl_listos = QLabel(f"<b>Listos:</b> {listos}")
+        lbl_faltan = QLabel(f"<b>Faltan:</b> {faltan}")
+        info_layout.addWidget(lbl_total)
+        info_layout.addWidget(lbl_listos)
+        info_layout.addWidget(lbl_faltan)
+        info_layout.addStretch()
+        card_layout.addWidget(info_widget)
+ 
+        progreso = QProgressBar()
+        progreso.setMaximum(max(total, 1))
+        progreso.setValue(listos)
+        progreso.setFormat(f"{listos}/{total}")
+        progreso.setFixedHeight(20)
+        color_chunk = "#65c0fc" if tipo == "Local" else "#e87d72"
+        progreso.setStyleSheet(f"QProgressBar{{border:1px solid #bbb;border-radius:5px;text-align:center;}}QProgressBar::chunk{{background-color:{color_chunk};border-radius:5px;}}")
+        card_layout.addWidget(progreso)
+ 
+        botones = QHBoxLayout()
+        btn_menos = QPushButton("-1")
+        btn_menos.setFixedSize(50, 37)
+        btn_menos.setStyleSheet("QPushButton{background-color:#e74c3c;color:white;border-radius:4px;font-weight:bold;font-size:12px;padding:0px;margin:0px;min-width:50px;}QPushButton:hover{background-color:#c0392b;}")
+        btn_mas = QPushButton("+1")
+        btn_mas.setFixedSize(50, 37)
+        btn_mas.setStyleSheet("QPushButton{background-color:#3498db;color:white;border-radius:4px;font-weight:bold;font-size:12px;padding:0px;margin:0px;min-width:50px;}QPushButton:hover{background-color:#2980b9;}")
+        btn_todos = QPushButton("Todos")
+        btn_todos.setFixedSize(40, 37)
+        btn_todos.setStyleSheet("QPushButton{background-color:#2ecc71;color:white;border-radius:4px;font-weight:bold;font-size:12px;min-width:40px;}QPushButton:hover{background-color:#27ae60;}")
+ 
+        btn_menos.clicked.connect(lambda _, e=entradas_str, c=card, t=total, n=nombre, tp=tipo, ek=excl_key:
+            self.actualizarProgresoConResumen(e, -1, c, t, n, tp, False, ek))
+        btn_mas.clicked.connect(lambda _, e=entradas_str, c=card, t=total, n=nombre, tp=tipo, ek=excl_key:
+            self.actualizarProgresoConResumen(e, 1, c, t, n, tp, False, ek))
+        btn_todos.clicked.connect(lambda _, e=entradas_str, c=card, t=total, n=nombre, tp=tipo, ek=excl_key:
+            self.actualizarProgresoConResumen(e, t, c, t, n, tp, True, ek))
+ 
+        botones.addWidget(btn_menos)
+        botones.addWidget(btn_mas)
+        botones.addWidget(btn_todos)
+        botones.addStretch()
+        card_layout.addLayout(botones)
+        return card
+
+    
+    
+    def mostrarCardsParaMarcar(self, fecha_detalle, numMesa, idSeccion):
+        self.fecha_actual_dialogo = fecha_detalle
+        self.actualizar_al_cerrar = False
+        if self.dialogo_cards is not None:
+            try:
+                self.dialogo_cards.close()
+                self.dialogo_cards.deleteLater()
+            except:
+                pass
+        self.dialogo_cards = QDialog(self.dialogo_detalles)
+        self.dialogo_cards.setWindowTitle(f"Marcar Productos - Mesa {numMesa}")
+        self.dialogo_cards.setFixedSize(1400, 800)
+        layout = QVBoxLayout(self.dialogo_cards)
+        header = QLabel(f"MARCAR PRODUCTOS PENDIENTES - Mesa {numMesa}")
+        header.setStyleSheet("QLabel { font-size: 20px; font-weight: bold; color: white; padding: 15px; background: qlineargradient(x1:0,y1:0,x2:1,y2:0,stop:0 #f39c12,stop:1 #e67e22); border-radius: 8px; }")
+        header.setAlignment(Qt.AlignCenter)
+        layout.addWidget(header)
+        main_widget = QWidget()
+        main_layout = QHBoxLayout(main_widget)
+        main_layout.setSpacing(20)
+        local_widget = QWidget()
+        local_layout = QVBoxLayout(local_widget)
+        local_label = QLabel("PRODUCTOS LOCAL")
+        local_label.setStyleSheet("QLabel{font-size:18px;font-weight:bold;color:white;background-color:#3498db;padding:10px;border-radius:6px;}")
+        local_label.setAlignment(Qt.AlignCenter)
+        local_layout.addWidget(local_label)
+        local_scroll = QScrollArea()
+        local_scroll.setWidgetResizable(True)
+        local_scroll.setStyleSheet("QScrollArea{border:1px solid #3498db;border-radius:6px;}")
+        local_content = QWidget()
+        local_content.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
+        self.local_cards_layout = QVBoxLayout(local_content)
+        self.local_cards_layout.setSpacing(10)
+        self.local_cards_layout.setContentsMargins(5, 5, 5, 5)
+        self.local_cards_layout.addStretch()
+        local_scroll.setWidget(local_content)
+        local_layout.addWidget(local_scroll)
+        llevar_widget = QWidget()
+        llevar_layout = QVBoxLayout(llevar_widget)
+        llevar_label = QLabel("PRODUCTOS PARA LLEVAR")
+        llevar_label.setStyleSheet("QLabel{font-size:18px;font-weight:bold;color:white;background-color:#e74c3c;padding:10px;border-radius:6px;}")
+        llevar_label.setAlignment(Qt.AlignCenter)
+        llevar_layout.addWidget(llevar_label)
+        llevar_scroll = QScrollArea()
+        llevar_scroll.setWidgetResizable(True)
+        llevar_scroll.setStyleSheet("QScrollArea{border:1px solid #e74c3c;border-radius:6px;}")
+        llevar_content = QWidget()
+        llevar_content.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
+        self.llevar_cards_layout = QVBoxLayout(llevar_content)
+        self.llevar_cards_layout.setSpacing(10)
+        self.llevar_cards_layout.setContentsMargins(5, 5, 5, 5)
+        self.llevar_cards_layout.addStretch()
+        llevar_scroll.setWidget(llevar_content)
+        llevar_layout.addWidget(llevar_scroll)
+        resumen_widget = QWidget()
+        resumen_layout = QVBoxLayout(resumen_widget)
+        resumen_label = QLabel("RESUMEN DE FALTANTES")
+        resumen_label.setStyleSheet("QLabel{font-size:18px;font-weight:bold;color:white;background-color:#2ecc71;padding:10px;border-radius:6px;}")
+        resumen_label.setAlignment(Qt.AlignCenter)
+        resumen_layout.addWidget(resumen_label)
+        resumen_scroll = QScrollArea()
+        resumen_scroll.setWidgetResizable(True)
+        resumen_scroll.setStyleSheet("QScrollArea{border:1px solid #2ecc71;border-radius:6px;}")
+        self.resumen_content = QWidget()
+        self.resumen_content.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
+        self.resumen_layout = QVBoxLayout(self.resumen_content)
+        self.resumen_layout.setSpacing(5)
+        self.resumen_layout.setContentsMargins(5, 5, 5, 5)
+        self.resumen_layout.addStretch()
+        resumen_scroll.setWidget(self.resumen_content)
+        resumen_layout.addWidget(resumen_scroll)
+        main_layout.addWidget(local_widget)
+        main_layout.addWidget(llevar_widget)
+        main_layout.addWidget(resumen_widget)
+        layout.addWidget(main_widget, 1)
+ 
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        self.productos_faltantes_global = []
+ 
+        cursor.execute("""
+            SELECT Dt.idDetalleVenta, Dt.tipoConsumo, Dt.idProd, Dt.idProm
+            FROM DetallesVenta Dt
+            WHERE Dt.fechaRegDetalleVenta = ?
+        """, (fecha_detalle,))
+        detalles = cursor.fetchall()
+ 
+        grupos = {}
+ 
+        for id_det, tipo_consumo, id_prod, id_prom in detalles:
+            if id_prod:
+                cursor.execute("SELECT nomProd FROM Producto WHERE idProd=?", (id_prod,))
+                fila = cursor.fetchone()
+                if not fila:
+                    continue
+                nom_prod = fila[0]
+ 
+                cursor.execute("""
+                    SELECT idUnidad, numUnidad, marcado
+                    FROM DetallesVentaUnidades
+                    WHERE idDetalleVenta=? AND idProd=?
+                    ORDER BY numUnidad ASC
+                """, (id_det, id_prod))
+                unidades = cursor.fetchall()
+ 
+                for id_unidad, num_unidad, marcado in unidades:
+                    cursor.execute("""
+                        SELECT idIng, nomIng FROM DetallesVentaExclusiones
+                        WHERE idDetalleVenta=?
+                        ORDER BY nomIng
+                    """, (id_det,))
+                    excl_rows = cursor.fetchall()
+                    excl_ids = frozenset(r[0] for r in excl_rows)
+                    excl_nombres = sorted([r[1] for r in excl_rows])
+
+                    cursor.execute("""
+                        SELECT idIng, nomIng, cantidadExtra FROM DetallesVentaExtras
+                        WHERE idDetalleVenta=?
+                        ORDER BY nomIng
+                    """, (id_det,))
+                    extra_rows = cursor.fetchall()
+                    extra_ids = frozenset((r[0], r[2]) for r in extra_rows)
+                    extras_texto_grupo = ("extra: " + ", ".join(f"+{r[2]} {r[1]}" for r in extra_rows)) if extra_rows else ""
+ 
+                    clave = (nom_prod, tipo_consumo, excl_ids, extra_ids)
+                    if clave not in grupos:
+                        grupos[clave] = {
+                            'nombre': nom_prod,
+                            'tipo': tipo_consumo,
+                            'exclusiones': excl_nombres,
+                            'extras_texto': extras_texto_grupo,
+                            'id_unidades_pendientes': [],
+                            'id_unidades_listas': [],
+                        }
+                    if marcado:
+                        grupos[clave]['id_unidades_listas'].append(id_unidad)
+                    else:
+                        grupos[clave]['id_unidades_pendientes'].append(id_unidad)
+ 
+            elif id_prom:
+                cursor.execute("""
+                    SELECT pp.idProd, p.nomProd
+                    FROM PromocionProd pp
+                    JOIN Producto p ON pp.idProd = p.idProd
+                    WHERE pp.idProm = ?
+                """, (id_prom,))
+                productos_promo = cursor.fetchall()
+ 
+                for id_prod_p, nom_prod_p in productos_promo:
+                    cursor.execute("""
+                        SELECT idUnidad, numUnidad, marcado
+                        FROM DetallesVentaUnidades
+                        WHERE idDetalleVenta=? AND idProd=?
+                        ORDER BY numUnidad ASC
+                    """, (id_det, id_prod_p))
+                    unidades = cursor.fetchall()
+ 
+                    for id_unidad, num_unidad, marcado in unidades:
+                        cursor.execute("""
+                            SELECT COUNT(*) FROM DetallesVentaUnidades
+                            WHERE idDetalleVenta=? AND idProd=? AND numUnidad < ?
+                        """, (id_det, id_prod_p, num_unidad))
+                        idx_relativo = cursor.fetchone()[0]
+ 
+                        cursor.execute("""
+                            SELECT idIng, nomIng FROM DetallesVentaExclusionesPromo
+                            WHERE idDetalleVenta=? AND idProd=? AND numUnidad=?
+                            ORDER BY nomIng
+                        """, (id_det, id_prod_p, idx_relativo))
+                        excl_rows = cursor.fetchall()
+                        excl_ids = frozenset(r[0] for r in excl_rows)
+                        excl_nombres = sorted([r[1] for r in excl_rows])
+
+                        cursor.execute("""
+                            SELECT idIng, nomIng, cantidadExtra FROM DetallesVentaExtras
+                            WHERE idDetalleVenta=? AND idProd=? AND numUnidad=?
+                            ORDER BY nomIng
+                        """, (id_det, id_prod_p, idx_relativo))
+                        extra_rows = cursor.fetchall()
+                        extra_ids = frozenset((r[0], r[2]) for r in extra_rows)
+                        extras_texto_grupo = ("extra: " + ", ".join(f"+{r[2]} {r[1]}" for r in extra_rows)) if extra_rows else ""
+ 
+                        clave = (nom_prod_p, tipo_consumo, excl_ids, extra_ids)
+                        if clave not in grupos:
+                            grupos[clave] = {
+                                'nombre': nom_prod_p,
+                                'tipo': tipo_consumo,
+                                'exclusiones': excl_nombres,
+                                'extras_texto': extras_texto_grupo,
+                                'id_unidades_pendientes': [],
+                                'id_unidades_listas': [],
+                            }
+                        if marcado:
+                            grupos[clave]['id_unidades_listas'].append(id_unidad)
+                        else:
+                            grupos[clave]['id_unidades_pendientes'].append(id_unidad)
+ 
+        for clave, g in grupos.items():
+            total = len(g['id_unidades_pendientes']) + len(g['id_unidades_listas'])
+            listos = len(g['id_unidades_listas'])
+            faltan = len(g['id_unidades_pendientes'])
+            if total == 0:
+                continue
+            if faltan == 0:
+                continue
+            extras_texto_g = g.get('extras_texto', '')
+            excl_key = (tuple(sorted(g['exclusiones'])), extras_texto_g)
+            self.productos_faltantes_global.append(
+                (g['nombre'], faltan, g['tipo'], excl_key)
+            )
+            pendientes_str = ','.join(str(x) for x in g['id_unidades_pendientes'])
+            listas_str = ','.join(str(x) for x in g['id_unidades_listas'])
+            entradas_str = f"P:{pendientes_str}|L:{listas_str}"
+            card = self.crearCardProducto(
+                g['nombre'], total, listos, faltan,
+                entradas_str, g['tipo'], g['exclusiones'],
+                excl_key=excl_key, extras_texto=extras_texto_g
+            )
+            if g['tipo'] == "Local":
+                self.local_cards_layout.insertWidget(self.local_cards_layout.count() - 1, card)
+            else:
+                self.llevar_cards_layout.insertWidget(self.llevar_cards_layout.count() - 1, card)
+ 
+        self.actualizarResumen()
+        conn.close()
+ 
+        if self.local_cards_layout.count() <= 1 and self.llevar_cards_layout.count() <= 1:
+            QMessageBox.information(self.dialogo_cards, "Informacion", "No hay productos pendientes para marcar.")
+            return
+ 
+        btn_cerrar = QPushButton("Cerrar")
+        btn_cerrar.setStyleSheet("QPushButton{background-color:#e74c3c;color:white;border:none;border-radius:6px;padding:10px 30px;font-weight:bold;margin-top:10px;}QPushButton:hover{background-color:#c0392b;}")
+        btn_cerrar.clicked.connect(self.cerrarDialogoCards)
+        layout.addWidget(btn_cerrar, alignment=Qt.AlignCenter)
+        self.dialogo_cards.exec_()
+
+
+    def _imprimir_en_consola(self, titulo, datos_venta, items):
+        if titulo == "PEDIDO A COCINA":
+            self._imprimir_en_consola_cocina(datos_venta, items)
+            return
+        from datetime import datetime
+        fecha = datetime.now().strftime("%d/%m/%Y")
+        hora = datetime.now().strftime("%I:%M %p")
+        lineas = []
+        lineas.append("=" * 44)
+        lineas.append(f"{'CAFEBAR RESTAURANTE':^44}")
+        lineas.append("=" * 44)
+        lineas.append(f"Fecha: {fecha}  Hora: {hora}")
+        lineas.append(f"Nro. Venta: {datos_venta.get('num_venta', '')}")
+        lineas.append(f"Mesa: {datos_venta.get('mesa', '')} - {datos_venta.get('seccion', '')}")
+        lineas.append(f"Mesero: {datos_venta.get('empleado', '')}")
+        lineas.append(f"Cajero: {datos_venta.get('cajero', '')}")
+        lineas.append("-" * 44)
+        grupos = {}
+        for item in items:
+            producto = str(item.get('producto', ''))
+            tipo = item.get('tipo', 'Local')
+            precio = float(item.get('precio', 0))
+            cantidad = int(item.get('cantidad', 1))
+            subtotal = float(item.get('subtotal', cantidad * precio))
+            clave = (producto, tipo)
+            if clave in grupos:
+                grupos[clave]['cantidad'] += cantidad
+                grupos[clave]['subtotal'] += subtotal
+            else:
+                grupos[clave] = {
+                    'producto': producto,
+                    'tipo': tipo,
+                    'precio': precio,
+                    'cantidad': cantidad,
+                    'subtotal': subtotal
+                }
+        total_general = 0
+        lineas.append(f"{'CANT':<5}{'DESCRIPCION':<22}{'T':<3}{'SUBTOTAL':>14}")
+        lineas.append("-" * 44)
+        for g in grupos.values():
+            prod = g['producto']
+            if len(prod) > 19:
+                prod = prod[:16] + "..."
+            tipo_cod = "L" if g['tipo'] == 'Local' else "LL"
+            total_general += g['subtotal']
+            lineas.append(f"{g['cantidad']:<5}{prod:<22}{tipo_cod:<3}{g['subtotal']:>14.2f}")
+        lineas.append("=" * 44)
+        lineas.append(f"{'TOTAL:':>30}{total_general:>14.2f} Bs")
+        lineas.append("=" * 44)
+        print("\n".join(lineas))
+
+
+    def _imprimir_en_consola_cocina(self, datos_venta, items_raw):
+        from datetime import datetime
+        fecha = datetime.now().strftime("%d/%m/%Y")
+        hora = datetime.now().strftime("%I:%M %p")
+        lineas = []
+        lineas.append("=" * 44)
+        lineas.append(f"{'PEDIDO COCINA':^44}")
+        lineas.append("=" * 44)
+        lineas.append(f"Fecha: {fecha}  Hora: {hora}")
+        lineas.append(f"Nro. Venta: {datos_venta.get('num_venta', '')}")
+        lineas.append(f"Mesero: {datos_venta.get('empleado', '')}")
+        lineas.append(f"Salon: {datos_venta.get('seccion', '')}  Mesa: {datos_venta.get('mesa', '')}")
+        lineas.append("-" * 44)
+        lineas_cocina = self.manejador_impresion._parsear_items_cocina(items_raw)
+        lineas.append(f"{'CANT':<5}{'PRODUCTO':<32}{'T':<3}")
+        lineas.append("-" * 44)
+        grupos_cocina = {}
+        for l in lineas_cocina:
+            excl_tuple = tuple(l['exclusiones']) if l['exclusiones'] else ()
+            clave = (l['producto'], l['tipo'], excl_tuple)
+            if clave in grupos_cocina:
+                grupos_cocina[clave]['cantidad'] += l['cantidad']
+            else:
+                grupos_cocina[clave] = dict(l)
+        for g in grupos_cocina.values():
+            prod = g['producto']
+            if len(prod) > 29:
+                prod = prod[:26] + "..."
+            tipo_cod = "L" if g['tipo'] == 'Local' else "LL"
+            lineas.append(f"{g['cantidad']:<5}{prod:<32}{tipo_cod:<3}")
+            if g['exclusiones']:
+                for excl_linea in g['exclusiones']:
+                    partes = [excl_linea[i:i+36] for i in range(0, len(excl_linea), 36)]
+                    for parte in partes:
+                        lineas.append(f"     sin: {parte}")
+        lineas.append("=" * 44)
+        print("\n".join(lineas))
+    
+    
+    def actualizarProgresoConResumen(self, entradas_str, cantidad, card, total_mostrado,
+                                     nombre_producto, tipo_consumo, marcar_todos=False,
+                                     excl_key=()):
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        try:
+            partes = entradas_str.split('|')
+            pendientes_ids = []
+            listas_ids = []
+            for parte in partes:
+                if parte.startswith('P:'):
+                    raw = parte[2:]
+                    pendientes_ids = [int(x) for x in raw.split(',') if x.strip()]
+                elif parte.startswith('L:'):
+                    raw = parte[2:]
+                    listas_ids = [int(x) for x in raw.split(',') if x.strip()]
+
+            cambios_realizados = False
+
+            if marcar_todos:
+                for id_unidad in pendientes_ids:
+                    cursor.execute("UPDATE DetallesVentaUnidades SET marcado=1 WHERE idUnidad=?", (id_unidad,))
+                if pendientes_ids:
+                    cambios_realizados = True
+                    listas_ids = listas_ids + pendientes_ids
+                    pendientes_ids = []
+
+            elif cantidad > 0:
+                if pendientes_ids:
+                    id_unidad = pendientes_ids[0]
+                    cursor.execute("UPDATE DetallesVentaUnidades SET marcado=1 WHERE idUnidad=?", (id_unidad,))
+                    cambios_realizados = True
+                    listas_ids = listas_ids + [pendientes_ids.pop(0)]
+
+            else:
+                if listas_ids:
+                    id_unidad = listas_ids[-1]
+                    cursor.execute("UPDATE DetallesVentaUnidades SET marcado=0 WHERE idUnidad=?", (id_unidad,))
+                    cambios_realizados = True
+                    pendientes_ids = pendientes_ids + [listas_ids.pop(-1)]
+
+            if cambios_realizados:
+                conn.commit()
+                self.actualizar_al_cerrar = True
+
+                ids_det_afectados = set()
+                todos_ids_unidad = pendientes_ids + listas_ids
+                for id_unidad in todos_ids_unidad:
+                    cursor.execute("SELECT idDetalleVenta FROM DetallesVentaUnidades WHERE idUnidad=?", (id_unidad,))
+                    r = cursor.fetchone()
+                    if r:
+                        ids_det_afectados.add(r[0])
+
+                for id_det in ids_det_afectados:
+                    cursor.execute("SELECT COUNT(*) FROM DetallesVentaUnidades WHERE idDetalleVenta=?", (id_det,))
+                    total_unidades_det = cursor.fetchone()[0]
+                    cursor.execute("SELECT COUNT(*) FROM DetallesVentaUnidades WHERE idDetalleVenta=? AND marcado=1", (id_det,))
+                    marcadas_det = cursor.fetchone()[0]
+                    todo_marcado = 1 if marcadas_det == total_unidades_det else 0
+                    cursor.execute("""
+                        UPDATE DetallesVenta
+                        SET cantidadMarcado = ?,
+                        marcado = ?
+                        WHERE idDetalleVenta=?
+                    """, (marcadas_det, todo_marcado, id_det))
+
+                for id_det in ids_det_afectados:
+                    cursor.execute("""
+                        SELECT COUNT(*) = 0 FROM DetallesVentaUnidades 
+                        WHERE idDetalleVenta = ? AND marcado = 0
+                    """, (id_det,))
+                    todas_marcadas = cursor.fetchone()[0]
+                    cursor.execute("SELECT estadoDetalleVenta FROM DetallesVenta WHERE idDetalleVenta=?", (id_det,))
+                    fila_estado = cursor.fetchone()
+                    estado_actual = fila_estado[0] if fila_estado else None
+                    if todas_marcadas:
+                        if estado_actual == 'Preparacion':
+                            cursor.execute("""
+                                UPDATE DetallesVenta 
+                                SET estadoDetalleVenta = 'Cobrar' 
+                                WHERE idDetalleVenta = ?
+                            """, (id_det,))
+                    else:
+                        if estado_actual == 'Cobrar':
+                            cursor.execute("""
+                                UPDATE DetallesVenta 
+                                SET estadoDetalleVenta = 'Preparacion' 
+                                WHERE idDetalleVenta = ?
+                            """, (id_det,))
+
+                conn.commit()
+
+                total_nuevo = len(pendientes_ids) + len(listas_ids)
+                listos_nuevo = len(listas_ids)
+                faltan_nuevo = len(pendientes_ids)
+
+                nuevo_entradas_str = f"P:{','.join(str(x) for x in pendientes_ids)}|L:{','.join(str(x) for x in listas_ids)}"
+
+                if card and isinstance(card, QFrame) and not card.isHidden():
+                    cl = card.layout()
+                    if cl:
+                        for i in range(cl.count()):
+                            item = cl.itemAt(i)
+                            if not item:
+                                continue
+                            w = item.widget()
+                            if isinstance(w, QProgressBar):
+                                w.setMaximum(max(total_nuevo, 1))
+                                w.setValue(listos_nuevo)
+                                w.setFormat(f"{listos_nuevo}/{total_nuevo}")
+                                w.repaint()
+                            elif isinstance(w, QWidget) and w.layout() and isinstance(w.layout(), QHBoxLayout):
+                                for j in range(w.layout().count()):
+                                    hi = w.layout().itemAt(j)
+                                    if hi and hi.widget() and isinstance(hi.widget(), QLabel):
+                                        lbl = hi.widget()
+                                        texto = lbl.text()
+                                        if "Total:" in texto:
+                                            lbl.setText(f"<b>Total:</b> {total_nuevo}")
+                                            lbl.repaint()
+                                        elif "Listos:" in texto:
+                                            lbl.setText(f"<b>Listos:</b> {listos_nuevo}")
+                                            lbl.repaint()
+                                        elif "Faltan:" in texto:
+                                            lbl.setText(f"<b>Faltan:</b> {faltan_nuevo}")
+                                            lbl.repaint()
+
+                        for i in range(cl.count()):
+                            item = cl.itemAt(i)
+                            if not item:
+                                continue
+                            sub = item.layout()
+                            if sub and isinstance(sub, QHBoxLayout):
+                                for j in range(sub.count()):
+                                    hi = sub.itemAt(j)
+                                    if hi and hi.widget() and isinstance(hi.widget(), QPushButton):
+                                        btn = hi.widget()
+                                        txt = btn.text()
+                                        if txt == "-1":
+                                            try:
+                                                btn.clicked.disconnect()
+                                            except:
+                                                pass
+                                            btn.clicked.connect(lambda _, e=nuevo_entradas_str, c=card, t=total_nuevo, n=nombre_producto, tp=tipo_consumo, ek=excl_key:
+                                                self.actualizarProgresoConResumen(e, -1, c, t, n, tp, False, ek))
+                                        elif txt == "+1":
+                                            try:
+                                                btn.clicked.disconnect()
+                                            except:
+                                                pass
+                                            btn.clicked.connect(lambda _, e=nuevo_entradas_str, c=card, t=total_nuevo, n=nombre_producto, tp=tipo_consumo, ek=excl_key:
+                                                self.actualizarProgresoConResumen(e, 1, c, t, n, tp, False, ek))
+                                        elif txt == "Todos":
+                                            try:
+                                                btn.clicked.disconnect()
+                                            except:
+                                                pass
+                                            btn.clicked.connect(lambda _, e=nuevo_entradas_str, c=card, t=total_nuevo, n=nombre_producto, tp=tipo_consumo, ek=excl_key:
+                                                self.actualizarProgresoConResumen(e, t, c, t, n, tp, True, ek))
+
+                encontrado_en_resumen = False
+                for i, entrada in enumerate(self.productos_faltantes_global):
+                    nombre, faltan, tipo, ek = entrada
+                    if nombre == nombre_producto and tipo == tipo_consumo and ek == excl_key:
+                        if faltan_nuevo <= 0:
+                            self.productos_faltantes_global.pop(i)
+                        else:
+                            self.productos_faltantes_global[i] = (nombre, faltan_nuevo, tipo, ek)
+                        encontrado_en_resumen = True
+                        break
+
+                if not encontrado_en_resumen and faltan_nuevo > 0:
+                    self.productos_faltantes_global.append(
+                        (nombre_producto, faltan_nuevo, tipo_consumo, excl_key)
+                    )
+
+                self.actualizarResumen()
+
+        except Exception as e:
+            conn.rollback()
+            print(f"Error al actualizar marcado: {e}")
+            import traceback; traceback.print_exc()
+        finally:
+            conn.close()
+
+    def actualizarResumen(self):
+        while self.resumen_layout.count():
+            item = self.resumen_layout.takeAt(0)
+            if item.widget():
+                try:
+                    item.widget().deleteLater()
+                except:
+                    pass
+ 
+        total_faltantes = 0
+        for nombre, faltan, tipo, *_ in self.productos_faltantes_global:
+            if faltan > 0:
+                item_text = QLabel(f"* {nombre} ({tipo}): {faltan} faltantes")
+                color = "#3498db" if tipo == "Local" else "#e74c3c"
+                item_text.setStyleSheet(f"font-size:15px;color:{color};font-weight:500;padding-left:10px;")
+                self.resumen_layout.addWidget(item_text)
+                total_faltantes += faltan
+ 
+        if total_faltantes == 0:
+            completo_label = QLabel("Todos los productos estan listos!")
+            completo_label.setStyleSheet("font-size:16px;color:#27ae60;font-weight:bold;padding:10px;")
+            self.resumen_layout.addWidget(completo_label)
+        else:
+            total_label = QLabel(f"<b>TOTAL FALTANTES: {total_faltantes}</b>")
+            total_label.setStyleSheet("font-size:16px;color:#e74c3c;font-weight:bold;margin-top:5px;padding-left:10px;")
+            self.resumen_layout.addWidget(total_label)
+ 
+        self.resumen_layout.addStretch()
+
+    def cerrarDialogoCards(self):
+        if self.dialogo_cards:
+            self.dialogo_cards.accept()
+            self.dialogo_cards = None
+        
+        if self.dialogo_detalles and self.numMesa_actual and self.idSeccion_actual and self.actualizar_al_cerrar:
+            self.dialogo_detalles.close()
+            self.dialogo_detalles = None
+            self.mostrarDetallesVentaMesa(self.numMesa_actual, self.idSeccion_actual)
+        elif self.dialogo_detalles and self.actualizar_al_cerrar:
+            self.dialogo_detalles.close()
+            self.dialogo_detalles = None
+            if self.numMesa_actual and self.idSeccion_actual:
+                self.mostrarDetallesVentaMesa(self.numMesa_actual, self.idSeccion_actual)
+            
+
+
+    def cobrarMesa(self, numMesa, idSeccion):
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+ 
+        cursor.execute("""
+            SELECT COUNT(*)
+            FROM DetallesVentaUnidades DVU
+            JOIN DetallesVenta DV ON DVU.idDetalleVenta = DV.idDetalleVenta
+            JOIN Venta V ON V.numVenta = DV.numVenta AND V.fechaReg = DV.fechaRegVenta
+            WHERE V.idMesa = ? AND V.idSeccion = ?
+              AND DVU.marcado = 0
+        """, (numMesa, idSeccion))
+        unidades_pendientes = cursor.fetchone()[0]
+ 
+        if unidades_pendientes > 0:
+            QMessageBox.warning(self, "No se puede cobrar",
+                                f"Esta mesa tiene {unidades_pendientes} unidad(es) sin marcar como listas.")
+            conn.close()
+            return
+ 
+        cursor.execute("""
+            SELECT V.numVenta, DATE(V.fechaReg) FROM Venta V
+            WHERE V.idMesa = ? AND V.idSeccion = ?
+            ORDER BY V.fechaReg DESC LIMIT 1
+        """, (numMesa, idSeccion))
+        resultado = cursor.fetchone()
+        conn.close()
+ 
+        if resultado:
+            numVenta, fecha = resultado
+            self.abrirCobro(fecha, numVenta, numMesa, idSeccion)
+        else:
+            QMessageBox.warning(self, "Error", "No se encontro ninguna venta para esta mesa")
+ 
+
+    def abrirCobro(self, fecha, numVenta, numMesa, idSeccion):
+        try:
+            dialogo = DialogoCobroVenta(fecha, numVenta, numMesa, idSeccion, self)
+            if dialogo.exec_() == QDialog.Accepted:
+                self.limpiarCampos()
+                if hasattr(self, 'idSeccionActual') and self.idSeccionActual:
+                    self.cargarSecciones(self.idSeccionActual)
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"No se pudo abrir el dialogo de cobro: {str(e)}")
+            import traceback
+            traceback.print_exc()
+
+    def actualizarHora(self):
+        self.campoTiempo.setText(datetime.now().strftime("%I:%M %p"))
+    
+    def _dialogoExclusionesPromo(self, nombre_promo, productos_promo, exclusiones_previas=None, extras_previas=None):
+        if not productos_promo:
+            return {}, {}
+        exclusiones_previas = exclusiones_previas or {}
+        extras_previas = extras_previas or {}
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Personalizar promoción")
+        dialog.setMinimumWidth(900)
+        dialog.setMaximumWidth(1200)
+        dialog.setStyleSheet("""
+            QDialog { background-color: white; font-family: 'Segoe UI', Arial, sans-serif; }
+            QTabWidget::pane { border: 1px solid #e2e8f0; background-color: #f8fafc; }
+            QTabBar::tab { background-color: #e2e8f0; padding: 10px 20px; margin-right: 4px; font-weight: bold; min-width: 140px; }
+            QTabBar::tab:selected { background-color: #3498db; color: white; }
+            QTabBar::tab:hover { background-color: #2980b9; color: white; }
+            QScrollArea { border: none; background: transparent; }
+            QScrollBar:vertical { border: none; background: #f1f5f9; width: 10px; border-radius: 5px; }
+            QScrollBar::handle:vertical { background: #cbd5e1; border-radius: 5px; min-height: 30px; }
+            QScrollBar::handle:vertical:hover { background: #94a3b8; }
+            QCheckBox { spacing: 12px; font-size: 14px; color: #2c3e50; background: transparent; }
+            QCheckBox::indicator { width: 20px; height: 20px; border-radius: 5px; border: 2px solid #4a89dc; background: white; }
+            QCheckBox::indicator:checked { background-color: #4a89dc; border: 2px solid #4a89dc; }
+            QCheckBox::indicator:unchecked:hover { background-color: #e6f2ff; }
+            QLabel { color: #2c3e50; font-size: 14px; font-weight: 500; background: transparent; }
+            QPushButton { border-radius: 8px; font-size: 14px; font-weight: bold; min-width: 100px; border: none; padding: 10px 16px; }
+            QPushButton#todos_unidad { background-color: #3498db; color: white; font-size: 10px; padding: 4px 8px; min-width: 50px; }
+            QPushButton#ninguno_unidad { background-color: #e74c3c; color: white; font-size: 10px; padding: 4px 8px; min-width: 50px; }
+            QFrame { background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; }
+            QSpinBox {
+                background-color: white; border: 2px solid #e2e8f0; border-radius: 6px;
+                padding: 2px 6px; font-size: 12px; min-height: 30px; max-width: 70px;
+            }
+            QSpinBox:focus { border: 2px solid #27ae60; }
+            QSpinBox::up-button {
+                background-color: #3498db; border: none;
+                width: 22px; height: 19px;
+                border-radius: 0px 4px 0px 0px;
+                subcontrol-origin: border; subcontrol-position: top right;
+            }
+            QSpinBox::up-button:hover { background-color: #2980b9; }
+            QSpinBox::down-button {
+                background-color: #e74c3c; border: none;
+                width: 22px; height: 19px;
+                border-radius: 0px 0px 4px 0px;
+                subcontrol-origin: border; subcontrol-position: bottom right;
+            }
+            QSpinBox::down-button:hover { background-color: #c0392b; }
+            QSpinBox::up-arrow {
+                image: none; border-left: 3px solid transparent; border-right: 3px solid transparent;
+                border-bottom: 3px solid white; width: 0; height: 0;
+            }
+            QSpinBox::down-arrow {
+                image: none; border-left: 3px solid transparent; border-right: 3px solid transparent;
+                border-top: 3px solid white; width: 0; height: 0;
+            }
+        """)
+        layout = QVBoxLayout(dialog)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
+        header = QWidget()
+        header.setStyleSheet("QWidget { background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #3498db, stop:1 #2980b9); }")
+        header_layout = QVBoxLayout(header)
+        header_layout.setContentsMargins(24, 20, 24, 20)
+        titulo = QLabel("🎁 Personalizar promoción")
+        titulo.setStyleSheet("QLabel { color: white; font-size: 18px; font-weight: bold; background: transparent; }")
+        titulo.setAlignment(Qt.AlignCenter)
+        header_layout.addWidget(titulo)
+        subtitulo = QLabel(nombre_promo)
+        subtitulo.setStyleSheet("QLabel { color: rgba(255,255,255,0.9); font-size: 14px; font-weight: 500; background: transparent; }")
+        subtitulo.setAlignment(Qt.AlignCenter)
+        header_layout.addWidget(subtitulo)
+        layout.addWidget(header)
+        ayuda_widget = QWidget()
+        ayuda_widget.setStyleSheet("QWidget { background-color: #fef9e7; border-bottom: 1px solid #f39c12; }")
+        ayuda_layout = QHBoxLayout(ayuda_widget)
+        ayuda_layout.setContentsMargins(20, 10, 20, 10)
+        ayuda_text = QLabel("⚠️  Personaliza cada unidad individualmente — desmarca lo que NO quiere y suma lo que quiere extra")
+        ayuda_text.setWordWrap(True)
+        ayuda_text.setStyleSheet("background: transparent; font-size: 12px; color: #e67e22; font-weight: 500;")
+        ayuda_layout.addWidget(ayuda_text)
+        layout.addWidget(ayuda_widget)
+        tabs = QTabWidget()
+        tabs.setStyleSheet("QTabWidget { background-color: #f8fafc; } QTabBar::tab { min-width: 150px; }")
+        exclusiones_por_producto = {}
+        extras_por_producto = {}
+        for prod in productos_promo:
+            id_prod = prod['idProd']
+            nombre_prod = prod['nombre']
+            cantidad_promo = prod['cantidad']
+            ingredientes = self._obtenerIngredientesProducto(nombre_prod)
+            ingredientes_extra = self._obtenerIngredientesProductoParaExtra(nombre_prod)
+            excl_previas_prod = exclusiones_previas.get(str(id_prod), [])
+            excl_previas_por_unidad = {}
+            for ud in excl_previas_prod:
+                if isinstance(ud, dict) and 'unidad' in ud:
+                    excl_previas_por_unidad[ud['unidad']] = {e['idIng'] for e in ud.get('exclusiones', [])}
+            extras_previas_prod = extras_previas.get(str(id_prod), [])
+            extras_previas_por_unidad = {}
+            for ud in extras_previas_prod:
+                if isinstance(ud, dict) and 'unidad' in ud:
+                    extras_previas_por_unidad[ud['unidad']] = {e['idIng']: e['cantidadExtra'] for e in ud.get('extras', [])}
+            tab_widget = QWidget()
+            tab_layout = QVBoxLayout(tab_widget)
+            tab_layout.setContentsMargins(16, 16, 16, 16)
+            tab_layout.setSpacing(12)
+            cantidad_label = QLabel(f"Cantidad en promoción: {cantidad_promo} unidades")
+            cantidad_label.setStyleSheet("font-weight: bold; color: #2c3e50; font-size: 14px;")
+            tab_layout.addWidget(cantidad_label)
+            scroll = QScrollArea()
+            scroll.setWidgetResizable(True)
+            scroll.setMaximumHeight(500)
+            scroll.setStyleSheet("QScrollArea { border: 1px solid #e2e8f0; border-radius: 8px; background-color: white; }")
+            contenedor = QWidget()
+            contenedor.setStyleSheet("background: white;")
+            v_layout = QVBoxLayout(contenedor)
+            v_layout.setContentsMargins(12, 12, 12, 12)
+            v_layout.setSpacing(15)
+            if ingredientes or ingredientes_extra:
+                unidades_widgets = []
+                for unidad_idx in range(cantidad_promo):
+                    ids_excluidos_prev_unidad = excl_previas_por_unidad.get(unidad_idx, set())
+                    cantidades_extra_prev_unidad = extras_previas_por_unidad.get(unidad_idx, {})
+                    unidad_frame = QFrame()
+                    unidad_frame.setStyleSheet("QFrame { background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; margin: 2px; }")
+                    unidad_layout = QVBoxLayout(unidad_frame)
+                    unidad_layout.setSpacing(8)
+                    unidad_header = QWidget()
+                    unidad_header_layout = QHBoxLayout(unidad_header)
+                    unidad_header_layout.setContentsMargins(8, 4, 8, 4)
+                    unidad_titulo = QLabel(f"Unidad #{unidad_idx + 1}")
+                    unidad_titulo.setStyleSheet("font-weight: bold; color: #3498db; font-size: 13px;")
+                    unidad_header_layout.addWidget(unidad_titulo)
+                    botones_rapidos = QWidget()
+                    botones_layout = QHBoxLayout(botones_rapidos)
+                    botones_layout.setContentsMargins(0, 0, 0, 0)
+                    btn_todos_unidad = QPushButton("✓ Todos")
+                    btn_todos_unidad.setObjectName("todos_unidad")
+                    btn_ninguno_unidad = QPushButton("✗ Ninguno")
+                    btn_ninguno_unidad.setObjectName("ninguno_unidad")
+                    btn_todos_unidad.setFixedSize(70, 28)
+                    btn_ninguno_unidad.setFixedSize(70, 28)
+                    botones_layout.addWidget(btn_todos_unidad)
+                    botones_layout.addWidget(btn_ninguno_unidad)
+                    unidad_header_layout.addWidget(botones_rapidos)
+                    unidad_header_layout.addStretch()
+                    unidad_layout.addWidget(unidad_header)
+
+                    unidad_checkboxes = []
+                    if ingredientes:
+                        etiqueta_quitar = QLabel("Quitar ingredientes:")
+                        etiqueta_quitar.setStyleSheet("font-size: 13px; font-weight: bold; color: #7f8c8d; background: transparent;")
+                        unidad_layout.addWidget(etiqueta_quitar)
+                        ingredientes_layout = QVBoxLayout()
+                        ingredientes_layout.setSpacing(4)
+                        ingredientes_layout.setContentsMargins(8, 4, 8, 4)
+                        for ing in ingredientes:
+                            item_widget = QWidget()
+                            item_widget.setStyleSheet("background: transparent;")
+                            item_layout = QHBoxLayout(item_widget)
+                            item_layout.setContentsMargins(8, 4, 8, 4)
+                            item_layout.setSpacing(12)
+                            cb = QCheckBox()
+                            cb.setChecked(ing["idIng"] not in ids_excluidos_prev_unidad)
+                            cb.idIng = ing["idIng"]
+                            cb.nomIng = ing["nomIng"]
+                            cb.setStyleSheet("""
+                                QCheckBox { spacing: 10px; font-size: 14px; font-weight: 600; color: #2c3e50; background: transparent; }
+                                QCheckBox::indicator { width: 20px; height: 20px; border-radius: 4px; border: 2px solid #3498db; background: white; }
+                                QCheckBox::indicator:checked { background-color: #3498db; border: 2px solid #3498db; }
+                                QCheckBox::indicator:unchecked { background-color: white; }
+                            """)
+                            ing_nombre = QLabel(ing["nomIng"])
+                            ing_nombre.setStyleSheet("background: transparent; font-size: 14px; color: #2c3e50; font-weight: 600; border: none;")
+                            estado_label = QLabel()
+                            estado_label.setStyleSheet("background: transparent; font-size: 13px; font-weight: bold; border: none; padding: 3px 10px; border-radius: 4px;")
+                            def actualizar_estado(checked, lbl=estado_label, widget=item_widget):
+                                if checked:
+                                    lbl.setText("✓ Incluido")
+                                    lbl.setStyleSheet("background: #e8f5e9; font-size: 13px; color: #2ecc71; font-weight: bold; border: none; padding: 3px 10px; border-radius: 4px;")
+                                    widget.setStyleSheet("background: transparent; border-bottom: 1px solid #e2e8f0;")
+                                else:
+                                    lbl.setText("✗ Excluido")
+                                    lbl.setStyleSheet("background: #ffebee; font-size: 13px; color: #e74c3c; font-weight: bold; border: none; padding: 3px 10px; border-radius: 4px;")
+                                    widget.setStyleSheet("background: #fff5f5; border-bottom: 1px solid #ffcdd2;")
+                            actualizar_estado(cb.isChecked())
+                            cb.toggled.connect(actualizar_estado)
+                            item_layout.addWidget(cb)
+                            item_layout.addWidget(ing_nombre, 1)
+                            item_layout.addWidget(estado_label)
+                            unidad_checkboxes.append(cb)
+                            ingredientes_layout.addWidget(item_widget)
+                        def crear_funcion_todos_unidad(checks):
+                            def marcar_todos():
+                                for ch in checks:
+                                    ch.setChecked(True)
+                            return marcar_todos
+                        def crear_funcion_ninguno_unidad(checks):
+                            def marcar_ninguno():
+                                for ch in checks:
+                                    ch.setChecked(False)
+                            return marcar_ninguno
+                        btn_todos_unidad.clicked.connect(crear_funcion_todos_unidad(unidad_checkboxes))
+                        btn_ninguno_unidad.clicked.connect(crear_funcion_ninguno_unidad(unidad_checkboxes))
+                        unidad_layout.addLayout(ingredientes_layout)
+                    else:
+                        btn_todos_unidad.setVisible(False)
+                        btn_ninguno_unidad.setVisible(False)
+
+                    unidad_spinboxes_extra = []
+                    if ingredientes_extra:
+                        separador_extra = QWidget()
+                        separador_extra.setFixedHeight(1)
+                        separador_extra.setStyleSheet("background-color: #e2e8f0; border: none;")
+                        unidad_layout.addWidget(separador_extra)
+                        etiqueta_extra = QLabel("Agregar extra:")
+                        etiqueta_extra.setStyleSheet("font-size: 13px; font-weight: bold; color: #27ae60; background: transparent;")
+                        unidad_layout.addWidget(etiqueta_extra)
+                        extras_layout = QVBoxLayout()
+                        extras_layout.setSpacing(4)
+                        extras_layout.setContentsMargins(8, 4, 8, 4)
+                        for idIng_e, nomIng_e, precioExtra_e in ingredientes_extra:
+                            item_w = QWidget()
+                            item_w.setStyleSheet("background: transparent;")
+                            item_l = QHBoxLayout(item_w)
+                            item_l.setContentsMargins(8, 4, 8, 4)
+                            item_l.setSpacing(10)
+                            lbl_ing_extra = QLabel(f"{nomIng_e}  (+{precioExtra_e:.2f} Bs c/u)")
+                            lbl_ing_extra.setStyleSheet("background: transparent; font-size: 14px; color: #2c3e50; font-weight: 600; border: none;")
+                            sp = QSpinBox()
+                            sp.setRange(0, 20)
+                            sp.setValue(int(cantidades_extra_prev_unidad.get(idIng_e, 0)))
+                            sp.idIng = idIng_e
+                            sp.nomIng = nomIng_e
+                            sp.precioExtra = precioExtra_e
+                            item_l.addWidget(lbl_ing_extra, 1)
+                            item_l.addWidget(sp)
+                            unidad_spinboxes_extra.append(sp)
+                            extras_layout.addWidget(item_w)
+                        unidad_layout.addLayout(extras_layout)
+
+                    v_layout.addWidget(unidad_frame)
+                    unidades_widgets.append({'frame': unidad_frame, 'checkboxes': unidad_checkboxes, 'spinboxes_extra': unidad_spinboxes_extra})
+                v_layout.addStretch()
+                scroll.setWidget(contenedor)
+                tab_layout.addWidget(scroll)
+                exclusiones_por_producto[str(id_prod)] = {'nombre': nombre_prod, 'unidades': unidades_widgets, 'cantidad': cantidad_promo}
+                extras_por_producto[str(id_prod)] = {'nombre': nombre_prod, 'unidades': unidades_widgets, 'cantidad': cantidad_promo}
+            else:
+                no_ing = QLabel(f"{nombre_prod} no tiene ingredientes para personalizar")
+                no_ing.setAlignment(Qt.AlignCenter)
+                no_ing.setStyleSheet("padding: 20px; color: #7f8c8d; font-size: 12px;")
+                v_layout.addWidget(no_ing)
+                scroll.setWidget(contenedor)
+                tab_layout.addWidget(scroll)
+                exclusiones_por_producto[str(id_prod)] = {'nombre': nombre_prod, 'unidades': [], 'cantidad': cantidad_promo}
+                extras_por_producto[str(id_prod)] = {'nombre': nombre_prod, 'unidades': [], 'cantidad': cantidad_promo}
+            tabs.addTab(tab_widget, f"{nombre_prod} (x{cantidad_promo})")
+        layout.addWidget(tabs)
+        footer = QWidget()
+        footer.setStyleSheet("QWidget { background-color: #f8f9fa; border-top: 1px solid #e2e8f0; }")
+        footer_layout = QHBoxLayout(footer)
+        footer_layout.setContentsMargins(20, 16, 20, 16)
+        footer_layout.setSpacing(12)
+        btn_cancelar = QPushButton("Cancelar")
+        btn_cancelar.setStyleSheet("QPushButton { background-color: #95a5a6; color: white; border: none; border-radius: 8px; font-size: 14px; font-weight: bold; padding: 10px 16px; min-width: 100px; } QPushButton:hover { background-color: #7f8c8d; }")
+        btn_cancelar.setCursor(Qt.PointingHandCursor)
+        btn_confirmar = QPushButton("Confirmar")
+        btn_confirmar.setStyleSheet("QPushButton { background-color: #2ecc71; color: white; border: none; border-radius: 8px; font-size: 14px; font-weight: bold; padding: 10px 16px; min-width: 120px; } QPushButton:hover { background-color: #27ae60; }")
+        btn_confirmar.setCursor(Qt.PointingHandCursor)
+        footer_layout.addStretch()
+        footer_layout.addWidget(btn_cancelar)
+        footer_layout.addWidget(btn_confirmar)
+        layout.addWidget(footer)
+        btn_cancelar.clicked.connect(dialog.reject)
+        btn_confirmar.clicked.connect(dialog.accept)
+        if dialog.exec_() != QDialog.Accepted:
+            return None, None
+        resultado_exclusiones = {}
+        resultado_extras = {}
+        for id_prod_str, data in exclusiones_por_producto.items():
+            unidades_data_excl = []
+            unidades_data_extra = []
+            for unidad_idx, unidad in enumerate(data['unidades']):
+                excluidos = [{"idIng": cb.idIng, "nomIng": cb.nomIng} for cb in unidad['checkboxes'] if not cb.isChecked()]
+                if excluidos:
+                    unidades_data_excl.append({'unidad': unidad_idx, 'exclusiones': excluidos})
+                extras_elegidos = [
+                    {"idIng": sp.idIng, "nomIng": sp.nomIng, "cantidadExtra": sp.value(), "precioExtra": sp.precioExtra}
+                    for sp in unidad['spinboxes_extra'] if sp.value() > 0
+                ]
+                if extras_elegidos:
+                    unidades_data_extra.append({'unidad': unidad_idx, 'extras': extras_elegidos})
+            if unidades_data_excl:
+                resultado_exclusiones[id_prod_str] = unidades_data_excl
+            if unidades_data_extra:
+                resultado_extras[id_prod_str] = unidades_data_extra
+        return resultado_exclusiones, resultado_extras
+    
+    def _textoExclusionesPromo(self, exclusiones_por_producto):
+        if not exclusiones_por_producto:
+            return ""
+        
+        partes = []
+        for id_prod_str, unidades_data in exclusiones_por_producto.items():
+            conn = sqlite3.connect(DB_PATH)
+            cursor = conn.cursor()
+            cursor.execute("SELECT nomProd FROM Producto WHERE idProd=?", (int(id_prod_str),))
+            prod = cursor.fetchone()
+            conn.close()
+            nombre_prod = prod[0] if prod else id_prod_str
+            
+            unidades_con_excl = []
+            for unidad_data in unidades_data:
+                if unidad_data['exclusiones']:
+                    excl_nombres = [e["nomIng"] for e in unidad_data['exclusiones']]
+                    unidades_con_excl.append(f"#{unidad_data['unidad']+1}: sin {', '.join(excl_nombres)}")
+            
+            if unidades_con_excl:
+                partes.append(f"{nombre_prod} [{'; '.join(unidades_con_excl)}]")
+        
+        return " | ".join(partes)
+
+    def _textoExtrasPromo(self, extras_por_producto):
+        if not extras_por_producto:
+            return ""
+        partes = []
+        for id_prod_str, unidades_data in extras_por_producto.items():
+            conn = sqlite3.connect(DB_PATH)
+            cursor = conn.cursor()
+            cursor.execute("SELECT nomProd FROM Producto WHERE idProd=?", (int(id_prod_str),))
+            prod = cursor.fetchone()
+            conn.close()
+            nombre_prod = prod[0] if prod else id_prod_str
+
+            unidades_con_extra = []
+            for unidad_data in unidades_data:
+                if unidad_data['extras']:
+                    extra_nombres = [f"+{e['cantidadExtra']} {e['nomIng']}" for e in unidad_data['extras']]
+                    unidades_con_extra.append(f"#{unidad_data['unidad']+1}: {', '.join(extra_nombres)}")
+
+            if unidades_con_extra:
+                partes.append(f"{nombre_prod} [{'; '.join(unidades_con_extra)}]")
+
+        return " | ".join(partes)
+    
+    
+    def dialogPromocion(self, nombre_promo):
+        if self.verificarBloqueo("agregar productos"):
+            return
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute("SELECT idProm, precioProm FROM Promocion WHERE nomProm=?", (nombre_promo,))
+        promo = cursor.fetchone()
+        if not promo:
+            conn.close()
+            return
+        id_prom, precio_unitario = promo
+        cursor.execute("""
+            SELECT P.idProd, P.nomProd, PP.cantidadProdProm
+            FROM PromocionProd PP
+            JOIN Producto P ON PP.idProd = P.idProd
+            WHERE PP.idProm = ?
+        """, (id_prom,))
+        productos_promo = [{"idProd": r[0], "nombre": r[1], "cantidad": r[2]} for r in cursor.fetchall()]
+        conn.close()
+        
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Añadir promoción")
+        dialog.setStyleSheet("""
+            QDialog { background-color: #f8fafc; border-radius: 10px; font-family: 'Segoe UI', Arial, sans-serif; }
+            QLabel { color: #2c3e50; font-size: 14px; font-weight: 500; margin-bottom: 6px; }
+            QSpinBox { background-color: #ffffff; border: 2px solid #e2e8f0; border-radius: 6px; padding: 6px 10px; font-size: 14px; min-height: 40px; }
+            QSpinBox:focus { border: 2px solid #4a89dc; background-color: #f0f7ff; }
+            QSpinBox::up-button { background-color: #3498db; border: none; width: 35px; height: 28px; border-radius: 0px 5px 0px 0px; subcontrol-origin: border; subcontrol-position: top right; }
+            QSpinBox::up-button:hover { background-color: #2980b9; }
+            QSpinBox::down-button { background-color: #e74c3c; border: none; width: 35px; height: 28px; border-radius: 0px 5px 0px 0px; subcontrol-origin: border; subcontrol-position: bottom right; }
+            QSpinBox::down-button:hover { background-color: #c0392b; }
+            QRadioButton { font-size: 14px; color: #2c3e50; padding: 6px 2px; spacing: 8px; }
+            QRadioButton::indicator { width: 18px; height: 18px; border-radius: 9px; border: 2px solid #4a89dc; background: #ffffff; }
+            QRadioButton::indicator:checked { background-color: #4a89dc; border: 2px solid #4a89dc; }
+            QDialogButtonBox { background: #f5f7fa; border-top: 1px solid #e2e8f0; padding: 12px 16px; }
+            QDialogButtonBox QPushButton { background-color: #3498db; color: #ffffff; border: none; border-radius: 8px; padding: 10px 18px; min-width: 110px; font-weight: bold; }
+            QDialogButtonBox QPushButton:hover { background-color: #2980b9; }
+        """)
+        layout = QVBoxLayout(dialog)
+        layout.addWidget(QLabel(f"Promoción: {nombre_promo}"))
+        
+        if getattr(self, "validar_stock", False):
+            max_disponible = self.verificarStockDisponible(nombre_promo, False)
+            info_texto = f"Máximo disponible: {max_disponible} unidades" if max_disponible > 0 else "Stock insuficiente"
+            spin = QSpinBox()
+            spin.setRange(1, max(1, max_disponible))
+            spin.setValue(1)
+        else:
+            info_texto = "Sin validar stock (entrada libre)"
+            spin = QSpinBox()
+            spin.setRange(1, 9999)
+            spin.setValue(1)
+        info_label = QLabel(info_texto)
+        layout.addWidget(info_label)
+        layout.addWidget(QLabel("Cantidad de promociones:"))
+        layout.addWidget(spin)
+        
+        tipoLocal = QRadioButton("Local")
+        tipoLlevar = QRadioButton("Para llevar")
+        tipoLocal.setChecked(True)
+        layout.addWidget(tipoLocal)
+        layout.addWidget(tipoLlevar)
+        
+        productos_con_ingredientes = [p for p in productos_promo if self._obtenerIngredientesProducto(p['nombre'])]
+        exclusiones_promo_seleccionadas = {}
+        extras_promo_seleccionadas = {}
+        cantidad_al_personalizar = [0]
+        
+        if productos_con_ingredientes:
+            btn_personalizar = QPushButton("Personalizar ingredientes por producto")
+            btn_personalizar.setStyleSheet("""
+                QPushButton { background-color: #8e44ad; color: white; border-radius: 6px; padding: 8px 16px; font-weight: bold; font-size: 13px; }
+                QPushButton:hover { background-color: #7d3c98; }
+            """)
+            lbl_exclusiones = QLabel("Sin exclusiones")
+            lbl_exclusiones.setStyleSheet("""
+                QLabel { font-size: 12px; color: #27ae60; padding: 4px 8px; background-color: #eafaf1; border-radius: 4px; border: 1px solid #a9dfbf; }
+            """)
+            lbl_exclusiones.setWordWrap(True)
+
+            lbl_extras = QLabel("Sin ingredientes extra")
+            lbl_extras.setStyleSheet("""
+                QLabel { font-size: 12px; color: #27ae60; padding: 4px 8px; background-color: #eafaf1; border-radius: 4px; border: 1px solid #a9dfbf; }
+            """)
+            lbl_extras.setWordWrap(True)
+
+            def abrir_exclusiones_promo():
+                nonlocal exclusiones_promo_seleccionadas, extras_promo_seleccionadas
+                cantidad_actual = spin.value()
+                cantidad_al_personalizar[0] = cantidad_actual
+                productos_expandidos = []
+                for p in productos_promo:
+                    productos_expandidos.append({
+                        'idProd': p['idProd'],
+                        'nombre': p['nombre'],
+                        'cantidad': p['cantidad'] * cantidad_actual
+                    })
+                resultado_excl, resultado_extra = self._dialogoExclusionesPromo(
+                    nombre_promo, productos_expandidos,
+                    exclusiones_promo_seleccionadas, extras_promo_seleccionadas
+                )
+                if resultado_excl is not None:
+                    exclusiones_promo_seleccionadas = resultado_excl
+                    extras_promo_seleccionadas = resultado_extra or {}
+                    if exclusiones_promo_seleccionadas:
+                        texto = self._textoExclusionesPromo(exclusiones_promo_seleccionadas)
+                        lbl_exclusiones.setText(texto)
+                        lbl_exclusiones.setStyleSheet("""
+                            QLabel { font-size: 12px; color: #c0392b; padding: 4px 8px; background-color: #fdecea; border-radius: 4px; border: 1px solid #f5c6cb; }
+                        """)
+                    else:
+                        lbl_exclusiones.setText("Sin exclusiones")
+                        lbl_exclusiones.setStyleSheet("""
+                            QLabel { font-size: 12px; color: #27ae60; padding: 4px 8px; background-color: #eafaf1; border-radius: 4px; border: 1px solid #a9dfbf; }
+                        """)
+                    if extras_promo_seleccionadas:
+                        texto_extra = self._textoExtrasPromo(extras_promo_seleccionadas)
+                        lbl_extras.setText(texto_extra)
+                        lbl_extras.setStyleSheet("""
+                            QLabel { font-size: 12px; color: #27ae60; padding: 4px 8px; background-color: #eafaf1; border-radius: 4px; border: 1px solid #a9dfbf; }
+                        """)
+                    else:
+                        lbl_extras.setText("Sin ingredientes extra")
+                        lbl_extras.setStyleSheet("""
+                            QLabel { font-size: 12px; color: #27ae60; padding: 4px 8px; background-color: #eafaf1; border-radius: 4px; border: 1px solid #a9dfbf; }
+                        """)
+
+            def on_spin_changed(nuevo_valor):
+                nonlocal exclusiones_promo_seleccionadas
+                if exclusiones_promo_seleccionadas and cantidad_al_personalizar[0] > 0 and nuevo_valor != cantidad_al_personalizar[0]:
+                    lbl_exclusiones.setText(f"⚠ Personalizaste para {cantidad_al_personalizar[0]} promocion(es) — la cantidad cambió, personaliza de nuevo si es necesario")
+                    lbl_exclusiones.setStyleSheet("""
+                        QLabel { font-size: 12px; color: #e67e22; padding: 4px 8px; background-color: #fef9e7; border-radius: 4px; border: 1px solid #f39c12; }
+                    """)
+
+            spin.valueChanged.connect(on_spin_changed)
+            btn_personalizar.clicked.connect(abrir_exclusiones_promo)
+            layout.addWidget(btn_personalizar)
+            layout.addWidget(lbl_exclusiones)
+            layout.addWidget(lbl_extras)
+        
+        footer_promo = QHBoxLayout()
+        footer_promo.setSpacing(12)
+        btn_cancelar_promo = QPushButton("Cancelar")
+        btn_cancelar_promo.setCursor(Qt.PointingHandCursor)
+        btn_cancelar_promo.setStyleSheet("""
+            QPushButton { background-color: #95a5a6; color: white; border: none; border-radius: 8px;
+                font-size: 14px; font-weight: bold; padding: 10px 16px; min-width: 100px; }
+            QPushButton:hover { background-color: #7f8c8d; }
+        """)
+        btn_confirmar_promo = QPushButton("Confirmar")
+        btn_confirmar_promo.setCursor(Qt.PointingHandCursor)
+        btn_confirmar_promo.setStyleSheet("""
+            QPushButton { background-color: #2ecc71; color: white; border: none; border-radius: 8px;
+                font-size: 14px; font-weight: bold; padding: 10px 16px; min-width: 100px; }
+            QPushButton:hover { background-color: #27ae60; }
+        """)
+        footer_promo.addStretch()
+        footer_promo.addWidget(btn_cancelar_promo)
+        footer_promo.addWidget(btn_confirmar_promo)
+        layout.addLayout(footer_promo)
+        btn_cancelar_promo.clicked.connect(dialog.reject)
+        btn_confirmar_promo.clicked.connect(dialog.accept)
+        
+        if dialog.exec_() == QDialog.Accepted:
+            tipo = "Local" if tipoLocal.isChecked() else "Para llevar"
+            self.agregarPromocionTabla(nombre_promo, spin.value(), tipo, productos_promo, exclusiones_promo_seleccionadas, extras_promo_seleccionadas)
+
+    def agregarPromocionTabla(self, nombre_promo, cantidad, tipo, productos_promo, exclusiones_por_producto=None, extras_por_producto=None):
+        if self.verificarBloqueo("agregar productos"):
+            return
+        exclusiones_por_producto = exclusiones_por_producto or {}
+        extras_por_producto = extras_por_producto or {}
         self.conn = sqlite3.connect(DB_PATH)
         self.cursor = self.conn.cursor()
-        self.campoMesa.setText(str(idMesa))
-        self.cursor.execute("""SELECT nombSeccion FROM Seccion WHERE idSeccion=?""", (idSeccion,))
-        resultados = self.cursor.fetchone()
-        self.campoSeccion.setText(str(resultados[0]))    
-        self.conn.close()
-    
-    
-    def actualizarHora(self):
-        self.campoTiempo.setText(datetime.now().strftime("%I:%M %p"))                
-        
-        
+        self.cursor.execute("SELECT precioProm FROM Promocion WHERE nomProm=?", (nombre_promo,))
+        precio_base_promo = float(self.cursor.fetchone()[0])
 
-if __name__=="__main__":
+        costo_extras_total = sum(
+            extra["cantidadExtra"] * extra["precioExtra"]
+            for lista_unidades in (extras_por_producto or {}).values()
+            for unidad_data in lista_unidades
+            for extra in unidad_data["extras"]
+        )
+        costo_extras_por_combo = (costo_extras_total / cantidad) if cantidad > 0 else 0
+        precio_unitario = precio_base_promo + costo_extras_por_combo
+
+        texto_exclusiones_nuevo = self._textoExclusionesPromo(exclusiones_por_producto)
+        texto_extras_nuevo = self._textoExtrasPromo(extras_por_producto)
+        texto_personalizacion_nuevo = " | ".join(t for t in [texto_exclusiones_nuevo, texto_extras_nuevo] if t)
+        
+        for row in range(self.tabla.rowCount()):
+            if (self.tabla.item(row, 1).text() == tipo and
+                    self.tabla.item(row, 2).data(Qt.UserRole) == nombre_promo):
+                datos_fila = self.exclusiones_promo_por_fila.get(row, {}) if hasattr(self, 'exclusiones_promo_por_fila') else {}
+                excl_promo_fila = datos_fila.get('exclusiones', {})
+                extras_promo_fila = datos_fila.get('extras', {})
+                texto_excl_fila = self._textoExclusionesPromo(excl_promo_fila)
+                texto_extras_fila = self._textoExtrasPromo(extras_promo_fila)
+                texto_personalizacion_fila = " | ".join(t for t in [texto_excl_fila, texto_extras_fila] if t)
+                if texto_personalizacion_fila == texto_personalizacion_nuevo:
+                    cant_actual = int(self.tabla.item(row, 0).text()) + cantidad
+                    self.tabla.item(row, 0).setText(str(cant_actual))
+                    self.tabla.item(row, 4).setText(f"{cant_actual * precio_unitario:.2f}")
+                    self.recalcularTotal()
+                    self.conn.close()
+                    return
+        
+        row = self.tabla.rowCount()
+        self.tabla.insertRow(row)
+        nombre_display = nombre_promo if not texto_personalizacion_nuevo else f"{nombre_promo}\n({texto_personalizacion_nuevo})"
+        
+        tooltip_cantidad = f"Cantidad: {cantidad}"
+        tooltip_tipo = f"Tipo de consumo: {tipo}"
+        tooltip_producto = "🖱 Haga clic para ver el detalle completo" + (f"\n({texto_personalizacion_nuevo})" if texto_personalizacion_nuevo else "")
+        tooltip_precio = f"Precio unitario: {precio_unitario:.2f} Bs"
+        tooltip_subtotal = f"Subtotal: {cantidad * precio_unitario:.2f} Bs"
+        
+        item_cantidad = QTableWidgetItem(str(cantidad))
+        item_cantidad.setTextAlignment(Qt.AlignCenter)
+        item_cantidad.setToolTip(tooltip_cantidad)
+        self.tabla.setItem(row, 0, item_cantidad)
+        
+        item_tipo = QTableWidgetItem(tipo)
+        item_tipo.setTextAlignment(Qt.AlignCenter)
+        item_tipo.setToolTip(tooltip_tipo)
+        self.tabla.setItem(row, 1, item_tipo)
+        
+        item_nombre = QTableWidgetItem(nombre_display)
+        item_nombre.setTextAlignment(Qt.AlignCenter)
+        item_nombre.setData(Qt.UserRole, nombre_promo)
+        item_nombre.setToolTip(tooltip_producto)
+        if texto_personalizacion_nuevo:
+            item_nombre.setForeground(QColor("#c0392b"))
+        self.tabla.setItem(row, 2, item_nombre)
+        
+        item_precio = QTableWidgetItem(f"{precio_unitario:.2f}")
+        item_precio.setTextAlignment(Qt.AlignCenter)
+        item_precio.setToolTip(tooltip_precio)
+        self.tabla.setItem(row, 3, item_precio)
+        
+        total = cantidad * precio_unitario
+        item_total = QTableWidgetItem(f"{total:.2f}")
+        item_total.setTextAlignment(Qt.AlignCenter)
+        item_total.setToolTip(tooltip_subtotal)
+        self.tabla.setItem(row, 4, item_total)
+        
+        btn_container = QWidget()
+        btn_container.setStyleSheet("background: transparent;")
+        btn_layout = QVBoxLayout(btn_container)
+        btn_layout.setContentsMargins(0, 0, 0, 0)
+        btn_layout.setSpacing(0)
+        
+        btn = QPushButton("🗑️")
+        btn.setFixedSize(90, 30)
+        btn.setStyleSheet("""
+            QPushButton { background-color: #e74c3c; color: white; border: none; border-radius: 6px; font-size: 14px; font-weight: bold; min-width: 90px; margin: 0px; padding: 0px; }
+            QPushButton:hover { background-color: #c0392b; }
+            QPushButton:pressed { background-color: #a93226; }
+        """)
+        btn.setCursor(Qt.PointingHandCursor)
+        btn.setToolTip("Eliminar producto")
+        btn.clicked.connect(lambda _, r=row: self.eliminarFila(r))
+        btn_layout.addWidget(btn, 0, Qt.AlignCenter)
+        self.tabla.setCellWidget(row, 5, btn_container)
+        
+        self.exclusiones_por_fila[row] = []
+        self.extras_por_fila[row] = []
+        if not hasattr(self, 'exclusiones_promo_por_fila'):
+            self.exclusiones_promo_por_fila = {}
+        self.exclusiones_promo_por_fila[row] = {
+            'productos_promo': productos_promo,
+            'exclusiones': exclusiones_por_producto,
+            'extras': extras_por_producto,
+            'cantidad_promociones': cantidad
+        }
+        
+        self.tabla.setRowHeight(row, 80 if texto_personalizacion_nuevo else 50)
+        self.tabla.horizontalHeader().setSectionResizeMode(5, QHeaderView.Fixed)
+        self.tabla.setColumnWidth(5, 110)
+        self.recalcularTotal()
+        self.conn.close()
+        
+    def _guardarExclusionesPromo(self, id_detalle_venta, exclusiones_por_producto):
+        for id_prod_str, unidades_data in exclusiones_por_producto.items():
+            for unidad_data in unidades_data:
+                unidad_idx = unidad_data['unidad']
+                for excl in unidad_data['exclusiones']:
+                    self.cursor.execute("""
+                        INSERT INTO DetallesVentaExclusionesPromo (idDetalleVenta, idProd, idIng, nomIng, numUnidad)
+                        VALUES (?, ?, ?, ?, ?)
+                    """, (id_detalle_venta, int(id_prod_str), excl["idIng"], excl["nomIng"], unidad_idx))
+
+    def _guardarExtrasPromo(self, id_detalle_venta, extras_por_producto):
+        if not extras_por_producto:
+            return
+        for id_prod_str, unidades_data in extras_por_producto.items():
+            for unidad_data in unidades_data:
+                unidad_idx = unidad_data['unidad']
+                for extra in unidad_data['extras']:
+                    self.cursor.execute("""
+                        INSERT INTO DetallesVentaExtras (idDetalleVenta, idIng, nomIng, cantidadExtra, precioExtra, idProd, numUnidad)
+                        VALUES (?, ?, ?, ?, ?, ?, ?)
+                    """, (id_detalle_venta, extra["idIng"], extra["nomIng"],
+                          extra["cantidadExtra"], extra["precioExtra"], int(id_prod_str), unidad_idx))
+    
+    
+if __name__ == "__main__":
     aplicacion = QApplication(sys.argv)
     pagina = RegistrarPedidos("DIRECTORIO")
     pagina.show()

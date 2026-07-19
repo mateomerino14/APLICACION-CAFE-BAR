@@ -608,28 +608,48 @@ class Familia(QWidget):
         """, (idProm,))
         dias = c.fetchall()
         conn.close()
-        detallesTexto = "=== PRODUCTOS ===\n"
+        
+        html = """
+        <style>
+            .titulo { color: #2c3e50; font-size: 16px; font-weight: bold; margin-top: 10px; }
+            .producto { color: #27ae60; font-size: 14px; margin-left: 10px; }
+            .fecha { color: #e67e22; font-size: 14px; }
+            .hora { color: #3498db; font-size: 14px; }
+            .dias { color: #9b59b6; font-size: 14px; }
+            .activo { color: #27ae60; font-size: 14px; font-weight: bold; }
+            .inactivo { color: #e74c3c; font-size: 14px; font-weight: bold; }
+            .info { color: #7f8c8d; font-size: 13px; font-style: italic; }
+            hr { border: 1px solid #ecf0f1; }
+        </style>
+        """
+        
+        html += "<div class='titulo'>📦 PRODUCTOS</div>"
         for nom_prod, cantidad in productos:
-            detallesTexto += f"• {cantidad}x {nom_prod}\n"
-        detallesTexto += "\n=== DISPONIBILIDAD ===\n"
+            html += f"<div class='producto'>• {cantidad}x {nom_prod}</div>"
+        
+        html += "<hr>"
+        html += "<div class='titulo'>⏰ DISPONIBILIDAD</div>"
+        
         fecha_especifica = promocion_data[0]
         fecha_inicio = promocion_data[1]
         fecha_fin = promocion_data[2]
         hora_inicio = promocion_data[3]
         hora_fin = promocion_data[4]
+        
         ahora = datetime.now()
         fecha_actual = ahora.date()
         hora_actual = ahora.time()
         dia_semana_actual = ahora.weekday() + 1
         disponible_ahora = True
+        
         if fecha_especifica:
             try:
                 fecha_esp = datetime.strptime(fecha_especifica, "%Y-%m-%d").date()
                 if fecha_esp != fecha_actual:
                     disponible_ahora = False
-                detallesTexto += f"• Fecha específica: {fecha_esp.strftime('%d/%m/%Y')}\n"
+                html += f"<div class='fecha'>• Fecha específica: {fecha_esp.strftime('%d/%m/%Y')}</div>"
             except:
-                detallesTexto += "• Fecha específica: Formato inválido\n"
+                html += "<div class='inactivo'>• Fecha específica: Formato inválido</div>"
                 disponible_ahora = False
         elif fecha_inicio and fecha_fin:
             try:
@@ -637,12 +657,27 @@ class Familia(QWidget):
                 fecha_f = datetime.strptime(fecha_fin, "%Y-%m-%d").date()
                 if not (fecha_ini <= fecha_actual <= fecha_f):
                     disponible_ahora = False
-                detallesTexto += f"• Período: {fecha_ini.strftime('%d/%m/%Y')} - {fecha_f.strftime('%d/%m/%Y')}\n"
+                html += f"<div class='fecha'>• Período: {fecha_ini.strftime('%d/%m/%Y')} - {fecha_f.strftime('%d/%m/%Y')}</div>"
             except:
-                detallesTexto += "• Período: Formato inválido\n"
+                html += "<div class='inactivo'>• Período: Formato inválido</div>"
                 disponible_ahora = False
         else:
-            detallesTexto += "• Período: Sin restricción de fechas\n"
+            html += "<div class='info'>• Período: Sin restricción de fechas</div>"
+
+        # Los días de la semana son una restricción independiente del tipo de
+        # fecha configurado: se evalúan y se muestran siempre que existan,
+        # ya sea que la promoción tenga fecha específica, rango de fechas,
+        # o ninguna restricción de fecha (es decir, "todas las semanas").
+        if dias:
+            dias_numeros = [dia[0] for dia in dias]
+            dia_nombres = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"]
+            dias_texto = [dia_nombres[dia_num-1] for dia_num in dias_numeros if 1 <= dia_num <= 7]
+
+            if dia_semana_actual not in dias_numeros:
+                disponible_ahora = False
+
+            if dias_texto:
+                html += f"<div class='dias'>• Días disponibles: {', '.join(dias_texto)}</div>"
 
         if hora_inicio and hora_fin and hora_inicio != "00:00:00" and hora_fin != "23:59:59":
             try:
@@ -650,32 +685,20 @@ class Familia(QWidget):
                 hora_f = datetime.strptime(hora_fin, "%H:%M:%S").time()
                 if not (hora_ini <= hora_actual <= hora_f):
                     disponible_ahora = False
-                detallesTexto += f"• Horario: {hora_ini.strftime('%H:%M')} - {hora_f.strftime('%H:%M')}\n"
+                html += f"<div class='hora'>• Horario: {hora_ini.strftime('%H:%M')} - {hora_f.strftime('%H:%M')}</div>"
             except:
-                detallesTexto += "• Horario: Formato inválido\n"
+                html += "<div class='inactivo'>• Horario: Formato inválido</div>"
         else:
-            detallesTexto += "• Horario: Todo el día\n"
+            html += "<div class='info'>• Horario: Todo el día</div>"
         
-        if dias:
-            dias_numeros = [dia[0] for dia in dias]
-            dia_nombres = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"]
-            dias_texto = [dia_nombres[dia_num-1] for dia_num in dias_numeros if 1 <= dia_num <= 7]
-            
-            if dia_semana_actual not in dias_numeros:
-                disponible_ahora = False
-                
-            if dias_texto:
-                detallesTexto += f"• Días disponibles: {', '.join(dias_texto)}\n"
-        else:
-            detallesTexto += "• Días disponibles: Todos los días\n"
-        
-        detallesTexto += "\n=== ESTADO ACTUAL ===\n"
+        html += "<hr>"
+        html += "<div class='titulo'>🔴 ESTADO ACTUAL</div>"
         if disponible_ahora:
-            detallesTexto += "• ✅ PROMOCIÓN ACTIVA AHORA\n"
+            html += "<div class='activo'>• ✅ PROMOCIÓN ACTIVA AHORA</div>"
         else:
-            detallesTexto += "• ❌ PROMOCIÓN NO DISPONIBLE AHORA\n"
+            html += "<div class='inactivo'>• ❌ PROMOCIÓN NO DISPONIBLE AHORA</div>"
 
-        self.detalles.setText(detallesTexto)
+        self.detalles.setHtml(html)
     
     def cargarDetallesProducto(self, idProd):
         conn = sqlite3.connect(DB_PATH)
@@ -691,46 +714,91 @@ class Familia(QWidget):
         """, (idProd,))
         ingredientes = c.fetchall()
         conn.close()
+        
+        html = """
+        <style>
+            .titulo { color: #2c3e50; font-size: 16px; font-weight: bold; margin-top: 10px; }
+            .descripcion { color: #34495e; font-size: 14px; background: #f8f9fa; padding: 8px; border-radius: 5px; }
+            .ingrediente { color: #e67e22; font-size: 14px; margin-left: 10px; }
+            .stock { color: #3498db; font-size: 14px; margin-left: 10px; }
+            .warning { color: #f39c12; font-size: 14px; font-weight: bold; }
+            .error { color: #e74c3c; font-size: 14px; font-weight: bold; }
+            .success { color: #27ae60; font-size: 14px; }
+            .info { color: #7f8c8d; font-size: 13px; font-style: italic; }
+            hr { border: 1px solid #ecf0f1; }
+            .stock-alto { color: #27ae60; font-size: 14px; }
+            .stock-bajo { color: #e67e22; font-size: 14px; }
+            .stock-cero { color: #e74c3c; font-size: 14px; }
+        </style>
+        """
+        
+        html += "<div class='titulo'>📝 DESCRIPCIÓN</div>"
+        html += f"<div class='descripcion'>{descripcion or '—'}</div>"
+        
+        html += "<hr>"
+        html += "<div class='titulo'>🥗 INGREDIENTES NECESARIOS</div>"
+        
         max_productos = float('inf')
         detalles_ingredientes = []
+        
         for nom_ing, cant_necesaria, cant_stock, unidad in ingredientes:
             cant_necesaria = cant_necesaria or 0
             cant_stock = cant_stock or 0
             unidad = unidad or ""
+            
+            stock_class = "stock-alto"
+            if cant_stock == 0:
+                stock_class = "stock-cero"
+            elif cant_stock < 10:
+                stock_class = "stock-bajo"
+            
             if cant_necesaria > 0:
                 productos_posibles = cant_stock / cant_necesaria
                 max_productos = min(max_productos, productos_posibles)
                 detalles_ingredientes.append(
-                    f"{nom_ing}: {cant_necesaria} {unidad} por producto (Stock: {cant_stock} {unidad})"
+                    f"<div class='ingrediente'>• {nom_ing}:</div>"
+                    f"<div class='{stock_class}'>  - Necesario: {cant_necesaria} {unidad}</div>"
+                    f"<div class='{stock_class}'>  - Stock: {cant_stock} {unidad}</div>"
                 )
-        detallesTexto = f"Descripción: {descripcion or '—'}\n\n"
-        detallesTexto += "Ingredientes necesarios:\n"
+        
         if detalles_ingredientes:
             for det in detalles_ingredientes:
-                detallesTexto += f"• {det}\n"
+                html += det
         else:
-            detallesTexto += "• (sin ingredientes registrados)\n"
+            html += "<div class='info'>• (sin ingredientes registrados)</div>"
+        
+        html += "<hr>"
+        html += "<div class='titulo'>📊 CÁLCULO DE PRODUCCIÓN</div>"
         
         if not ingredientes or not detalles_ingredientes:
             unidades_str = "indeterminado"
+            html += f"<div class='info'>• Se pueden fabricar aproximadamente: {unidades_str} unidades</div>"
         elif math.isinf(max_productos):
             unidades_str = "∞"
+            html += f"<div class='success'>• Se pueden fabricar aproximadamente: {unidades_str} unidades</div>"
         elif math.isnan(max_productos) or max_productos < 0:
             unidades_str = "indeterminado"
+            html += f"<div class='info'>• Se pueden fabricar aproximadamente: {unidades_str} unidades</div>"
         else:
-            unidades_str = str(max(0, math.floor(max_productos)))
-        detallesTexto += f"\nSe pueden fabricar aproximadamente: {unidades_str} unidades\n"
+            unidades = max(0, math.floor(max_productos))
+            if unidades == 0:
+                html += f"<div class='error'>• Se pueden fabricar aproximadamente: {unidades} unidades</div>"
+            elif unidades < 5:
+                html += f"<div class='warning'>• Se pueden fabricar aproximadamente: {unidades} unidades</div>"
+            else:
+                html += f"<div class='success'>• Se pueden fabricar aproximadamente: {unidades} unidades</div>"
         
         if not ingredientes or not detalles_ingredientes:
-            detallesTexto += "\n⚠️ No se encontraron ingredientes registrados para este producto"
+            html += "<div class='warning'>⚠️ No se encontraron ingredientes registrados para este producto</div>"
         else:
             if not math.isfinite(max_productos):
-                detallesTexto += "\n⚠️ Cálculo no acotado por falta de insumos limitantes"
+                html += "<div class='info'>⚠️ Cálculo no acotado por falta de insumos limitantes</div>"
             elif max_productos == 0:
-                detallesTexto += "\n❌ Stock insuficiente para fabricar ninguna unidad"
+                html += "<div class='error'>❌ Stock insuficiente para fabricar ninguna unidad</div>"
             elif max_productos < 5:
-                detallesTexto += "\n⚠️ Stock bajo - considerar reabastecimiento"
-        self.detalles.setText(detallesTexto)
+                html += "<div class='warning'>⚠️ Stock bajo - considerar reabastecimiento</div>"
+        
+        self.detalles.setHtml(html)
     
     def limpiarCampo(self, layout):
         if layout is None:

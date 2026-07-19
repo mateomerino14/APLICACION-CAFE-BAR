@@ -101,17 +101,23 @@ class Pop_up_Registro_Seccion(QDialog):
         self.campoSeccion.setMaxLength(17)
         self.campoSeccion.setPlaceholderText("Ej: Terraza Principal")
         self.campoSeccion.setStyleSheet(campo_style)
+        letras_regex = QRegExp("[A-Za-záéíóúÁÉÍÓÚñÑ\\s]+")
+        self.campoSeccion.setValidator(QRegExpValidator(letras_regex))
         descipcion = QLabel("Descripción:")
         descipcion.setStyleSheet(label_style)
         self.campoDedscripcion = QLineEdit()
         self.campoDedscripcion.setMaxLength(40)
         self.campoDedscripcion.setPlaceholderText("Opcional")
         self.campoDedscripcion.setStyleSheet(campo_style)
+        descripcion_regex = QRegExp("[A-Za-záéíóúÁÉÍÓÚñÑ0-9.,\\-\\s]*")
+        self.campoDedscripcion.setValidator(QRegExpValidator(descripcion_regex))
         cantidad = QLabel("Cantidad de Mesas:")
         cantidad.setStyleSheet(label_style)
         self.campoCantidad = QLineEdit()
         self.campoCantidad.setPlaceholderText("Número entero")
-        self.campoCantidad.setValidator(QRegExpValidator(QRegExp("[0-9]+")))
+        cantidad_regex = QRegExp("[0-9]*")
+        self.campoCantidad.setValidator(QRegExpValidator(cantidad_regex))
+        self.campoCantidad.setMaxLength(4)
         self.campoCantidad.setStyleSheet(campo_style)
         layoutDatos.addWidget(seccion)
         layoutDatos.addWidget(self.campoSeccion)
@@ -154,29 +160,45 @@ class Pop_up_Registro_Seccion(QDialog):
        
    
    def subirInformacion(self):
-       lista=[self.campoSeccion.text().strip(),self.campoCantidad.text().strip()]
+       nombreSeccion = self.campoSeccion.text().strip()
+       descripcionSeccion = self.campoDedscripcion.text().strip()
+       cantidadTexto = self.campoCantidad.text().strip()
+       lista=[nombreSeccion, cantidadTexto]
        for elem in lista:
            if elem=="":
                QMessageBox.information(self,"Advertencia", "¡Llene los campos solicitados porfavor!" )
-               return 
+               return
+       try:
+           cantidad=int(cantidadTexto)
+       except ValueError:
+           QMessageBox.information(self,"Advertencia", "La cantidad de mesas debe ser un numero valido.")
+           return
+       if cantidad<0:
+           QMessageBox.information(self,"Advertencia", "La cantidad debe ser un numero mayor o igual a 0")
+           return
        conn=sqlite3.connect(DB_PATH)
        c=conn.cursor()
-       consulta="""SELECT * FROM Seccion WHERE nombSeccion=?"""
-       c.execute(consulta,(lista[0],))
-       resultados=c.fetchall()
-       if resultados:
-           QMessageBox.information(self,"Advertencia", "¡Este nombre de seccion ya ha sido registrado!" )
+       try:
+           consulta="""SELECT * FROM Seccion WHERE nombSeccion=?"""
+           c.execute(consulta,(nombreSeccion,))
+           resultados=c.fetchall()
+           if resultados:
+               QMessageBox.information(self,"Advertencia", "¡Este nombre de seccion ya ha sido registrado!" )
+               return
+           consulta="""INSERT INTO Seccion(nombSeccion,descripcion) VALUES(?,?)"""
+           c.execute(consulta,(nombreSeccion,descripcionSeccion))
+
+           indice=c.lastrowid
+           for i in range(cantidad):
+               consulta="""INSERT INTO Mesa(idMesa,idSeccion) VALUES(NULL,?)"""
+               c.execute(consulta,(indice,))
+           conn.commit()
+       except Exception as e:
+           conn.rollback()
+           QMessageBox.critical(self,"Error", f"No se pudo registrar la seccion: {str(e)}")
            return
-       consulta="""INSERT INTO Seccion(nombSeccion,descripcion) VALUES(?,?)"""       
-       c.execute(consulta,(lista[0],self.campoDedscripcion.text().strip()))
-       
-       indice=c.lastrowid
-       cantidad=int(lista[1])
-       for i in range(cantidad):
-           consulta="""INSERT INTO Mesa(idMesa,idSeccion) VALUES(NULL,?)"""
-           c.execute(consulta,(indice,))
-       conn.commit()
-       conn.close()
+       finally:
+           conn.close()
        QMessageBox.information(self,"Confirmación", "¡Se registro con exito!" )
        self.cerrarVentana()
        
@@ -193,6 +215,6 @@ class Pop_up_Registro_Seccion(QDialog):
         
 if __name__=="__main__":
     app = QApplication(sys.argv)
-    pagina=Pop_up_Registro_Seccion()
+    pagina=Pop_up_Registro_Seccion(None)
     pagina.show()
     sys.exit(app.exec_())

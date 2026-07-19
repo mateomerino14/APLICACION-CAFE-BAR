@@ -207,12 +207,13 @@ class ManejadorImpresion(QObject):
     
 
     def _construir_ticket(self, datos_venta, items):
+        from datetime import datetime
         fecha = datetime.now().strftime("%d/%m/%Y")
-        hora = datetime.now().strftime("%H:%M:%S")
+        hora = datetime.now().strftime("%I:%M %p")
         contenido = []
-        contenido.append("=" * 40)
-        contenido.append(f"{'CAFEBAR RESTAURANTE':^40}")
-        contenido.append("=" * 40)
+        contenido.append("=" * 44)
+        contenido.append(f"{'CAFEBAR RESTAURANTE':^44}")
+        contenido.append("=" * 44)
         contenido.append(f"Fecha: {fecha}  Hora: {hora}")
         contenido.append(f"Nro. Venta: {datos_venta.get('num_venta', '')}")
         mesa = str(datos_venta.get('mesa', ''))
@@ -222,41 +223,59 @@ class ManejadorImpresion(QObject):
         contenido.append(f"Mesa: {mesa} - {seccion}")
         contenido.append(f"Mesero: {empleado}")
         contenido.append(f"Cajero: {cajero}")
-        tipo_set = {item.get('tipo', 'Local') for item in items}
-        if tipo_set == {'Local'}:
-            tipo_linea = "CONSUMO EN LOCAL"
-        elif tipo_set == {'Para llevar'}:
-            tipo_linea = "PARA LLEVAR"
-        else:
-            tipo_linea = "CONSUMO MIXTO"
-        contenido.append(f"{tipo_linea:^40}")
-        contenido.append("-" * 40)
-        contenido.append(f"{'CANT':<5}{'DESCRIPCION':<20}{'TIPO':<7}{'P.U.':>6}{'TOTAL':>7}")
-        contenido.append("-" * 40)
-        total_general = 0
+        contenido.append("-" * 44)
+        grupos = {}
         for item in items:
-            cantidad = item.get('cantidad', 1)
             producto = self._limpiar_caracteres_especiales(str(item.get('producto', '')))
-            tipo = "L" if item.get('tipo') == 'Local' else "P.L"
-            precio = item.get('precio', 0)
-            subtotal = cantidad * precio
-            total_general += subtotal
-            if len(producto) > 18:
-                producto = producto[:15] + "..."
-            contenido.append(f"{cantidad:<5}{producto:<20}{tipo:<7}{precio:>6.2f}{subtotal:>7.2f}")
-        contenido.append("-" * 40)
-        contenido.append(f"{'TOTAL:':>33}{total_general:>7.2f} Bs")
-        contenido.append("=" * 40)
+            tipo = item.get('tipo', 'Local')
+            precio = float(item.get('precio', 0))
+            cantidad = int(item.get('cantidad', 1))
+            subtotal = float(item.get('subtotal', cantidad * precio))
+            personalizacion = str(item.get('exclusiones', '') or '')
+            clave = (producto, tipo, personalizacion)
+            if clave in grupos:
+                grupos[clave]['cantidad'] += cantidad
+                grupos[clave]['subtotal'] += subtotal
+            else:
+                grupos[clave] = {
+                    'producto': producto,
+                    'tipo': tipo,
+                    'precio': precio,
+                    'cantidad': cantidad,
+                    'subtotal': subtotal,
+                    'personalizacion': personalizacion
+                }
+        total_general = 0
+        contenido.append(f"{'CANT':<5}{'DESCRIPCION':<22}{'T':<3}{'SUBTOTAL':>14}")
+        contenido.append("-" * 44)
+        for g in grupos.values():
+            prod = g['producto']
+            if len(prod) > 19:
+                prod = prod[:16] + "..."
+            tipo_cod = "L" if g['tipo'] == 'Local' else "LL"
+            total_general += g['subtotal']
+            contenido.append(f"{g['cantidad']:<5}{prod:<22}{tipo_cod:<3}{g['subtotal']:>14.2f}")
+            if g['personalizacion']:
+                personalizacion_limpia = self._limpiar_caracteres_especiales(g['personalizacion'])
+                partes_pers = [p.strip() for p in personalizacion_limpia.split('|') if p.strip()]
+                for parte in partes_pers:
+                    fragmentos = [parte[i:i+38] for i in range(0, len(parte), 38)]
+                    for fragmento in fragmentos:
+                        contenido.append(f"     {fragmento}")
+        contenido.append("=" * 44)
+        contenido.append(f"{'TOTAL:':>30}{total_general:>14.2f} Bs")
+        contenido.append("=" * 44)
         return "\n".join(contenido)
-    
 
-    def _construir_pedido_cocina(self, datos_venta, items):
+
+    def _construir_pedido_cocina(self, datos_venta, items_raw):
+        from datetime import datetime
         fecha = datetime.now().strftime("%d/%m/%Y")
-        hora = datetime.now().strftime("%H:%M:%S")
+        hora = datetime.now().strftime("%I:%M %p")
         contenido = []
-        contenido.append("=" * 40)
-        contenido.append(f"{'PEDIDO COCINA':^40}")
-        contenido.append("=" * 40)
+        contenido.append("=" * 44)
+        contenido.append(f"{'PEDIDO COCINA':^44}")
+        contenido.append("=" * 44)
         contenido.append(f"Fecha: {fecha}  Hora: {hora}")
         contenido.append(f"Nro. Venta: {datos_venta.get('num_venta', '')}")
         empleado = self._limpiar_caracteres_especiales(str(datos_venta.get('empleado', '')))
@@ -264,28 +283,165 @@ class ManejadorImpresion(QObject):
         mesa = str(datos_venta.get('mesa', ''))
         contenido.append(f"Mesero: {empleado}")
         contenido.append(f"Salon: {seccion}  Mesa: {mesa}")
-        contenido.append(f"Hora Pedido: {datos_venta.get('hora', '')}")
-        tipo_set = {item.get('tipo', 'Local') for item in items}
-        if tipo_set == {'Local'}:
-            tipo_linea = "CONSUMO EN LOCAL"
-        elif tipo_set == {'Para llevar'}:
-            tipo_linea = "PARA LLEVAR"
-        else:
-            tipo_linea = "PEDIDO MIXTO"
-        contenido.append(f"{tipo_linea:^40}")
-        contenido.append("-" * 40)
-        contenido.append(f"{'CANT':<5}{'PRODUCTO':<25}{'TIPO':<10}")
-        contenido.append("-" * 40)
-        items_cocina = [i for i in items if i.get('tipo') != 'Bebida']
-        for item in items_cocina:
-            cantidad = item.get('cantidad', 1)
-            producto = self._limpiar_caracteres_especiales(str(item.get('producto', '')))
-            tipo = "Local" if item.get('tipo') == 'Local' else "Llevar"
-            if len(producto) > 22:
-                producto = producto[:19] + "..."
-            contenido.append(f"{cantidad:<5}{producto:<25}{tipo:<10}")
-        contenido.append("=" * 40)
+        contenido.append("-" * 44)
+        lineas_cocina = self._parsear_items_cocina(items_raw)
+        contenido.append(f"{'CANT':<5}{'PRODUCTO':<32}{'T':<3}")
+        contenido.append("-" * 44)
+        grupos_cocina = {}
+        for l in lineas_cocina:
+            excl_tuple = tuple(l['exclusiones']) if l['exclusiones'] else ()
+            extra_tuple = tuple(l['extras']) if l.get('extras') else ()
+            clave = (l['producto'], l['tipo'], excl_tuple, extra_tuple)
+            if clave in grupos_cocina:
+                grupos_cocina[clave]['cantidad'] += l['cantidad']
+            else:
+                grupos_cocina[clave] = dict(l)
+        for g in grupos_cocina.values():
+            prod = g['producto']
+            if len(prod) > 29:
+                prod = prod[:26] + "..."
+            tipo_cod = "L" if g['tipo'] == 'Local' else "LL"
+            contenido.append(f"{g['cantidad']:<5}{prod:<32}{tipo_cod:<3}")
+            if g['exclusiones']:
+                for excl_linea in g['exclusiones']:
+                    excl_limpia = self._limpiar_caracteres_especiales(excl_linea)
+                    partes = [excl_limpia[i:i+36] for i in range(0, len(excl_limpia), 36)]
+                    for parte in partes:
+                        contenido.append(f"     sin: {parte}")
+            if g.get('extras'):
+                for extra_linea in g['extras']:
+                    extra_limpia = self._limpiar_caracteres_especiales(extra_linea)
+                    partes = [extra_limpia[i:i+34] for i in range(0, len(extra_limpia), 34)]
+                    for parte in partes:
+                        contenido.append(f"     extra: {parte}")
+        contenido.append("=" * 44)
         return "\n".join(contenido)
+
+
+    def _parsear_items_cocina(self, items_raw):
+        import re
+        import sqlite3
+        import os, sys
+        if getattr(sys, 'frozen', False):
+            base_path = os.path.dirname(sys.executable)
+        else:
+            base_path = os.path.dirname(os.path.abspath(__file__))
+        db_path = os.path.join(base_path, 'database', 'cafebar.db')
+
+        def obtener_productos_promo(nombre_promo):
+            try:
+                conn = sqlite3.connect(db_path)
+                cursor = conn.cursor()
+                cursor.execute("""
+                    SELECT pp.idProd, p.nomProd, pp.cantidadProdProm
+                    FROM PromocionProd pp
+                    JOIN Producto p ON pp.idProd = p.idProd
+                    JOIN Promocion pr ON pp.idProm = pr.idProm
+                    WHERE pr.nomProm = ?
+                """, (nombre_promo,))
+                resultado = cursor.fetchall()
+                conn.close()
+                return resultado
+            except Exception:
+                return []
+
+        lineas = []
+        for item in items_raw:
+            producto = str(item.get('producto', ''))
+            tipo = item.get('tipo', 'Local')
+            cantidad = int(item.get('cantidad', 1))
+            personalizacion_raw = item.get('exclusiones', '')
+
+            if not personalizacion_raw:
+                prods_promo = obtener_productos_promo(producto)
+                if prods_promo:
+                    for id_prod, nom_prod, cant_prod in prods_promo:
+                        lineas.append({
+                            'producto': nom_prod,
+                            'tipo': tipo,
+                            'cantidad': cant_prod * cantidad,
+                            'exclusiones': [],
+                            'extras': []
+                        })
+                else:
+                    lineas.append({
+                        'producto': producto,
+                        'tipo': tipo,
+                        'cantidad': cantidad,
+                        'exclusiones': [],
+                        'extras': []
+                    })
+                continue
+
+            partes_pipe = [p.strip() for p in personalizacion_raw.split('|') if p.strip()]
+            tiene_formato_promo = any(
+                re.match(r'^U\d+\s+.+:\s+(sin|extra)\s+', p) for p in partes_pipe
+            )
+
+            if tiene_formato_promo:
+                por_producto = {}
+                for parte in partes_pipe:
+                    m = re.match(r'^U(\d+)\s+(.+?):\s+(sin|extra)\s+(.+)$', parte)
+                    if not m:
+                        continue
+                    unidad_num = int(m.group(1))
+                    nombre_prod = m.group(2).strip()
+                    tag = m.group(3)
+                    contenido_texto = m.group(4).strip()
+                    if nombre_prod not in por_producto:
+                        por_producto[nombre_prod] = {}
+                    if unidad_num not in por_producto[nombre_prod]:
+                        por_producto[nombre_prod][unidad_num] = {'sin': None, 'extra': None}
+                    por_producto[nombre_prod][unidad_num][tag] = contenido_texto
+
+                total_unidades_personalizadas = {}
+                for nombre_prod, unidades in por_producto.items():
+                    total_unidades_personalizadas[nombre_prod] = len(unidades)
+                    agrupado_por_combo = {}
+                    for unidad_num, datos_unidad in unidades.items():
+                        clave_combo = (datos_unidad['sin'], datos_unidad['extra'])
+                        agrupado_por_combo[clave_combo] = agrupado_por_combo.get(clave_combo, 0) + 1
+                    for (sin_texto, extra_texto), cant_unidades in agrupado_por_combo.items():
+                        lineas.append({
+                            'producto': nombre_prod,
+                            'tipo': tipo,
+                            'cantidad': cant_unidades,
+                            'exclusiones': [sin_texto] if sin_texto else [],
+                            'extras': [extra_texto] if extra_texto else []
+                        })
+
+                for id_prod, nom_prod, cant_prod in obtener_productos_promo(producto):
+                    total_en_promo = cant_prod * cantidad
+                    con_personalizacion = total_unidades_personalizadas.get(nom_prod, 0)
+                    sin_personalizacion = total_en_promo - con_personalizacion
+                    if sin_personalizacion > 0:
+                        lineas.append({
+                            'producto': nom_prod,
+                            'tipo': tipo,
+                            'cantidad': sin_personalizacion,
+                            'exclusiones': [],
+                            'extras': []
+                        })
+            else:
+                excl_simple = []
+                extra_simple = []
+                for parte in partes_pipe:
+                    parte_limpia = parte.strip()
+                    if parte_limpia.lower().startswith('sin:'):
+                        excl_simple.append(parte_limpia[4:].strip())
+                    elif parte_limpia.lower().startswith('extra:'):
+                        extra_simple.append(parte_limpia[6:].strip())
+                    elif parte_limpia:
+                        excl_simple.append(parte_limpia)
+                lineas.append({
+                    'producto': producto,
+                    'tipo': tipo,
+                    'cantidad': cantidad,
+                    'exclusiones': excl_simple,
+                    'extras': extra_simple
+                })
+
+        return lineas
     
 
     def _imprimir_por_puerto(self, puerto, contenido, es_termica=True):

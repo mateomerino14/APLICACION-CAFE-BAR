@@ -21,8 +21,9 @@ class Pop_up_RegistroProductoModificacionIngrediente(QDialog):
         self.nuevoIng=lista[0]
         self.nuevaDesc=lista[2]
         self.nuevCant=lista[1]
+        self.nuevoIdIng = self._buscarIdIng(lista[0])
         self.setWindowTitle("MODIFICACIÓN DE INGREDIENTE")
-        self.setFixedSize(400, 250)
+        self.setFixedSize(480, 300)
         self.setStyleSheet("""
             QDialog {
                 background-color: #f8f9fa;
@@ -90,6 +91,8 @@ class Pop_up_RegistroProductoModificacionIngrediente(QDialog):
         campo3 = QLabel("Descripcion: ")
         campo3.setStyleSheet("""background-color: transparent;""")
         campo4 = QLabel(lista[2])
+        campo4.setWordWrap(True)
+        campo4.setMinimumHeight(50)
         campo4.setStyleSheet("""
             QLabel {
                 background-color: white;
@@ -107,7 +110,8 @@ class Pop_up_RegistroProductoModificacionIngrediente(QDialog):
         campo5 = QLabel("Cantidad: ")
         campo5.setStyleSheet("""background-color: transparent;""")
         campo6 = QLineEdit(lista[1])
-        campo6.setValidator(QRegExpValidator(QRegExp("[0-9]+\\.?[0-9]*")))
+        campo6.setValidator(QRegExpValidator(QRegExp(r"[0-9]{1,8}(\.[0-9]{0,2})?")))
+        campo6.setMaxLength(11)
         layout3.addWidget(campo5)
         layout3.addWidget(campo6)
         layoutPrincipal.addLayout(layout3)
@@ -151,7 +155,7 @@ class Pop_up_RegistroProductoModificacionIngrediente(QDialog):
                 background-color: #a23526;
             }
         """)
-        boton1.clicked.connect(lambda: self.cambiarIdentificador(conjunto,campo2.currentText()+campo4.text(),campo2.currentText(),campo4.text(),campo6.text()))
+        boton1.clicked.connect(lambda: self.cambiarIdentificador(conjunto, campo2.currentText(), campo2.currentText(), campo4.text(), campo6.text()))
         boton2.clicked.connect(self.cerrarVentana)
         layout4.addWidget(boton1)
         layout4.addWidget(boton2)
@@ -159,46 +163,64 @@ class Pop_up_RegistroProductoModificacionIngrediente(QDialog):
         layoutPrincipal.setContentsMargins(20, 20, 20, 20)
         layoutPrincipal.setSpacing(15)
     
-    
-    
+    def _buscarIdIng(self, nombreIngrediente):
+        try:
+            conn = sqlite3.connect(DB_PATH)
+            c = conn.cursor()
+            c.execute("SELECT idIng FROM Stock WHERE nomIng=?", (nombreIngrediente,))
+            resultado = c.fetchone()
+            conn.close()
+            return resultado[0] if resultado else None
+        except Exception:
+            return None
+
     def actualizar(self,campo2,campo4):
         conn=sqlite3.connect(DB_PATH)
         c=conn.cursor()
-        consulta="""SELECT descripcion FROM Stock WHERE nomIng=?"""
+        consulta="""SELECT idIng, descripcion FROM Stock WHERE nomIng=?"""
         c.execute(consulta,(campo2.currentText(),))
         actual=c.fetchone()
-        campo4.setText(actual[0])
         conn.close()
+        if actual:
+            self.nuevoIdIng = actual[0]
+            campo4.setText(actual[1] if actual[1] else "")
     
-    
-    def cambiarIdentificador(self, conjunto, nuevo,ingrediente,descripcion,cantidad):
-        if cantidad=="":
-            QMessageBox.critical(self,"Advertencia","Debe llenar los campos necesarios")
+    def cambiarIdentificador(self, conjunto, nuevo, ingrediente, descripcion, cantidad):
+        if cantidad == "":
+            QMessageBox.critical(self, "Advertencia", "Debe llenar los campos necesarios")
             return
-            
-        if nuevo in conjunto and nuevo!=self.nuevoIden:
+        
+        nuevo_id = ingrediente
+        
+        conjunto_upper = {item.upper() for item in conjunto}
+        
+        if nuevo_id.upper() in conjunto_upper and nuevo_id != self.nuevoIden:
             msg = QMessageBox()
             msg.setStyleSheet("""
-                QMessageBox {
-                    background-color: #f8f9fa;
-                    font-family: 'Segoe UI', Arial, sans-serif;
+               QMessageBox {
+                background: #ffffff;
                 }
                 QMessageBox QLabel {
                     color: #2c3e50;
-                    font-size: 14px;
+                    font-size: 15px;
+                    font-weight: 500;
+                    background:transparent;
+                }
+                QMessageBox QDialogButtonBox {
+                    background: #f5f7fa;           
+                    border-top: 1px solid #e2e8f0;
+                    padding: 10px 16px;
                 }
                 QMessageBox QPushButton {
                     background-color: #3498db;
                     color: white;
-                    border: none;
-                    border-radius: 4px;
-                    padding: 8px 15px;
+                    border-radius: 10px;
+                    padding: 8px 18px;
+                    min-width: 110px;
                     font-weight: bold;
-                    min-width: 80px;
-                    font-size: 14px;
                 }
-                QMessageBox QPushButton:hover {
-                    background-color: #2980b9;
+                QMessageBox QPushButton:hover { 
+                    background-color: #2980b9; 
                 }
             """)
             msg.setWindowTitle("Error")
@@ -206,16 +228,15 @@ class Pop_up_RegistroProductoModificacionIngrediente(QDialog):
             msg.setIcon(QMessageBox.Warning)
             msg.exec_()
             return
-        self.nuevoIden=nuevo
-        self.nuevoIng=ingrediente
-        self.nuevaDesc=descripcion
-        self.nuevaCant=cantidad
-        self.accept()  
-
-
+        
+        self.nuevoIden = nuevo_id
+        self.nuevoIng = ingrediente
+        self.nuevaDesc = descripcion
+        self.nuevaCant = cantidad
+        self.accept()
     
     def getIden(self):
-        return self.nuevoIden,self.nuevoIng,self.nuevaDesc,self.nuevaCant
+        return self.nuevoIden, self.nuevoIng, self.nuevaDesc, self.nuevaCant, self.nuevoIdIng
     
     def cerrarVentana(self):
         self.close()
