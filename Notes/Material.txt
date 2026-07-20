@@ -4,7 +4,7 @@ DOCUMENTACIÓN DEL PROYECTO
 
 COMANDO DE GENERACIÓN DE EJECUTABLE
 
-pyinstaller Main.py --onedir --windowed --clean --noconfirm --icon "Imagenes\icono.ico" --add-data "Imagenes;Imagenes" --add-data "C:\Users\MAT\anaconda3\envs\py310\Lib\site-packages\escpos\capabilities.json;escpos"
+pyinstaller Main.py --onedir --windowed --clean --noconfirm --icon "Imagenes\icono.ico" --add-data "Imagenes;Imagenes" --add-data "C:\Users\MAT\anaconda3\envs\py310\Lib\site-packages\escpos\capabilities.json;escpos" --collect-all bcrypt --hidden-import bcrypt
 
 ------------------------------------------------------------
 DESGLOSE DEL COMANDO
