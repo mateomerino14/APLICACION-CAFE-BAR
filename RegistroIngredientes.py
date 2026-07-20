@@ -121,6 +121,7 @@ class RegistroIngredientes(QWidget):
         self.campo1 = QLineEdit()
         self.campo1.setStyleSheet(camposEstilo)
         self.campo1.setValidator(QRegExpValidator(letras_regex))
+        self.campo1.setMaxLength(30)
 
         self.nombresExistentes = self.cargarNombresIngredientes()
 
@@ -132,7 +133,7 @@ class RegistroIngredientes(QWidget):
         self.etiquetaEstadoNombre = QLabel("")
         self.etiquetaEstadoNombre.setWordWrap(True)
         self.etiquetaEstadoNombre.setVisible(False)
-        #self.campo1.textChanged.connect(self._verificarNombreIngrediente)
+        self.campo1.textChanged.connect(self._verificarNombreIngrediente)
         
         unidadMedida = QLabel("UNIDAD DE MEDIDA")
         unidadMedida.setStyleSheet(labelEstilo)
@@ -145,7 +146,8 @@ class RegistroIngredientes(QWidget):
         self.campo3 = QLineEdit()
         self.campo3.setPlaceholderText("0.00")
         self.campo3.setStyleSheet(camposEstilo)
-        self.campo3.setValidator(QRegExpValidator(QRegExp("[0-9]+\\.?[0-9]*")))
+        self.campo3.setValidator(QRegExpValidator(QRegExp(r"[0-9]{1,8}(\.[0-9]{0,2})?")))
+        self.campo3.setMaxLength(11)
     
         def crear_grupo_campo(label, campo):
             grupo = QVBoxLayout()
@@ -168,7 +170,8 @@ class RegistroIngredientes(QWidget):
         self.campo5 = QLineEdit()
         self.campo5.setPlaceholderText("0.00")
         self.campo5.setStyleSheet(camposEstilo)
-        self.campo5.setValidator(QRegExpValidator(QRegExp("[0-9]+\\.?[0-9]*")))
+        self.campo5.setValidator(QRegExpValidator(QRegExp(r"[0-9]{1,8}(\.[0-9]{0,2})?")))
+        self.campo5.setMaxLength(11)
         layoutH1b.addLayout(crear_grupo_campo(precioExtra, self.campo5))
         layoutH1b.addStretch(2)
         layoutCampos.addLayout(layoutH1b)
@@ -179,6 +182,18 @@ class RegistroIngredientes(QWidget):
         self.campo4 = QTextEdit()
         self.campo4.setFixedHeight(200)
         self.campo4.setStyleSheet(camposEstilo)
+        MAX_LARGO_DESCRIPCION_ING = 200
+        def limitar_descripcion_ing():
+            texto = self.campo4.toPlainText()
+            if len(texto) > MAX_LARGO_DESCRIPCION_ING:
+                cursor = self.campo4.textCursor()
+                posicion = cursor.position()
+                self.campo4.blockSignals(True)
+                self.campo4.setPlainText(texto[:MAX_LARGO_DESCRIPCION_ING])
+                cursor.setPosition(min(posicion, MAX_LARGO_DESCRIPCION_ING))
+                self.campo4.setTextCursor(cursor)
+                self.campo4.blockSignals(False)
+        self.campo4.textChanged.connect(limitar_descripcion_ing)
         layoutH2.addLayout(crear_grupo_campo(descripcion, self.campo4))
         layoutCampos.addLayout(layoutH2)
         layoutBotones = QHBoxLayout()

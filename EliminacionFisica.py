@@ -140,7 +140,6 @@ class EliminacionFisica(QDialog):
         layout = QVBoxLayout(self)
         layout.setSpacing(15)
         layout.setContentsMargins(20, 20, 20, 20)
-        
         warning_label = QLabel("⚠️  ATENCIÓN: Esta acción es IRREVERSIBLE. Los registros eliminados NO podrán recuperarse. Asegúrese de tener un backup antes de continuar.")
         warning_label.setObjectName("warning")
         warning_label.setWordWrap(True)

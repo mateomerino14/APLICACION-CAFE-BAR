@@ -19,7 +19,7 @@ class Pop_up_ModificacionIngredientes(QDialog):
         super().__init__(parent)
         self.nombres_existentes = []
         self.setWindowTitle("MODIFICACIÓN DE INGREDIENTE")
-        self.setFixedSize(700, 870)
+        self.setFixedSize(700, 930)
         self.setStyleSheet("""
             QDialog {
                 background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
@@ -93,7 +93,7 @@ class Pop_up_ModificacionIngredientes(QDialog):
             }
         """)
         form_layout = QVBoxLayout(form_container)
-        form_layout.setSpacing(15)
+        form_layout.setSpacing(20)
         label_style = """
             QLabel {
                 font-size: 14px;
@@ -183,6 +183,7 @@ class Pop_up_ModificacionIngredientes(QDialog):
         self.campoNombre.setPlaceholderText("Ingrese el nombre del ingrediente")
         letras_regex = QRegExp("[A-Za-záéíóúÁÉÍÓÚñÑ\\s]+")
         self.campoNombre.setValidator(QRegExpValidator(letras_regex))
+        self.campoNombre.setMaxLength(30)
         self.campoNombre.setText(datos[1])
         self.campoNombre.setStyleSheet(field_style)
 
@@ -198,16 +199,29 @@ class Pop_up_ModificacionIngredientes(QDialog):
         self.campoDescripcion = QTextEdit()
         self.campoDescripcion.setPlaceholderText("Ingrese la descripción del ingrediente (opcional)")
         self.campoDescripcion.setText(datos[2])
-        self.campoDescripcion.setFixedHeight(80)
+        self.campoDescripcion.setFixedHeight(70)
         self.campoDescripcion.setStyleSheet(field_style)
+        MAX_LARGO_DESCRIPCION_ING = 200
+        def limitar_descripcion_ing_mod():
+            texto = self.campoDescripcion.toPlainText()
+            if len(texto) > MAX_LARGO_DESCRIPCION_ING:
+                cursor = self.campoDescripcion.textCursor()
+                posicion = cursor.position()
+                self.campoDescripcion.blockSignals(True)
+                self.campoDescripcion.setPlainText(texto[:MAX_LARGO_DESCRIPCION_ING])
+                cursor.setPosition(min(posicion, MAX_LARGO_DESCRIPCION_ING))
+                self.campoDescripcion.setTextCursor(cursor)
+                self.campoDescripcion.blockSignals(False)
+        self.campoDescripcion.textChanged.connect(limitar_descripcion_ing_mod)
         form_layout.addWidget(self.campoDescripcion)
         cantidad_label = QLabel("⚖️ CANTIDAD EN STOCK")
         cantidad_label.setStyleSheet(label_style)
         form_layout.addWidget(cantidad_label)
         self.campoCantidad = QLineEdit()
         self.campoCantidad.setPlaceholderText("0.00")
-        cantidadRegex = QRegExp("[0-9]+\\.?[0-9]*")
+        cantidadRegex = QRegExp(r"[0-9]{1,8}(\.[0-9]{0,2})?")
         self.campoCantidad.setValidator(QRegExpValidator(cantidadRegex))
+        self.campoCantidad.setMaxLength(11)
         self.campoCantidad.setText(datos[3])
         self.campoCantidad.setStyleSheet(field_style)
         form_layout.addWidget(self.campoCantidad)
@@ -240,8 +254,9 @@ class Pop_up_ModificacionIngredientes(QDialog):
         form_layout.addWidget(precioExtra_label)
         self.campoPrecioExtra = QLineEdit()
         self.campoPrecioExtra.setPlaceholderText("0.00")
-        precioExtraRegex = QRegExp("[0-9]+\\.?[0-9]*")
+        precioExtraRegex = QRegExp(r"[0-9]{1,8}(\.[0-9]{0,2})?")
         self.campoPrecioExtra.setValidator(QRegExpValidator(precioExtraRegex))
+        self.campoPrecioExtra.setMaxLength(11)
         precio_extra_actual = datos[5] if len(datos) > 5 and datos[5] not in (None, "") else "0"
         self.campoPrecioExtra.setText(str(precio_extra_actual))
         self.campoPrecioExtra.setStyleSheet(field_style)
