@@ -691,7 +691,7 @@ class DialogoCobroVenta(QDialog):
 
             etiquetaPie = QLabel("<div style='text-align: center; padding: 15px; color: #7f8c8d; font-size: 13px;'>"
                                "¡Gracias por su preferencia!<br>"
-                               "CAFEBAR SYSTEM © 2024</div>")
+                               "CAFEBAR SYSTEM © 2026</div>")
             etiquetaPie.setStyleSheet("font-family: 'Segoe UI';")
             self.previewLayout.addWidget(etiquetaPie)
             self.previewLayout.addStretch()

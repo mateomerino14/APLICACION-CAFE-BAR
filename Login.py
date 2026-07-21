@@ -234,7 +234,7 @@ class Login(QMainWindow):
         btn_layout.addStretch(1)
         layout.addLayout(btn_layout)
         layout.addStretch()
-        footer = QLabel("© 2025 Sistema Cafebar - Todos los derechos reservados")
+        footer = QLabel("© 2026 Sistema Cafebar - Todos los derechos reservados")
         footer.setStyleSheet("""
             font-family: 'Verdana';
             font-size: 12px;
