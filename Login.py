@@ -246,6 +246,7 @@ class Login(QMainWindow):
         
     
     def rellenarCampo(self, campo):
+        conn = None
         try:
             conn = sqlite3.connect(DB_PATH)
             c = conn.cursor()
@@ -266,6 +267,7 @@ class Login(QMainWindow):
         if not nombre or not contrasena:
             QMessageBox.information(self, "Aviso", "Rellene los campos solicitados")
             return 
+        conn = None
         try:
             conn = sqlite3.connect(DB_PATH)
             c = conn.cursor()
@@ -286,7 +288,7 @@ class Login(QMainWindow):
                 resultado = c.fetchone()
                 if resultado and verificar_password(contrasena, resultado[0]):
                     #QMessageBox.information(self, "Éxito", "Credenciales Correctas")
-                    self.iniciarPaginaPrincipal(self.text_usuario.text())
+                    self.iniciarPaginaPrincipal(nombre)
                 else:
                     QMessageBox.information(self, "Error", "Credenciales Incorrectas")  
         except sqlite3.Error as e:
