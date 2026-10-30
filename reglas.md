@@ -1,5 +1,23 @@
 # Reglas del proyecto
 
+## FLUJO DE RAMAS
+
+| Rama | Uso |
+|---|---|
+| `main` | Versión estable entregada al local. Solo recibe merges desde `develop` |
+| `develop` | Reúne lo terminado hasta la próxima entrega |
+| `feature/<tema>` | Un cambio o módulo, creado desde `develop` (ej. `feature/estructura_carpetas`) |
+| `fix/<tema>` | Corrección puntual sobre `develop` |
+
+### Flujo
+
+1. Cada cambio se desarrolla en su rama `feature/<tema>`, creada desde `develop`.
+2. Antes de integrarlo, `ruff check .` y `ruff format --check .` deben pasar y el sistema debe abrir con `python Main.py`.
+3. Al terminarlo se integra a `develop`.
+4. Cuando `develop` reúne una entrega completa, se integra a `main` y desde ahí se genera el ejecutable.
+
+---
+
 ## ESTÁNDARES DE COMMITS
 
 Se utiliza la convención Conventional Commits para mantener un historial claro y organizado.
@@ -27,7 +45,7 @@ Se utiliza la convención Conventional Commits para mantener un historial claro 
 ```
 feat: Agrega los ingredientes extra con precio adicional en los pedidos
 fix: Imprime la ü como u en los tickets en lugar de ue
-refactor: Centraliza las rutas de la base de datos y de las imágenes en Rutas.py
+refactor: Agrupa las pantallas de promociones en paginas/promociones/
 style: Aplica un formato uniforme a todo el código con Ruff
 docs: Documenta las tablas y migraciones de la base de datos
 chore: Agrega las dependencias del proyecto en requirements.txt
@@ -50,15 +68,27 @@ chore: Agrega las dependencias del proyecto en requirements.txt
 - Este proyecto mantiene los nombres en español (clases, métodos y variables), igual que las tablas y columnas de la base de datos, para no mezclar idiomas dentro de los archivos.
 - Los textos visibles para el usuario van en español y con tildes.
 
+### Carpetas
+
+| Carpeta | Contenido | Puede importar |
+|---|---|---|
+| `nucleo/` | Rutas, contraseñas y base de datos | Solo librerías externas |
+| `servicios/` | Lógica sin interfaz, como la impresión | `nucleo/` |
+| `paginas/<modulo>/` | Pantallas y formularios de un módulo del menú | `nucleo/`, `servicios/` y las pantallas que abre |
+
+- Cada pantalla nueva va en la carpeta del módulo del menú al que pertenece.
+- Las importaciones son absolutas desde la raíz: `from paginas.productos.RegistroProductos import RegistroProductos`.
+- Cada carpeta tiene su `__init__.py` vacío.
+
 ### Archivos
 
 - Una pantalla por archivo, con el mismo nombre que su clase: `RegistroProductos.py` → `class RegistroProductos(QWidget)`.
 - Prefijos: `Registro*` para altas, `Modificacion*` para listados que se modifican, `DarBaja*` para bajas lógicas y `Pop_up_*` para formularios emergentes.
-- Las rutas a la base y a las imágenes se obtienen siempre de `Rutas.py`; no se calculan dentro de cada archivo.
+- Las rutas a la base y a las imágenes se obtienen siempre de `nucleo/Rutas.py`; no se calculan dentro de cada archivo.
 
 ```python
 # Correcto
-from Rutas import get_db_path
+from nucleo.Rutas import get_db_path
 
 DB_PATH = get_db_path()
 
@@ -83,8 +113,8 @@ def verificar_password(password_plano, password_hash):
 
 - Consultas siempre con parámetros (`?`), nunca armando el SQL con los datos del usuario.
 - Cerrar la conexión en `finally` o al terminar el método.
-- Todo cambio de esquema se hace con una función `migrar…` en `init_db.py`, que se pueda ejecutar varias veces sin error.
-- Las contraseñas se guardan solo con `hashear_password` de `SeguridadUtils.py`.
+- Todo cambio de esquema se hace con una función `migrar…` en `nucleo/init_db.py`, que se pueda ejecutar varias veces sin error.
+- Las contraseñas se guardan solo con `hashear_password` de `nucleo/SeguridadUtils.py`.
 
 ### Errores
 

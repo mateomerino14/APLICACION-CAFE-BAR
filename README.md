@@ -50,7 +50,7 @@ conda activate py310
 pip install -r requirements.txt
 ```
 
-No hace falta crear la base: `init_db.py` la crea en `database/cafebar.db` al iniciar el sistema, con las pantallas, los métodos de pago y el usuario DIRECTORIO. En una base que ya existe solo aplica las migraciones pendientes, sin tocar los datos.
+No hace falta crear la base: `nucleo/init_db.py` la crea en `database/cafebar.db` al iniciar el sistema, con las pantallas, los métodos de pago y el usuario DIRECTORIO. En una base que ya existe solo aplica las migraciones pendientes, sin tocar los datos.
 
 ## Ejecución
 
@@ -63,7 +63,7 @@ ruff format .       # formato del código
 
 ### Primer ingreso
 
-1. En el inicio de sesión, el botón **Directorio** completa el usuario `DIRECTORIO`. La contraseña inicial está en `init_db.py`.
+1. En el inicio de sesión, el botón **Directorio** completa el usuario `DIRECTORIO`. La contraseña inicial está en `nucleo/init_db.py`.
 2. Cambiarla en **Administración → Configuración → Cambiar Contraseña del DIRECTORIO**.
 3. Crear las secciones con sus mesas, los cargos con sus permisos y los empleados.
 4. Registrar los ingredientes, las categorías y los productos.
@@ -87,59 +87,75 @@ ruff format .       # formato del código
 
 ```
 Main.py
- └─ init_db.inciarBaseDatos()     crea o migra la base
- └─ Login                         valida al empleado o al DIRECTORIO
-     └─ AdministradorPaginas      menú según permisos y páginas en un QStackedWidget
-         ├─ Páginas (QWidget)     Familia, RegistrarPedidos, Reportes, Configuracion…
-         │   └─ Pop_up_* (QDialog) formularios de modificación
-         └─ DialogoCobroVenta     cobro y ticket de una mesa
+ ├─ nucleo/init_db.inciarBaseDatos()       crea o migra la base
+ └─ paginas/inicio/Login                   valida al empleado o al DIRECTORIO
+     └─ paginas/inicio/AdministradorPaginas   menú según permisos y páginas en un QStackedWidget
+         ├─ paginas/<modulo>/* (QWidget)       Familia, RegistrarPedidos, Reportes, Configuracion…
+         │   └─ Pop_up_* (QDialog)             formularios de modificación del mismo módulo
+         └─ paginas/caja/DialogoCobroVenta     cobro y ticket de una mesa
+             └─ servicios/Impresion            comanda y ticket en la impresora de barra o cocina
 ```
+
+| Carpeta | Responsabilidad | Restricción |
+|---|---|---|
+| `nucleo/` | Rutas, contraseñas y creación o migración de la base | No importa nada de `paginas/` ni de `servicios/` |
+| `servicios/` | Impresión de comandas y tickets, sin interfaz propia | Solo depende de `nucleo/` |
+| `paginas/<modulo>/` | Pantallas (`QWidget`) y formularios emergentes (`QDialog`) de un módulo del menú | Usa `nucleo/` y `servicios/`; de otro módulo solo importa lo que abre directamente |
 
 | Módulo | Responsabilidad |
 |---|---|
 | `Main.py` | Prepara la base y abre el inicio de sesión |
-| `Login.py` | Autentica con bcrypt y abre el administrador de páginas |
-| `AdministradorPaginas.py` | Arma el menú según los permisos del cargo y crea cada página la primera vez que se abre |
-| `Rutas.py` | Ruta de la base (junto al ejecutable) y de los recursos empaquetados (`Imagenes`) |
-| `SeguridadUtils.py` | Hash y verificación de contraseñas |
-| `init_db.py` | Esquema, datos iniciales, trigger de mesas y migraciones |
-| `Impresion.py` | Comandas y tickets: elige la impresora de cocina o barra y la vía (Windows, puerto o USB) |
+| `paginas/inicio/Login.py` | Autentica con bcrypt y abre el administrador de páginas |
+| `paginas/inicio/AdministradorPaginas.py` | Arma el menú según los permisos del cargo y crea cada página la primera vez que se abre |
+| `nucleo/Rutas.py` | Ruta de la base (junto al ejecutable) y de los recursos empaquetados (`Imagenes`) |
+| `nucleo/SeguridadUtils.py` | Hash y verificación de contraseñas |
+| `nucleo/init_db.py` | Esquema, datos iniciales, trigger de mesas y migraciones |
+| `servicios/Impresion.py` | Comandas y tickets: elige la impresora de cocina o barra y la vía (Windows, puerto o USB) |
+
+Las importaciones son absolutas desde la raíz del proyecto, por eso el sistema se inicia siempre con `python Main.py` desde esa carpeta:
+
+```python
+from nucleo.Rutas import get_db_path
+from paginas.productos.Pop_up_RegistroProductos import Pop_up_RegistroProductos
+```
 
 Los permisos salen de las tablas `Pantalla` y `Subpantalla`: el menú muestra una pantalla si el cargo la tiene en `PermisosCargo` y cada opción si está en `PermisosCargoSubpantalla`. El DIRECTORIO ve todo.
 
 ## Estructura
 
+Las pantallas se agrupan en `paginas/` con las mismas secciones del menú:
+
 ```
 APLICACION-CAFE-BAR/
-├── Main.py                         Punto de entrada
-├── Login.py
-├── AdministradorPaginas.py
-├── PaginaPrincipal.py              Inicio con la portada personalizable
-├── Familia.py                      Catálogo del local
-├── RegistrarPedidos.py             Caja: mesas, pedidos y comandas
-├── DialogoCobroVenta.py            Cobro y ticket
-├── Registro*.py                    Altas: productos, categorías, ingredientes, promociones, cargos, empleados, clientes
-├── Modificacion*.py                Listados con búsqueda para modificar
-├── DarBaja*.py                     Bajas lógicas
-├── Pop_up_*.py                     Formularios emergentes de modificación
-├── Administracion_Secciones_Mesas.py
-├── ModificacionSeccion.py
-├── Reportes.py                     Reportes, gráficos, PDF y envío por correo
-├── Configuracion.py                Correos, copias de seguridad, enlace y contraseña del DIRECTORIO
-├── EliminacionFisica.py            Borrado en cascada de registros dados de baja
-├── Impresoras.py                   Detección, registro y prueba de impresoras
-├── Impresion.py                    Envío de comandas y tickets
-├── Rutas.py
-├── SeguridadUtils.py
-├── init_db.py
-├── Imagenes/                       Íconos y logos de la interfaz
-├── docs/                           Documentación técnica
-├── Main.spec                       Configuración de PyInstaller
-├── inicio.bat                      Inicio rápido en Windows
+├── Main.py                          Punto de entrada
+├── nucleo/
+│   ├── Rutas.py                     Ruta de la base y de las imágenes
+│   ├── SeguridadUtils.py            Hash de contraseñas con bcrypt
+│   └── init_db.py                   Esquema, datos iniciales y migraciones
+├── servicios/
+│   └── Impresion.py                 Envío de comandas y tickets
+├── paginas/
+│   ├── inicio/                      Login, AdministradorPaginas (menú) y PaginaPrincipal
+│   ├── familia/                     Familia: catálogo del local
+│   ├── caja/                        RegistrarPedidos y DialogoCobroVenta
+│   ├── administracion/              Configuracion, Impresoras y EliminacionFisica
+│   ├── productos/                   Categorías, subcategorías y productos (registro, modificación y baja)
+│   ├── secciones/                   Secciones y mesas
+│   ├── stock/                       Ingredientes
+│   ├── promociones/                 Promociones
+│   ├── empleados/                   Cargos con sus permisos y empleados
+│   ├── clientes/                    Clientes
+│   └── reportes/                    Reportes, gráficos, PDF y envío por correo
+├── Imagenes/                        Íconos y logos de la interfaz
+├── docs/                            Documentación técnica
+├── Main.spec                        Configuración de PyInstaller
+├── inicio.bat                       Inicio rápido en Windows
 ├── requirements.txt
-├── pyproject.toml                  Configuración de Ruff
-└── reglas.md                       Estándares de commits y de código
+├── pyproject.toml                   Configuración de Ruff
+└── reglas.md                        Estándares de ramas, commits y código
 ```
+
+Dentro de cada módulo los archivos siguen los mismos prefijos: `Registro*` para altas, `Modificacion*` para listados que se modifican, `DarBaja*` para bajas lógicas y `Pop_up_*` para formularios emergentes.
 
 La carpeta `database/` no se versiona: tiene los datos del local y las credenciales de correo.
 
@@ -150,6 +166,16 @@ pyinstaller Main.spec --clean --noconfirm
 ```
 
 Deja el sistema en `dist/Main/Main.exe`. El detalle, y cómo actualizar el local sin perder datos, está en [`docs/ejecutable.md`](docs/ejecutable.md).
+
+## Ramas
+
+El flujo completo está en [`reglas.md`](reglas.md).
+
+| Rama | Propósito |
+|---|---|
+| `main` | Versión estable que se entrega al local |
+| `develop` | Integración de lo terminado hasta la próxima entrega |
+| `feature/<tema>` | Desarrollo de un cambio, creada desde `develop` |
 
 ## Estándares
 

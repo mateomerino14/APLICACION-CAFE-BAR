@@ -1,10 +1,10 @@
 # Base de datos
 
-Base SQLite en `database/cafebar.db`, junto a `Main.py` o, en el ejecutable, junto a `Main.exe` (ver `Rutas.py`). No se versiona: guarda los datos del local y las cuentas de correo.
+Base SQLite en `database/cafebar.db`, junto a `Main.py` o, en el ejecutable, junto a `Main.exe` (ver `nucleo/Rutas.py`). No se versiona: guarda los datos del local y las cuentas de correo.
 
 ## Creación y migraciones
 
-`init_db.inciarBaseDatos()` se ejecuta en cada inicio, antes del login. Todas sus operaciones se pueden repetir sin dañar los datos:
+`inciarBaseDatos()` de `nucleo/init_db.py` se ejecuta en cada inicio, antes del login. Todas sus operaciones se pueden repetir sin dañar los datos:
 
 | Paso | Función | Qué hace |
 |---|---|---|
