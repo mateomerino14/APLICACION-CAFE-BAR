@@ -1,0 +1,18 @@
+# Entorno de Python
+__pycache__/
+*.py[cod]
+venv/
+.venv/
+
+# Ejecutable generado por PyInstaller
+build/
+dist/
+
+# Datos del local: la base se crea sola al iniciar y contiene credenciales
+database/
+
+# Editor y sistema
+.vscode/
+.idea/
+Thumbs.db
+.DS_Store
