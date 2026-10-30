@@ -539,7 +539,7 @@ class ModificarCategoriaDialog(QDialog):
                 self.label_img_preview.setStyleSheet("border: 2px solid #27ae60; border-radius: 8px;")
             else:
                 self.label_img_preview.setText("Error al cargar imagen")
-        except:
+        except Exception:
             self.label_img_preview.setText("Error al cargar imagen")
     
     def resizeEvent(self, event):
@@ -999,7 +999,7 @@ class AgregarSubcategoriaDialog(QDialog):
                 self.label_img_preview.setStyleSheet("border: 2px solid #27ae60; border-radius: 8px;")
             else:
                 self.label_img_preview.setText("Error al cargar imagen")
-        except:
+        except Exception:
             self.label_img_preview.setText("Error al cargar imagen")
     
     def resizeEvent(self, event):
@@ -1268,7 +1268,7 @@ class EditarSubcategoriaDialog(QDialog):
                 self.label_img_preview.setStyleSheet("border: 2px solid #27ae60; border-radius: 8px;")
             else:
                 self.label_img_preview.setText("Error al cargar imagen")
-        except:
+        except Exception:
             self.label_img_preview.setText("Error al cargar imagen")
     
     def resizeEvent(self, event):

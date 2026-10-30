@@ -52,7 +52,7 @@ class ModificacionIngredientes(QWidget):
             nombres = [row[0] for row in c.fetchall()]
             conn.close()
             return nombres
-        except:
+        except Exception:
             return []
 
     #No tocar

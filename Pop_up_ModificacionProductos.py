@@ -234,7 +234,7 @@ class Pop_up_ModificacionProductos(QDialog):
             c.execute("SELECT nomProd FROM Producto WHERE activo = 1 ORDER BY nomProd COLLATE NOCASE ASC")
             nombres_productos = [row[0] for row in c.fetchall()]
             conn.close()
-        except:
+        except Exception:
             nombres_productos = []
         completer_nombre = QCompleter(nombres_productos, self)
         completer_nombre.setCaseSensitivity(Qt.CaseInsensitive)

@@ -648,7 +648,7 @@ class Familia(QWidget):
                 if fecha_esp != fecha_actual:
                     disponible_ahora = False
                 html += f"<div class='fecha'>• Fecha específica: {fecha_esp.strftime('%d/%m/%Y')}</div>"
-            except:
+            except Exception:
                 html += "<div class='inactivo'>• Fecha específica: Formato inválido</div>"
                 disponible_ahora = False
         elif fecha_inicio and fecha_fin:
@@ -658,7 +658,7 @@ class Familia(QWidget):
                 if not (fecha_ini <= fecha_actual <= fecha_f):
                     disponible_ahora = False
                 html += f"<div class='fecha'>• Período: {fecha_ini.strftime('%d/%m/%Y')} - {fecha_f.strftime('%d/%m/%Y')}</div>"
-            except:
+            except Exception:
                 html += "<div class='inactivo'>• Período: Formato inválido</div>"
                 disponible_ahora = False
         else:
@@ -686,7 +686,7 @@ class Familia(QWidget):
                 if not (hora_ini <= hora_actual <= hora_f):
                     disponible_ahora = False
                 html += f"<div class='hora'>• Horario: {hora_ini.strftime('%H:%M')} - {hora_f.strftime('%H:%M')}</div>"
-            except:
+            except Exception:
                 html += "<div class='inactivo'>• Horario: Formato inválido</div>"
         else:
             html += "<div class='info'>• Horario: Todo el día</div>"

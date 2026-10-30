@@ -480,7 +480,7 @@ class ManejadorImpresion(QObject):
             try:
                 if dispositivo.is_kernel_driver_active(0):
                     dispositivo.detach_kernel_driver(0)
-            except:
+            except Exception:
                 pass
             dispositivo.set_configuration()
             cfg = dispositivo.get_active_configuration()

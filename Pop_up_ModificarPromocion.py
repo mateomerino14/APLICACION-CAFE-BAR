@@ -475,7 +475,7 @@ class Pop_up_ModificarPromocion(QDialog):
             nombres = [row[0] for row in c.fetchall()]
             conn.close()
             return nombres
-        except:
+        except Exception:
             return []
     # -----------------------------------------------------------------------
 

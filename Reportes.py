@@ -1953,7 +1953,7 @@ class Reportes(QWidget):
             try:
                 if os.path.exists(pdf_path):
                     os.unlink(pdf_path)
-            except:
+            except Exception:
                 pass
 
     def limpiarFiltros(self):

@@ -106,7 +106,7 @@ class RegistroCargos(QWidget):
             c.execute("SELECT nomCarg FROM Cargo ORDER BY nomCarg")
             self.cargos_existentes = [row[0] for row in c.fetchall()]
             conn.close()
-        except:
+        except Exception:
             self.cargos_existentes = []
 
     def set_up(self):

@@ -1934,12 +1934,12 @@ class RegistrarPedidos(QWidget):
                                 hora_fin = datetime.strptime(horaFin, "%H:%M:%S").time()
                                 if not (hora_ini <= current_time <= hora_fin):
                                     hora_valida = False
-                            except:
+                            except Exception:
                                 pass
                         if hora_valida:
                             promos_filtradas.append((nomProm, imgProm))
                             continue
-                    except:
+                    except Exception:
                         pass
                 fecha_valida = False
                 if fechaInicio and fechaFin:
@@ -1948,7 +1948,7 @@ class RegistrarPedidos(QWidget):
                         fecha_fin = datetime.strptime(fechaFin, "%Y-%m-%d").date()
                         if fecha_ini <= current_date <= fecha_fin:
                             fecha_valida = True
-                    except:
+                    except Exception:
                         pass
                 else:
                     fecha_valida = True
@@ -1959,7 +1959,7 @@ class RegistrarPedidos(QWidget):
                         hora_fin = datetime.strptime(horaFin, "%H:%M:%S").time()
                         if hora_ini <= current_time <= hora_fin:
                             hora_valida = True
-                    except:
+                    except Exception:
                         pass
                 else:
                     hora_valida = True
@@ -2038,7 +2038,7 @@ class RegistrarPedidos(QWidget):
                 image = QImage.fromData(imgBlob)
                 pix = QPixmap.fromImage(image).scaled(100, 100, Qt.KeepAspectRatio, Qt.SmoothTransformation)
                 labelImg.setPixmap(pix)
-            except:
+            except Exception:
                 ph = QPixmap(100, 100)
                 ph.fill(QColor("#f1f5f9"))
                 labelImg.setPixmap(ph)
@@ -3601,14 +3601,14 @@ class RegistrarPedidos(QWidget):
             try:
                 self.dialogo_detalles.close()
                 self.dialogo_detalles.deleteLater()
-            except:
+            except Exception:
                 pass
             self.dialogo_detalles = None
         if self.timer_unico is not None:
             try:
                 self.timer_unico.stop()
                 self.timer_unico.deleteLater()
-            except:
+            except Exception:
                 pass
             self.timer_unico = None
         
@@ -4056,7 +4056,7 @@ class RegistrarPedidos(QWidget):
             try:
                 self.timer_unico.stop()
                 self.timer_unico.deleteLater()
-            except:
+            except Exception:
                 pass
             self.timer_unico = None
         if self.dialogo_detalles:
@@ -4179,7 +4179,7 @@ class RegistrarPedidos(QWidget):
             try:
                 self.dialogo_cards.close()
                 self.dialogo_cards.deleteLater()
-            except:
+            except Exception:
                 pass
         self.dialogo_cards = QDialog(self.dialogo_detalles)
         self.dialogo_cards.setWindowTitle(f"Marcar Productos - Mesa {numMesa}")
@@ -4641,21 +4641,21 @@ class RegistrarPedidos(QWidget):
                                         if txt == "-1":
                                             try:
                                                 btn.clicked.disconnect()
-                                            except:
+                                            except Exception:
                                                 pass
                                             btn.clicked.connect(lambda _, e=nuevo_entradas_str, c=card, t=total_nuevo, n=nombre_producto, tp=tipo_consumo, ek=excl_key:
                                                 self.actualizarProgresoConResumen(e, -1, c, t, n, tp, False, ek))
                                         elif txt == "+1":
                                             try:
                                                 btn.clicked.disconnect()
-                                            except:
+                                            except Exception:
                                                 pass
                                             btn.clicked.connect(lambda _, e=nuevo_entradas_str, c=card, t=total_nuevo, n=nombre_producto, tp=tipo_consumo, ek=excl_key:
                                                 self.actualizarProgresoConResumen(e, 1, c, t, n, tp, False, ek))
                                         elif txt == "Todos":
                                             try:
                                                 btn.clicked.disconnect()
-                                            except:
+                                            except Exception:
                                                 pass
                                             btn.clicked.connect(lambda _, e=nuevo_entradas_str, c=card, t=total_nuevo, n=nombre_producto, tp=tipo_consumo, ek=excl_key:
                                                 self.actualizarProgresoConResumen(e, t, c, t, n, tp, True, ek))
@@ -4691,7 +4691,7 @@ class RegistrarPedidos(QWidget):
             if item.widget():
                 try:
                     item.widget().deleteLater()
-                except:
+                except Exception:
                     pass
  
         total_faltantes = 0

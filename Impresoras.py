@@ -644,7 +644,7 @@ class Impresoras(QWidget):
                             manufacturer = usb.util.get_string(dispositivo, dispositivo.iManufacturer) or ""
                             product = usb.util.get_string(dispositivo, dispositivo.iProduct) or ""
                             descripcion = f"{manufacturer} {product}".strip()
-                        except:
+                        except Exception:
                             descripcion = "Dispositivo USB"
                         es_probable_impresora = False
                         desc_lower = descripcion.lower()
@@ -706,7 +706,7 @@ class Impresoras(QWidget):
                                           (nombre_impresora,))
                             en_bd = cursor.fetchone() is not None
                             conn.close()
-                        except:
+                        except Exception:
                             en_bd = False
                         if en_bd:
                             item_text += " (Ya en BD)"
@@ -741,7 +741,7 @@ class Impresoras(QWidget):
             resultado = cursor.fetchone()
             conn.close()
             return resultado is not None
-        except:
+        except Exception:
             return False
     
     def anadirImpresoraBD(self):

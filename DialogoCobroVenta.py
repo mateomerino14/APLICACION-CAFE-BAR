@@ -525,7 +525,7 @@ class DialogoCobroVenta(QDialog):
             if fecha_hora:
                 try:
                     hora_registro = datetime.strptime(fecha_hora, "%Y-%m-%d %H:%M:%S.%f").strftime("%I:%M %p")
-                except:
+                except Exception:
                     hora_registro = "Hora no disponible"
             else:
                 hora_registro = "No disponible"

@@ -783,7 +783,7 @@ class Configuracion(QWidget):
                         try:
                             total_val = float(val)
                             item.setText(f"{total_val:,.2f} Bs")
-                        except:
+                        except Exception:
                             pass
                     tabla.setItem(fila, c, item)
             tabla.setToolTip(f"Mostrando {tabla.rowCount()} ventas")
@@ -1092,7 +1092,7 @@ class Configuracion(QWidget):
         finally:
             try:
                 shutil.rmtree(temp_dir)
-            except:
+            except Exception:
                 pass
 
     def abrirPopUpCambiarContrasenaDirectorio(self):
@@ -1601,7 +1601,7 @@ class Configuracion(QWidget):
         finally:
             try:
                 shutil.rmtree(temp_dir)
-            except:
+            except Exception:
                 pass
     
     def eliminar_cuenta(self):
