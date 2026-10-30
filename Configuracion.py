@@ -16,13 +16,7 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.application import MIMEApplication
 from SeguridadUtils import hashear_password, verificar_password
-
-def get_db_path():
-    if getattr(sys, 'frozen', False):
-        base_path = os.path.dirname(sys.executable)
-    else:
-        base_path = os.path.dirname(__file__)
-    return os.path.join(base_path, 'database', 'cafebar.db')
+from Rutas import get_db_path
 
 DB_PATH = get_db_path()
 

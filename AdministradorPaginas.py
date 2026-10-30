@@ -31,13 +31,7 @@ from RegistroCargos import RegistroCargos
 from ModificacionCargos import ModificacionCargos
 from ModificacionCategorias import ModificacionCategorias
 from Login import Login
-
-def get_db_path():
-    if getattr(sys, 'frozen', False):
-        base_path = os.path.dirname(sys.executable)
-    else:
-        base_path = os.path.dirname(__file__)
-    return os.path.join(base_path, 'database', 'cafebar.db')
+from Rutas import get_db_path
 
 DB_PATH = get_db_path()
 

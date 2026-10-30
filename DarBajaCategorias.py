@@ -4,20 +4,7 @@ from PyQt5.QtGui import *
 from PyQt5.QtCore import *
 import os
 import sqlite3
-
-def get_db_path():
-    if getattr(sys, 'frozen', False):
-        base_path = os.path.dirname(sys.executable)
-    else:
-        base_path = os.path.dirname(__file__)
-    return os.path.join(base_path, 'database', 'cafebar.db')
-
-def get_images_dir():
-    if getattr(sys, 'frozen', False):
-        base_path = sys._MEIPASS
-    else:
-        base_path = os.path.dirname(__file__)
-    return os.path.join(base_path, 'Imagenes')
+from Rutas import get_db_path, get_images_dir
 
 DB_PATH = get_db_path()
 DIRECCION_IMAGEN = get_images_dir()

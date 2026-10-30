@@ -19,17 +19,11 @@ from collections import defaultdict
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
+from Rutas import get_db_path
 
 def _fmt2(x):
     d = Decimal(str(x)) if x is not None else Decimal("0")
     return str(d.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP))
-
-def get_db_path():
-    if getattr(sys, 'frozen', False):
-        base_path = os.path.dirname(sys.executable)
-    else:
-        base_path = os.path.dirname(__file__)
-    return os.path.join(base_path, 'database', 'cafebar.db')
 
 DB_PATH = get_db_path()
 

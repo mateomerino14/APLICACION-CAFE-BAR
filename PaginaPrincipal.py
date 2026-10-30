@@ -7,19 +7,7 @@ import os
 import shutil
 import math
 from datetime import datetime
-
-def get_resource_path(relative_path):
-    if getattr(sys, 'frozen', False):
-        base_path = sys._MEIPASS
-    else:
-        base_path = os.path.dirname(__file__)
-    return os.path.join(base_path, relative_path)
-
-def get_writable_base_path():
-    if getattr(sys, 'frozen', False):
-        return os.path.dirname(sys.executable)
-    else:
-        return os.path.dirname(__file__)
+from Rutas import get_resource_path, get_writable_base_path
 
 def get_banner_path():
     base = get_writable_base_path()

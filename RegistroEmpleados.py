@@ -5,20 +5,7 @@ from PyQt5.QtCore import *
 import os
 import sqlite3
 from Pop_up_RegistrarEmpleados import Pop_up_RegistrarEmpleados
-
-def get_db_path():
-    if getattr(sys, 'frozen', False):
-        base_path = os.path.dirname(sys.executable)
-    else:
-        base_path = os.path.dirname(__file__)
-    return os.path.join(base_path, 'database', 'cafebar.db')
-
-def get_resource_path(relative_path):
-    if getattr(sys, 'frozen', False):
-        base_path = sys._MEIPASS
-    else:
-        base_path = os.path.dirname(__file__)
-    return os.path.join(base_path, relative_path)
+from Rutas import get_db_path, get_resource_path
 
 DB_PATH = get_db_path()
 

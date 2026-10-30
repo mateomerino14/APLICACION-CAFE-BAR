@@ -12,23 +12,10 @@ from PyQt5.QtCore import QObject, pyqtSignal, pyqtSlot
 from decimal import Decimal, ROUND_HALF_UP
 from DialogoCobroVenta import DialogoCobroVenta
 from SeguridadUtils import verificar_password
+from Rutas import get_db_path, get_resource_path
 
 def q2(x) -> float:
     return float(Decimal(str(x)).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP))
-
-def get_db_path():
-    if getattr(sys, 'frozen', False):
-        base_path = os.path.dirname(sys.executable)
-    else:
-        base_path = os.path.dirname(__file__)
-    return os.path.join(base_path, 'database', 'cafebar.db')
-
-def get_resource_path(relative_path):
-    if getattr(sys, 'frozen', False):
-        base_path = sys._MEIPASS
-    else:
-        base_path = os.path.dirname(__file__)
-    return os.path.join(base_path, relative_path)
 
 DB_PATH = get_db_path()
 MESAS_DIRECCION = get_resource_path('Imagenes')

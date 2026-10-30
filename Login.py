@@ -5,23 +5,9 @@ import sys
 import sqlite3
 import os
 from SeguridadUtils import verificar_password
+from Rutas import get_db_path, get_resource_path
 
-def get_base_dir():
-    if getattr(sys, 'frozen', False):
-        base_path = os.path.dirname(sys.executable)
-    else:
-        base_path = os.path.dirname(__file__)
-    return base_path
-
-def get_resource_path(relative_path):
-    if getattr(sys, 'frozen', False):
-        base_path = sys._MEIPASS
-    else:
-        base_path = os.path.dirname(__file__)
-    return os.path.join(base_path, relative_path)
-
-BASE_DIR = get_base_dir()
-DB_PATH = os.path.join(BASE_DIR, 'database', 'cafebar.db')
+DB_PATH = get_db_path()
 
 class Login(QMainWindow):
     def __init__(self):
