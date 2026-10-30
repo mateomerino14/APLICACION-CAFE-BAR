@@ -348,13 +348,8 @@ class ManejadorImpresion(QObject):
     def _parsear_items_cocina(self, items_raw):
         import re
         import sqlite3
-        import os, sys
 
-        if getattr(sys, 'frozen', False):
-            base_path = os.path.dirname(sys.executable)
-        else:
-            base_path = os.path.dirname(os.path.abspath(__file__))
-        db_path = os.path.join(base_path, 'database', 'cafebar.db')
+        db_path = DB_PATH
 
         def obtener_productos_promo(nombre_promo):
             try:
