@@ -1,5 +1,5 @@
 @echo off
-cd /d C:\Users\MAT\Pictures\PRUEBA_FINAL_PROYECTO_CAFE
-call C:\Users\MAT\anaconda3\Scripts\activate.bat py310
-cd Backend\Utils\Scripts
-call run_hot.bat
+rem Inicia el sistema desde la carpeta del proyecto con el entorno de conda py310
+cd /d "%~dp0"
+call conda activate py310 2>nul
+python Main.py
