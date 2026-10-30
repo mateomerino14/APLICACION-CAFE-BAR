@@ -9,8 +9,8 @@ from paginas.familia.Familia import Familia
 from paginas.caja.RegistrarPedidos import RegistrarPedidos
 from RegistroClientes import RegistroClientes
 from ModificacionClientes import ModificacionClientes
-from Configuracion import Configuracion
-from Impresoras import Impresoras
+from paginas.administracion.Configuracion import Configuracion
+from paginas.administracion.Impresoras import Impresoras
 from RegistroCategoriasSubcategorias import RegistroCategoriasSubcategorias
 from RegistroProductos import RegistroProductos
 from ModificacionProductos import ModificacionProductos

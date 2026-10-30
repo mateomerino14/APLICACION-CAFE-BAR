@@ -10,7 +10,7 @@ import smtplib
 import shutil
 import zipfile
 import tempfile
-from EliminacionFisica import EliminacionFisica
+from paginas.administracion.EliminacionFisica import EliminacionFisica
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.application import MIMEApplication
