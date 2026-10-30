@@ -6,7 +6,7 @@ import sqlite3
 from datetime import datetime
 from paginas.inicio.PaginaPrincipal import PaginaPrincipal
 from paginas.familia.Familia import Familia
-from RegistrarPedidos import RegistrarPedidos
+from paginas.caja.RegistrarPedidos import RegistrarPedidos
 from RegistroClientes import RegistroClientes
 from ModificacionClientes import ModificacionClientes
 from Configuracion import Configuracion

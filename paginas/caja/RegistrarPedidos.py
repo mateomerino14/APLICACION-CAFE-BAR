@@ -8,7 +8,7 @@ from datetime import datetime
 from servicios.Impresion import ManejadorImpresion
 from PyQt5.QtCore import QObject, pyqtSignal, pyqtSlot
 from decimal import Decimal, ROUND_HALF_UP
-from DialogoCobroVenta import DialogoCobroVenta
+from paginas.caja.DialogoCobroVenta import DialogoCobroVenta
 from nucleo.SeguridadUtils import verificar_password
 from nucleo.Rutas import get_db_path, get_resource_path
 
