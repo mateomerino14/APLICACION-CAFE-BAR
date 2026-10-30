@@ -17,8 +17,8 @@ from paginas.productos.ModificacionProductos import ModificacionProductos
 from paginas.productos.DarBajaCategorias import DarBajaCategorias
 from paginas.productos.DarBajaProductos import DarBajaProductos
 from paginas.secciones.Administracion_Secciones_Mesas import Administracion_Secciones_Mesas
-from RegistroIngredientes import RegistroIngredientes
-from ModificacionIngredientes import ModificacionIngredientes
+from paginas.stock.RegistroIngredientes import RegistroIngredientes
+from paginas.stock.ModificacionIngredientes import ModificacionIngredientes
 from Reportes import Reportes
 from RegistroEmpleados import RegistroEmpleados
 from ModificacionEmpleados import ModificacionEmpleados
