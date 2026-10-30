@@ -64,7 +64,7 @@ Para agregar un cambio de esquema: escribir una función `migrar…` que revise 
 | `DetallesVentaExtras` | Ingredientes agregados con su precio | `DetallesVenta`, `Stock`, `Producto` |
 | `Pago` | Monto por método; una venta mixta tiene dos filas | `Venta`, `MetodoPago` |
 | `MetodoPago` | Efectivo y Qr | |
-| `Cliente` | NIT, nombre y correo para la factura | |
+| `Cliente` | NIT, nombre y correo para la factura (reservada: la interfaz todavía no registra clientes ni los asocia a la venta) | |
 
 ### Personal y permisos
 
