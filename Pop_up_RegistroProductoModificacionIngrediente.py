@@ -81,7 +81,7 @@ class Pop_up_RegistroProductoModificacionIngrediente(QDialog):
         layout1.addWidget(campo2)
         layoutPrincipal.addLayout(layout1)
         layout2 = QHBoxLayout()
-        campo3 = QLabel("Descripcion: ")
+        campo3 = QLabel("Descripción: ")
         campo3.setStyleSheet("""background-color: transparent;""")
         campo4 = QLabel(lista[2])
         campo4.setWordWrap(True)

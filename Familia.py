@@ -222,7 +222,7 @@ class Familia(QWidget):
         layoutEleccion.addWidget(self.opcion2)
         self.opcion1.clicked.connect(self.desHabilitarCampos)
         self.opcion2.clicked.connect(self.HabilitarCampos)
-        self.etiquetaCategoria = QLabel("Categoria de Productos")
+        self.etiquetaCategoria = QLabel("Categoría de Productos")
         self.categoria = QComboBox()
         self.cargarCategorias()
         self.categoria.currentIndexChanged.connect(self.cargarSubcategorias)

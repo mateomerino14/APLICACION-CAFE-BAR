@@ -248,7 +248,7 @@ class RegistroProductos(QWidget):
         layoutCategoria.addWidget(nombre, alignment=Qt.AlignTop)
         layoutCategoria.addWidget(campoNombre)
         layoutCategoria2 = QHBoxLayout()
-        descripcion = QLabel("Descripcion:")
+        descripcion = QLabel("Descripción:")
         descripcion.setStyleSheet("""
             font-weight: bold;
             color: #2c3e50;
@@ -258,7 +258,7 @@ class RegistroProductos(QWidget):
             background-color: transparent;
         """)
         campoDescripcion = QTextEdit()
-        campoDescripcion.setPlaceholderText("Descripcion del productos (Opcional)")
+        campoDescripcion.setPlaceholderText("Descripción del producto (opcional)")
         campoDescripcion.setFixedHeight(60)
         MAX_LARGO_DESCRIPCION = 200
 
@@ -312,7 +312,7 @@ class RegistroProductos(QWidget):
         layoutCategoria4.addWidget(costoFabricacion, alignment=Qt.AlignTop)
         layoutCategoria4.addWidget(campoCostoFabricacion)
         layoutCategoria5 = QHBoxLayout()
-        categoria = QLabel("Categoria:")
+        categoria = QLabel("Categoría:")
         categoria.setStyleSheet("""
             font-weight: bold;
             color: #2c3e50;

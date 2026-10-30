@@ -69,7 +69,7 @@ class AdministradorPaginas(QMainWindow):
         self.permisos = self.cargar_permisos_usuario()
         self._pages = {}
         self.administradorMenu = None
-        self.setWindowTitle("SISTEMA DE ADMINISTRACION DE CAFE-BAR")
+        self.setWindowTitle("SISTEMA DE ADMINISTRACIÓN DE CAFÉ-BAR")
         self.setStyleSheet("""
             QMessageBox {
                 background-color: #ffffff;
@@ -144,7 +144,7 @@ class AdministradorPaginas(QMainWindow):
         self.crearMenu()
         self.administradorMenu = QStackedWidget()
         self.layoutPrincipal.addWidget(self.administradorMenu)
-        self.titulo.setText("PAGINA PRINCIPAL")
+        self.titulo.setText("PÁGINA PRINCIPAL")
         self.show_page("Home")
         self.setUpdatesEnabled(True)
 
@@ -426,7 +426,7 @@ class AdministradorPaginas(QMainWindow):
             after(self._pages[name])
 
     def iniciarPaginaPrincipal(self):
-        self.titulo.setText("PAGINA PRINCIPAL")
+        self.titulo.setText("PÁGINA PRINCIPAL")
         self.show_page("Home")
 
     def iniciarPaginaFamilia(self):
@@ -442,11 +442,11 @@ class AdministradorPaginas(QMainWindow):
         self.show_page("RegistroClientes")
 
     def iniciarPaginaModificacionCliente(self):
-        self.titulo.setText("MODIFICACION DE CLIENTES")
+        self.titulo.setText("MODIFICACIÓN DE CLIENTES")
         self.show_page("ModificacionClientes", after=lambda p: p.filtrarDatos(""))
 
     def iniciarPaginaConfiguracion(self):
-        self.titulo.setText("CONFIGURACIONES")
+        self.titulo.setText("CONFIGURACIÓN")
         self.show_page("Configuracion")
 
     def iniciarPaginaDarBajaCategorias(self):
@@ -454,11 +454,11 @@ class AdministradorPaginas(QMainWindow):
         self.show_page("DarBajaCategorias", after=lambda p: p.filtrarDatos(""))
 
     def iniciarPaginaImpresoras(self):
-        self.titulo.setText("ADMINISTRACION DE IMPRESORAS")
+        self.titulo.setText("ADMINISTRACIÓN DE IMPRESORAS")
         self.show_page("Impresoras")
 
     def iniciarPaginaCategorias(self):
-        self.titulo.setText("REGISTRAR CATEGORIA")
+        self.titulo.setText("REGISTRAR CATEGORÍA")
         self.show_page("RegistroCategorias")
 
     def iniciarPaginaRegistoProducto(self):
@@ -480,7 +480,7 @@ class AdministradorPaginas(QMainWindow):
         self.show_page("DarBajaProductos", after=lambda p: p.filtrarDatos(""))
 
     def iniciarPaginaSecciones(self):
-        self.titulo.setText("ADMINISTRACION DE SECCIONES")
+        self.titulo.setText("ADMINISTRACIÓN DE SECCIONES")
         self.show_page("Secciones")
 
     def iniciarPaginaRegistrarIngredientes(self):
@@ -488,11 +488,11 @@ class AdministradorPaginas(QMainWindow):
         self.show_page("RegistroIngredientes")
 
     def iniciarPaginaModificarIngredientes(self):
-        self.titulo.setText("MODIFICACION DE INGREDIENTES")
+        self.titulo.setText("MODIFICACIÓN DE INGREDIENTES")
         self.show_page("ModificacionIngredientes", after=lambda p: p.filtrarDatos(""))
 
     def iniciarPaginaReportes(self):
-        self.titulo.setText("RESPORTES ESTADISTICOS")
+        self.titulo.setText("REPORTES ESTADÍSTICOS")
         self.show_page("Reportes", after=lambda p: QTimer.singleShot(0, p.cargarEmpleados))
 
     def iniciarPaginaRegistrarEmpleados(self):
@@ -512,7 +512,7 @@ class AdministradorPaginas(QMainWindow):
         self.show_page("RegistroPromociones", after=lambda p: p.cargar_categorias())
 
     def iniciarPaginaModificacionCategorias(self):
-        self.titulo.setText("MODIFICAR CATEGORIAS")
+        self.titulo.setText("MODIFICAR CATEGORÍAS")
         self.show_page("ModificacionCategorias", after=lambda p: p.filtrarDatos(""))
 
     def iniciarPaginaModificacionPromociones(self):

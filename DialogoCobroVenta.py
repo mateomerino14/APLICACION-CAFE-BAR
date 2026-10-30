@@ -1162,7 +1162,7 @@ class DialogoCobroVenta(QDialog):
         lock_icon.setAlignment(Qt.AlignCenter)
         layout.addWidget(lock_icon)
 
-        label = QLabel(f"Se ha excedido el limite de 2 impresiones.\nIngrese la contrasena de {usuario}:")
+        label = QLabel(f"Se ha excedido el límite de 2 impresiones.\nIngrese la contraseña de {usuario}:")
         label.setStyleSheet("""
             QLabel {
                 color: #2c3e50;

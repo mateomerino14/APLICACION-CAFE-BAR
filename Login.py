@@ -16,7 +16,7 @@ class Login(QMainWindow):
         self.set_up()
 
     def set_up(self):
-        self.setWindowTitle("LOGIN - Sistema Cafebar")
+        self.setWindowTitle("Inicio de sesión - Sistema Café-Bar")
         self.showMaximized()
         self.setFixedSize(QApplication.primaryScreen().size())
 

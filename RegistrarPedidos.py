@@ -236,7 +236,7 @@ class RegistrarPedidos(QWidget):
             QLabel { background-color: white; border: 2px solid #e2e8f0; border-radius: 6px;
             padding: 10px; font-size: 14px; min-height: 40px; color: #2c3e50; }
         """)
-        self.etiquetaSeccion = QLabel("Seccion")
+        self.etiquetaSeccion = QLabel("Sección")
         self.etiquetaSeccion.setStyleSheet("""
             QLabel { color: #2c3e50; font-size: 16px; font-weight: bold; margin-bottom: 5px; }
         """)
@@ -962,7 +962,7 @@ class RegistrarPedidos(QWidget):
         lock_icon.setAlignment(Qt.AlignCenter)
         layout.addWidget(lock_icon)
 
-        label = QLabel(f"Se ha excedido el limite de 2 impresiones.\nIngrese la contrasena de {usuario}:")
+        label = QLabel(f"Se ha excedido el límite de 2 impresiones.\nIngrese la contraseña de {usuario}:")
         label.setStyleSheet("""
             QLabel {
                 color: #2c3e50;
@@ -3959,7 +3959,7 @@ class RegistrarPedidos(QWidget):
         )
         venta = cursor.fetchone()
         if not venta:
-            QMessageBox.information(self, "Informacion", "No hay pedidos para esta mesa.")
+            QMessageBox.information(self, "Información", "No hay pedidos para esta mesa.")
             conn.close()
             return
 
