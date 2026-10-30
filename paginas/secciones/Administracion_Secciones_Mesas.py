@@ -3,8 +3,8 @@ from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
 from PyQt5.QtCore import *
 import sqlite3
-from Pop_up_Registro_Seccion import Pop_up_Registro_Seccion
-from ModificacionSeccion import ModificacionSeccion
+from paginas.secciones.Pop_up_Registro_Seccion import Pop_up_Registro_Seccion
+from paginas.secciones.ModificacionSeccion import ModificacionSeccion
 from nucleo.Rutas import get_db_path
 
 
