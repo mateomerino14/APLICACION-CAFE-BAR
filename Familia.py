@@ -657,10 +657,7 @@ class Familia(QWidget):
         else:
             html += "<div class='info'>• Período: Sin restricción de fechas</div>"
 
-        # Los días de la semana son una restricción independiente del tipo de
-        # fecha configurado: se evalúan y se muestran siempre que existan,
-        # ya sea que la promoción tenga fecha específica, rango de fechas,
-        # o ninguna restricción de fecha (es decir, "todas las semanas").
+        # Los días de la semana se evalúan aparte del tipo de fecha de la promoción
         if dias:
             dias_numeros = [dia[0] for dia in dias]
             dia_nombres = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"]

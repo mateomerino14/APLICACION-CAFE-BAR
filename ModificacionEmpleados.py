@@ -10,9 +10,7 @@ DB_PATH = get_db_path()
 
 DIRECCION_IMAGEN = get_images_dir()
 
-# Columna (indice 0-based dentro del SELECT) donde vive la contrasena hasheada.
-# Nunca se muestra su valor real: bcrypt es irreversible, y mostrar el hash
-# no aporta nada util. Se reemplaza siempre por un marcador visual.
+# Columna de la contraseña en el SELECT: el hash nunca se muestra, se reemplaza por un marcador
 INDICE_COLUMNA_CONTRASENA = 1
 MARCADOR_CONTRASENA = "••••••••"
 
@@ -322,7 +320,6 @@ class ModificacionEmpleados(QWidget):
         self.tabla.setFocusPolicy(Qt.NoFocus)
         self.tabla.setEditTriggers(QTableWidget.NoEditTriggers) 
         layoutTabla.addWidget(self.tabla)
-        #layoutCampoModificar.addWidget(campoModificar)
         layoutCampoModificar.addWidget(campoTabla)
         self.tabla.horizontalHeader().setStretchLastSection(True)
         self.tabla.verticalHeader().setDefaultSectionSize(150)

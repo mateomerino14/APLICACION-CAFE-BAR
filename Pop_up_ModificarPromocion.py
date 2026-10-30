@@ -185,12 +185,11 @@ class Pop_up_ModificarPromocion(QDialog):
         self.campoPrecio.setValidator(validador)
         self.campoPrecio.setMaxLength(11)
 
-        # --- COMPLETER para sugerir nombres ya registrados ---
+        # Sugiere los nombres de promociones ya registrados
         self.completerNombres = QCompleter(self.cargarNombresPromociones(), self)
         self.completerNombres.setCaseSensitivity(Qt.CaseInsensitive)
         self.completerNombres.setFilterMode(Qt.MatchContains)
         self.campoNombre.setCompleter(self.completerNombres)
-        # -----------------------------------------------------
 
         form_layout.addWidget(QLabel("📝 Nombre:"),0,0)
         form_layout.addWidget(self.campoNombre,0,1)
@@ -456,7 +455,6 @@ class Pop_up_ModificarPromocion(QDialog):
         self.cargarDatos()
         self.cargarCategorias()
 
-    # --- MÉTODO NUEVO: carga nombres de promociones excluyendo la actual ---
     def cargarNombresPromociones(self):
         try:
             conn = sqlite3.connect(DB_PATH)
@@ -469,7 +467,6 @@ class Pop_up_ModificarPromocion(QDialog):
             return nombres
         except Exception:
             return []
-    # -----------------------------------------------------------------------
 
     def cargarCategorias(self):
         conn = sqlite3.connect(DB_PATH)

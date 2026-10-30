@@ -29,7 +29,6 @@ class ModificacionPromociones(QWidget):
         self.showMaximized()
         
   
-    #No tocar
     def crearFiltro(self):
         layoutFiltro=QHBoxLayout()
         self.campoBusqueda=QLineEdit()
@@ -83,7 +82,6 @@ class ModificacionPromociones(QWidget):
     
    
     
-     #No tocar   
     def filtrarDatos(self,texto):
         tabla=self.tabla
         tabla.setRowCount(0)
@@ -187,14 +185,12 @@ class ModificacionPromociones(QWidget):
         self.tabla.setSelectionMode(QTableWidget.NoSelection) 
         self.tabla.setEditTriggers(QTableWidget.NoEditTriggers) 
         layoutTabla.addWidget(self.tabla)
-        #layoutCampoModificar.addWidget(campoModificar)
         layoutCampoModificar.addWidget(campoTabla)
         self.tabla.horizontalHeader().setStretchLastSection(True)
         self.tabla.verticalHeader().setDefaultSectionSize(150)
         self.layoutPrincipal.addLayout(layoutCampoModificar)
         
     
-    #No tocar
     def cargarDatos(self):
         conn = sqlite3.connect(DB_PATH) 
         consulta = """SELECT nomProm,precioProm

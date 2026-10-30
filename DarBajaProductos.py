@@ -196,7 +196,6 @@ class DarBajaProductos(QWidget):
         self.tabla.setSelectionMode(QTableWidget.NoSelection) 
         self.tabla.setEditTriggers(QTableWidget.NoEditTriggers) 
         layoutTabla.addWidget(self.tabla)
-        #layoutCampoModificar.addWidget(campoModificar)
         layoutCampoModificar.addWidget(campoTabla)
         self.tabla.horizontalHeader().setStretchLastSection(True)
         self.tabla.verticalHeader().setDefaultSectionSize(80)

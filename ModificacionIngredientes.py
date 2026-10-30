@@ -40,7 +40,6 @@ class ModificacionIngredientes(QWidget):
         except Exception:
             return []
 
-    #No tocar
     def crearFiltro(self):
         layoutFiltro=QHBoxLayout()
         self.campoBusqueda=QLineEdit()
@@ -132,7 +131,6 @@ class ModificacionIngredientes(QWidget):
         
         
         
-    #No tocar     
     def campoModificar(self):
         layoutCampoModificar=QHBoxLayout()
         layoutCampoModificar.setSpacing(0)

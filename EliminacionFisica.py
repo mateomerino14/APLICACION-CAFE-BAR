@@ -142,17 +142,11 @@ class EliminacionFisica(QDialog):
         self.tab_cargos = self.crear_tab_cargos()
         self.tab_secciones = self.crear_tab_secciones()
         self.tab_ventas = self.crear_tab_ventas()
-        # self.tab_productos = self.crear_tab_productos()
-        # self.tab_promociones = self.crear_tab_promociones()
-        # self.tab_ingredientes = self.crear_tab_ingredientes()
         
         self.tabs.addTab(self.tab_empleados, "Empleados")
         self.tabs.addTab(self.tab_cargos, "Cargos")
         self.tabs.addTab(self.tab_secciones, "Secciones")
         self.tabs.addTab(self.tab_ventas, "Ventas")
-        # self.tabs.addTab(self.tab_productos, "Productos")
-        # self.tabs.addTab(self.tab_promociones, "Promociones")
-        # self.tabs.addTab(self.tab_ingredientes, "Ingredientes")
         
         layout.addWidget(self.tabs)
         
@@ -876,8 +870,7 @@ class EliminacionFisica(QDialog):
             ids_secciones = [id_reg for id_reg, _ in seleccionados["secciones"]]
             ids_cargos = [id_reg for id_reg, _ in seleccionados["cargos"]]
             ids_empleados = [id_reg for id_reg, _ in seleccionados["empleados"]]
-            # Para ventas si importa la fecha (segunda columna de esa pestaña),
-            # nunca solo el numVenta.
+            # En ventas la fecha también identifica el registro, no solo numVenta
             pares_ventas_seleccionadas = [(id_reg, fecha) for id_reg, fecha in seleccionados["ventas"]]
             
             if ids_empleados:

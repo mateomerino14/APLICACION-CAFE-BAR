@@ -4,6 +4,7 @@ from Rutas import get_db_path
 
 DB_PATH = get_db_path()
 
+# Crea las tablas y carga los datos iniciales que falten
 def crear_db():
     os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
     conn = sqlite3.connect(DB_PATH)
@@ -372,6 +373,7 @@ def crear_db():
     conn.commit()
     conn.close()
 
+# Crea el trigger que numera las mesas de cada sección
 def crearTriggers():
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
@@ -397,6 +399,7 @@ def crearTriggers():
     conn.commit()
     conn.close()
 
+# Crea la tabla de ingredientes excluidos dentro de promociones
 def migrarTablaExclusionesPromo():
     try:
         conn = sqlite3.connect(DB_PATH)
@@ -427,10 +430,7 @@ def migrarTablaExclusionesPromo():
     except Exception as e:
         print(f"Error en migración: {e}")
 
-# -----------------------------------------------------------------------
-# Función para migrar BD existente: crea la tabla si ya existe la BD
-# Llamar esta función en el arranque de la app para bases ya creadas.
-# -----------------------------------------------------------------------
+# Crea la tabla de ingredientes excluidos en bases creadas antes de existir
 def migrarTablaExclusiones():
     try:
         conn = sqlite3.connect(DB_PATH)
@@ -448,6 +448,7 @@ def migrarTablaExclusiones():
         print(f"Error en migración de exclusiones: {e}")
 
 
+# Relaciona cada unidad vendida con su producto
 def migrar_unidades_con_producto():
         conn = sqlite3.connect(DB_PATH)
         c = conn.cursor()
@@ -474,12 +475,7 @@ def migrar_unidades_con_producto():
         conn.commit()
         conn.close()
 
-# -----------------------------------------------------------------------
-# AJUSTE: Ingredientes extra en pedidos (con precio adicional)
-# - Agrega la columna precioExtra a Stock si la base ya existía sin ella.
-# - Crea la tabla DetallesVentaExtras si la base ya existía sin ella.
-# Se puede ejecutar cualquier cantidad de veces sin causar error.
-# -----------------------------------------------------------------------
+# Agrega el precio extra de ingredientes y la tabla de extras por pedido
 def migrarIngredientesExtra():
     try:
         conn = sqlite3.connect(DB_PATH)
@@ -503,11 +499,7 @@ def migrarIngredientesExtra():
                       numUnidad INTEGER,
                       FOREIGN KEY (idDetalleVenta) REFERENCES DetallesVenta(idDetalleVenta),
                       FOREIGN KEY (idIng) REFERENCES Stock(idIng))""")
-        # idProd/numUnidad: NULL cuando el extra es de un producto suelto (una
-        # sola linea = una sola personalizacion). Cuando el extra pertenece a
-        # un producto DENTRO de una promocion, se llenan para saber a que
-        # producto y a que unidad especifica de la promo corresponde (igual
-        # patron que ya usa DetallesVentaExclusionesPromo).
+        # idProd y numUnidad quedan en NULL salvo que el extra sea de un producto dentro de una promoción
         try:
             c.execute("ALTER TABLE DetallesVentaExtras ADD COLUMN idProd INTEGER")
         except sqlite3.OperationalError as e:
@@ -523,14 +515,7 @@ def migrarIngredientesExtra():
     except Exception as e:
         print(f"Error en migración de ingredientes extra: {e}")
 
-# -----------------------------------------------------------------------
-# AJUSTE: Reporte de tiempos de venta (hora de inicio / hora de cierre)
-# Agrega la columna horaCierre a Venta. Se actualiza cuando se cobra la
-# venta (ver DialogoCobroVenta.py: al confirmar el pago, agregar
-#   UPDATE Venta SET horaCierre = DATETIME('now','localtime')
-#   WHERE numVenta=? AND fechaReg=?
-# ). Mientras esa venta no se cobre, horaCierre queda NULL.
-# -----------------------------------------------------------------------
+# Agrega la hora de cierre de la venta, que se llena al cobrarla
 def migrarHoraCierreVenta():
     try:
         conn = sqlite3.connect(DB_PATH)
@@ -548,13 +533,7 @@ def migrarHoraCierreVenta():
     except Exception as e:
         print(f"Error en migración de horaCierre: {e}")
 
-# -----------------------------------------------------------------------
-# AJUSTE: Contraseñas hasheadas con bcrypt
-# Convierte cualquier contraseña que todavía esté en texto plano
-# (Empleado.contEmp y Directorio.contrasenaAdmin) a un hash seguro.
-# Es segura de correr múltiples veces: si una contraseña ya es un hash
-# de bcrypt, la deja intacta.
-# -----------------------------------------------------------------------
+# Convierte a bcrypt las contraseñas que sigan en texto plano
 def migrarPasswordsAHash():
     try:
         from SeguridadUtils import hashear_password, es_hash_bcrypt
@@ -592,6 +571,7 @@ def migrarPasswordsAHash():
     except Exception as e:
         print(f"Error en migración de contraseñas: {e}")
 
+# Prepara la base al iniciar: tablas, triggers y migraciones pendientes
 def inciarBaseDatos():
     crear_db()
     crearTriggers()

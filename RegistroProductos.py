@@ -638,13 +638,7 @@ class RegistroProductos(QWidget):
         self.campoCantidad.setPlaceholderText("")
     
     def modificarElemento(self, elemento, nombreIngrediente, descripcion, cantidad, tabla, conjunto, boton):
-        # No confiar en nombreIngrediente/descripcion/cantidad/elemento: estos
-        # llegan "congelados" desde el momento en que se creo el boton (closure
-        # de Python), y pueden estar desactualizados si el ingrediente cambio
-        # en otra pantalla mientras tanto. Tampoco basta con leer el texto
-        # actual de la celda, porque esta pantalla pudo no haberse refrescado
-        # todavia. Se consulta la base de datos directamente por idIng, que
-        # es la referencia estable guardada al agregar el ingrediente.
+        # Se consulta la base por idIng porque los datos del botón pueden estar desactualizados
         indice = tabla.indexAt(boton.mapTo(tabla.viewport(), QPoint(0,0)))
         fila = indice.row()
         if fila < 0:

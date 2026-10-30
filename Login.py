@@ -262,7 +262,6 @@ class Login(QMainWindow):
                 c.execute("""SELECT * FROM Directorio""")
                 resultado = c.fetchone()
                 if resultado and verificar_password(contrasena, resultado[2]):
-                    #QMessageBox.information(self, "Éxito", "Credenciales Correctas")
                     self.iniciarPaginaPrincipal("DIRECTORIO")
                 else:
                     QMessageBox.information(self, "Error", "Credenciales Incorrectas")
@@ -273,7 +272,6 @@ class Login(QMainWindow):
                 c.execute(consulta, (nombre,))
                 resultado = c.fetchone()
                 if resultado and verificar_password(contrasena, resultado[0]):
-                    #QMessageBox.information(self, "Éxito", "Credenciales Correctas")
                     self.iniciarPaginaPrincipal(nombre)
                 else:
                     QMessageBox.information(self, "Error", "Credenciales Incorrectas")  

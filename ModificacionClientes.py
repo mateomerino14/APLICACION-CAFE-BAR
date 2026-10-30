@@ -78,7 +78,6 @@ class ModificacionClientes(QWidget):
   
     
   
-    #No tocar
     def crearFiltro(self):
         layoutFiltro=QHBoxLayout()
         self.campoBusqueda=QLineEdit()
@@ -178,7 +177,6 @@ class ModificacionClientes(QWidget):
         
         
         
-    #No tocar     
     def campoModificar(self):
         layoutCampoModificar=QHBoxLayout()
         layoutCampoModificar.setSpacing(0)
