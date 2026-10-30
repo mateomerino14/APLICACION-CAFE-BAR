@@ -16,3 +16,4 @@ database/
 .idea/
 Thumbs.db
 .DS_Store
+.ruff_cache/
