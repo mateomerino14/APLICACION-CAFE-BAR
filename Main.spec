@@ -1,17 +1,11 @@
 # -*- mode: python ; coding: utf-8 -*-
 # Uso: pyinstaller Main.spec --clean --noconfirm
 
-import os
-import escpos
-
-# python-escpos necesita su capabilities.json dentro del ejecutable
-capacidadesEscpos = os.path.join(os.path.dirname(escpos.__file__), 'capabilities.json')
-
 a = Analysis(
     ['Main.py'],
     pathex=[],
     binaries=[],
-    datas=[('Imagenes', 'Imagenes'), (capacidadesEscpos, 'escpos')],
+    datas=[('Imagenes', 'Imagenes')],
     hiddenimports=['bcrypt'],
     hookspath=[],
     hooksconfig={},
