@@ -288,7 +288,7 @@ class Login(QMainWindow):
                 conn.close()
 
     def iniciarPaginaPrincipal(self, usuario):
-        from AdministradorPaginas import AdministradorPaginas
+        from paginas.inicio.AdministradorPaginas import AdministradorPaginas
 
         self.pagina = AdministradorPaginas(usuario)
         self.pagina.show()

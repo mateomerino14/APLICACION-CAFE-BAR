@@ -4,7 +4,7 @@ from PyQt5.QtGui import *
 from PyQt5.QtCore import *
 import sqlite3
 from datetime import datetime
-from PaginaPrincipal import PaginaPrincipal
+from paginas.inicio.PaginaPrincipal import PaginaPrincipal
 from Familia import Familia
 from RegistrarPedidos import RegistrarPedidos
 from RegistroClientes import RegistroClientes
@@ -29,7 +29,7 @@ from DarBajaPromociones import DarBajaPromociones
 from RegistroCargos import RegistroCargos
 from ModificacionCargos import ModificacionCargos
 from ModificacionCategorias import ModificacionCategorias
-from Login import Login
+from paginas.inicio.Login import Login
 from nucleo.Rutas import get_db_path
 
 DB_PATH = get_db_path()
