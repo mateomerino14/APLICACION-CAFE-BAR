@@ -5,7 +5,7 @@ from PyQt5.QtCore import *
 import sqlite3
 from datetime import datetime
 from paginas.inicio.PaginaPrincipal import PaginaPrincipal
-from Familia import Familia
+from paginas.familia.Familia import Familia
 from RegistrarPedidos import RegistrarPedidos
 from RegistroClientes import RegistroClientes
 from ModificacionClientes import ModificacionClientes
