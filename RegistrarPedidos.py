@@ -5,7 +5,7 @@ from PyQt5.QtCore import *
 import os
 import sqlite3
 from datetime import datetime
-from Impresion import ManejadorImpresion
+from servicios.Impresion import ManejadorImpresion
 from PyQt5.QtCore import QObject, pyqtSignal, pyqtSlot
 from decimal import Decimal, ROUND_HALF_UP
 from DialogoCobroVenta import DialogoCobroVenta

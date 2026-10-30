@@ -3,7 +3,7 @@ from PyQt5.QtGui import *
 from PyQt5.QtCore import *
 import sqlite3
 from datetime import datetime
-from Impresion import ManejadorImpresion
+from servicios.Impresion import ManejadorImpresion
 import webbrowser
 from nucleo.SeguridadUtils import verificar_password
 from nucleo.Rutas import get_db_path
