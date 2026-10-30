@@ -34,12 +34,13 @@ Los botones y etiquetas usan emojis para que la acción se reconozca de un vista
 
 ## Imágenes
 
-Los íconos de los menús y botones están en `Imagenes/` y se cargan siempre con `get_resource_path` o `get_images_dir` de `Rutas.py`, para que funcionen igual en el ejecutable.
+Los íconos de los menús y botones están en `Imagenes/` y se cargan siempre con `get_resource_path` o `get_images_dir` de `nucleo/Rutas.py`, para que funcionen igual en el ejecutable.
 
 Las imágenes que carga el usuario (productos, categorías, promociones y fotos de empleados) se guardan como BLOB en la base. La portada de la página principal se guarda en `database/banner_custom.png`.
 
 ## Pantallas
 
-- Cada página es un `QWidget` que `AdministradorPaginas` registra en el diccionario `PAGINAS` y crea la primera vez que se abre.
-- Los formularios de modificación son `QDialog` en archivos `Pop_up_*.py`.
+- Cada página es un `QWidget` en `paginas/<modulo>/` que `paginas/inicio/AdministradorPaginas.py` registra en el diccionario `PAGINAS` y crea la primera vez que se abre.
+- Los formularios de modificación son `QDialog` en archivos `Pop_up_*.py`, en la misma carpeta que la pantalla que los abre.
+- Para agregar una pantalla: crear el archivo en su módulo, importarlo en `AdministradorPaginas.py`, sumarlo a `PAGINAS` y agregar la opción al menú.
 - Los mensajes al usuario se muestran con `QMessageBox`, con títulos en español y con tildes.

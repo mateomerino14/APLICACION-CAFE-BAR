@@ -2,8 +2,8 @@
 
 import sys
 from PyQt5.QtWidgets import QApplication
-from Login import Login
-from init_db import inciarBaseDatos
+from paginas.inicio.Login import Login
+from nucleo.init_db import inciarBaseDatos
 
 
 def main():
