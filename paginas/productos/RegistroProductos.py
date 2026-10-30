@@ -4,7 +4,9 @@ from PyQt5.QtGui import *
 from PyQt5.QtCore import *
 import os
 import sqlite3
-from paginas.productos.Pop_up_RegistroProductoModificacionIngrediente import Pop_up_RegistroProductoModificacionIngrediente
+from paginas.productos.Pop_up_RegistroProductoModificacionIngrediente import (
+    Pop_up_RegistroProductoModificacionIngrediente,
+)
 from paginas.productos.Pop_up_RegistroProductos import Pop_up_RegistroProductos
 from nucleo.Rutas import get_db_path, get_resource_path
 
