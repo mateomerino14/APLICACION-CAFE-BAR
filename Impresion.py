@@ -161,8 +161,8 @@ class ManejadorImpresion(QObject):
             '©': '(c)', '®': '(r)', '™': '(tm)',
             '…': '...', '—': '-', '–': '-',
             'ç': 'c', 'Ç': 'C',
-            'ß': 'ss', 'ä': 'ae', 'ö': 'oe', 'ü': 'ue',
-            'Ä': 'AE', 'Ö': 'OE', 'Ü': 'UE'
+            'ß': 'ss', 'ä': 'ae', 'ö': 'oe',
+            'Ä': 'AE', 'Ö': 'OE'
         }
         resultado = []
         for char in texto:
