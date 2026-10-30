@@ -11,11 +11,11 @@ from paginas.clientes.RegistroClientes import RegistroClientes
 from paginas.clientes.ModificacionClientes import ModificacionClientes
 from paginas.administracion.Configuracion import Configuracion
 from paginas.administracion.Impresoras import Impresoras
-from RegistroCategoriasSubcategorias import RegistroCategoriasSubcategorias
-from RegistroProductos import RegistroProductos
-from ModificacionProductos import ModificacionProductos
-from DarBajaCategorias import DarBajaCategorias
-from DarBajaProductos import DarBajaProductos
+from paginas.productos.RegistroCategoriasSubcategorias import RegistroCategoriasSubcategorias
+from paginas.productos.RegistroProductos import RegistroProductos
+from paginas.productos.ModificacionProductos import ModificacionProductos
+from paginas.productos.DarBajaCategorias import DarBajaCategorias
+from paginas.productos.DarBajaProductos import DarBajaProductos
 from Administracion_Secciones_Mesas import Administracion_Secciones_Mesas
 from RegistroIngredientes import RegistroIngredientes
 from ModificacionIngredientes import ModificacionIngredientes
@@ -28,7 +28,7 @@ from ModificacionPromociones import ModificacionPromociones
 from DarBajaPromociones import DarBajaPromociones
 from RegistroCargos import RegistroCargos
 from ModificacionCargos import ModificacionCargos
-from ModificacionCategorias import ModificacionCategorias
+from paginas.productos.ModificacionCategorias import ModificacionCategorias
 from paginas.inicio.Login import Login
 from nucleo.Rutas import get_db_path
 
