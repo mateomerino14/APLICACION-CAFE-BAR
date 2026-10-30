@@ -90,7 +90,6 @@ class RegistroCargos(QWidget):
             }
         """)
         self.checkboxes = {}
-        self.botones_seleccion = {}
         self.cargar_cargos_existentes()
         self.set_up()
 

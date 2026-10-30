@@ -144,7 +144,6 @@ APLICACION-CAFE-BAR/
 │   ├── stock/                       Ingredientes
 │   ├── promociones/                 Promociones
 │   ├── empleados/                   Cargos con sus permisos y empleados
-│   ├── clientes/                    Clientes
 │   └── reportes/                    Reportes, gráficos, PDF y envío por correo
 ├── Imagenes/                        Íconos y logos de la interfaz
 ├── docs/                            Documentación técnica

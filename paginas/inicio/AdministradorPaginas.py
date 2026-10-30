@@ -7,8 +7,6 @@ from datetime import datetime
 from paginas.inicio.PaginaPrincipal import PaginaPrincipal
 from paginas.familia.Familia import Familia
 from paginas.caja.RegistrarPedidos import RegistrarPedidos
-from paginas.clientes.RegistroClientes import RegistroClientes
-from paginas.clientes.ModificacionClientes import ModificacionClientes
 from paginas.administracion.Configuracion import Configuracion
 from paginas.administracion.Impresoras import Impresoras
 from paginas.productos.RegistroCategoriasSubcategorias import RegistroCategoriasSubcategorias
@@ -37,8 +35,6 @@ DB_PATH = get_db_path()
 PAGINAS = {
     "Home": PaginaPrincipal,
     "Familia": Familia,
-    "RegistroClientes": RegistroClientes,
-    "ModificacionClientes": ModificacionClientes,
     "Configuracion": Configuracion,
     "Impresoras": Impresoras,
     "RegistroCategorias": RegistroCategoriasSubcategorias,
@@ -436,14 +432,6 @@ class AdministradorPaginas(QMainWindow):
     def iniciarPaginaRegistroPedido(self):
         self.titulo.setText("REGISTRAR PEDIDO")
         self.show_page("RegistrarPedidos")
-
-    def iniciarPaginaRegistroCliente(self):
-        self.titulo.setText("REGISTRAR CLIENTE")
-        self.show_page("RegistroClientes")
-
-    def iniciarPaginaModificacionCliente(self):
-        self.titulo.setText("MODIFICACIÓN DE CLIENTES")
-        self.show_page("ModificacionClientes", after=lambda p: p.filtrarDatos(""))
 
     def iniciarPaginaConfiguracion(self):
         self.titulo.setText("CONFIGURACIÓN")

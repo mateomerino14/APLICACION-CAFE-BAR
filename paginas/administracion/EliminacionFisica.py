@@ -15,7 +15,6 @@ class EliminacionFisica(QDialog):
 
         self.tablas = {}
         self.filtros_estado = {}
-        self.dependencias_info = {}
 
         self.setStyleSheet("""
             QDialog {
