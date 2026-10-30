@@ -40,7 +40,7 @@ pyinstaller Main.py --onedir --windowed --clean --noconfirm --icon "Imagenes\ico
 
 ## Dónde guarda los datos
 
-`Rutas.py` separa dos ubicaciones:
+`nucleo/Rutas.py` separa dos ubicaciones:
 
 | Ruta | En desarrollo | En el ejecutable |
 |---|---|---|
@@ -59,13 +59,14 @@ La base se crea sola la primera vez que se abre el sistema.
 
 1. Hacer una copia de la carpeta `database` del local.
 2. Reemplazar todo el contenido de la carpeta del sistema **menos** `database`.
-3. Abrir el sistema: `init_db.py` aplica las migraciones pendientes y conserva los datos.
+3. Abrir el sistema: `nucleo/init_db.py` aplica las migraciones pendientes y conserva los datos.
 
 ## Problemas frecuentes
 
 | Síntoma | Causa | Solución |
 |---|---|---|
 | `No module named bcrypt` al abrir | bcrypt no se empaquetó | Generar desde `Main.spec`, que ya lo incluye |
+| `No module named 'paginas'` al ejecutar con Python | Se ejecutó desde otra carpeta o un archivo de `paginas/` directamente | Iniciar siempre con `python Main.py` desde la raíz del proyecto |
 | Faltan íconos en las pantallas | La carpeta `Imagenes` no se incluyó | Generar desde la raíz del proyecto, donde está `Imagenes` |
 | No llegan los correos | Cuenta sin contraseña de aplicación o sin internet | Revisar la cuenta activa en Administrar Correos / Backup |
 | No imprime | Impresora no registrada o marcada para otra área | Registrarla en Administración → Impresoras y elegir barra o cocina |
