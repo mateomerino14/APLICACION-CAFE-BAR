@@ -1,4 +1,3 @@
-import sys
 import os
 import sqlite3
 from datetime import datetime
@@ -119,7 +118,7 @@ class ManejadorImpresion(QObject):
         return False
     
     def _intentar_imprimir(self, impresora, contenido, es_termica=True):
-        print(f"\n🔍 _intentar_imprimir:")
+        print("\n🔍 _intentar_imprimir:")
         print(f"  Dispositivo: {impresora.get('dispositivo')}")
         print(f"  VID: {impresora.get('vid')}, PID: {impresora.get('pid')}")
         print(f"  Descripcion: {impresora.get('descripcion')}")

@@ -1,9 +1,7 @@
 from PyQt5.QtWidgets import QDialog, QVBoxLayout, QLabel, QPushButton, QLineEdit, QHBoxLayout, QMessageBox
-from PyQt5.QtGui import QFont, QPixmap
 from PyQt5.QtCore import Qt
 import sqlite3
 import os
-import sys
 from SeguridadUtils import hashear_password
 from Rutas import get_db_path
 

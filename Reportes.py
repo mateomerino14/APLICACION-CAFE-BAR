@@ -4,10 +4,9 @@ from PyQt5.QtGui import *
 from PyQt5.QtCore import *
 import os
 import sqlite3
-from datetime import datetime, timedelta
+from datetime import datetime
 from fpdf import FPDF
 import smtplib
-import unicodedata
 from email.mime.multipart import MIMEMultipart
 from email.mime.base import MIMEBase
 from email.mime.text import MIMEText
@@ -152,7 +151,7 @@ class PDFReport(FPDF):
         if salon and mesa and mesa != '0':
             self.cell(0, 6, f'Ubicación: {salon} - Mesa {mesa}', 0, 1, 'L')
         else:
-            self.cell(0, 6, f'Ubicación: Para Llevar', 0, 1, 'L')
+            self.cell(0, 6, 'Ubicación: Para Llevar', 0, 1, 'L')
         self.ln(2)
         
         if productos_detalle:
@@ -1147,7 +1146,7 @@ class Reportes(QWidget):
         scroll.setWidgetResizable(True)
         
         dialog = QDialog(self)
-        dialog.setWindowTitle(f"Ventas del Empleado")
+        dialog.setWindowTitle("Ventas del Empleado")
         dialog.setMinimumWidth(800)
         dialog.setMinimumHeight(500)
         dlg_layout = QVBoxLayout(dialog)

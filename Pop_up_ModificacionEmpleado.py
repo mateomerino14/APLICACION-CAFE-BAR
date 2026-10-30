@@ -1,8 +1,6 @@
-import sys
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
 from PyQt5.QtCore import *
-import os
 import sqlite3
 from SeguridadUtils import hashear_password
 from Rutas import get_db_path

@@ -2,7 +2,6 @@ import sys
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
 from PyQt5.QtCore import *
-import os
 import sqlite3
 from functools import partial
 from Pop_up_ModificacionClientes import Pop_up_ModificacionClientes

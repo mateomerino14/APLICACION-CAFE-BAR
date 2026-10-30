@@ -10,7 +10,6 @@ import smtplib
 import shutil
 import zipfile
 import tempfile
-import io
 from EliminacionFisica import EliminacionFisica
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -442,8 +441,8 @@ class Configuracion(QWidget):
             if extra:
                 extra_label = QLabel(extra)
                 if text.startswith("✅"):
-                    extra_label.setStyleSheet(f"""
-                        QLabel {{
+                    extra_label.setStyleSheet("""
+                        QLabel {
                             background: #000000;
                             color: white;
                             padding: 4px 8px;
@@ -453,7 +452,7 @@ class Configuracion(QWidget):
                             text-align: center;
                             margin-top: -4px;
                             border: 1px solid #ffffff;
-                        }}
+                        }
                     """)
                 else:
                     extra_label.setStyleSheet(f"""

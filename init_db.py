@@ -1,6 +1,5 @@
 import sqlite3
 import os
-import sys
 from Rutas import get_db_path
 
 DB_PATH = get_db_path()

@@ -1,5 +1,3 @@
-import sys
-import os
 import sqlite3
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
@@ -846,7 +844,7 @@ class Pop_up_ModificarPromocion(QDialog):
         nombre_actual = self.tablaProductos.item(fila,0).text()
         cantidad_actual = self.tablaProductos.item(fila,1).text()
         dialog = QDialog(self)
-        dialog.setWindowTitle(f"Modificar Producto")
+        dialog.setWindowTitle("Modificar Producto")
         dialog.setFixedSize(620, 250)
         dialog.setStyleSheet("""
             QDialog {

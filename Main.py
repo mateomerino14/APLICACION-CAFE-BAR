@@ -26,7 +26,6 @@ from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
 from PyQt5.QtCore import *
 import sys
-import os
 from Login import Login
 from init_db import inciarBaseDatos
 
