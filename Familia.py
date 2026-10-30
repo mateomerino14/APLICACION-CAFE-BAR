@@ -5,7 +5,7 @@ from PyQt5.QtCore import *
 import sqlite3
 import math
 from datetime import datetime
-from Rutas import get_db_path
+from nucleo.Rutas import get_db_path
 
 DB_PATH = get_db_path()
 

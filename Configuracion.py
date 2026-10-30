@@ -14,8 +14,8 @@ from EliminacionFisica import EliminacionFisica
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.application import MIMEApplication
-from SeguridadUtils import hashear_password, verificar_password
-from Rutas import get_db_path
+from nucleo.SeguridadUtils import hashear_password, verificar_password
+from nucleo.Rutas import get_db_path
 
 DB_PATH = get_db_path()
 

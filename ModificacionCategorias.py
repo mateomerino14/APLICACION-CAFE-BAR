@@ -5,7 +5,7 @@ from PyQt5.QtCore import *
 import os
 import sqlite3
 from functools import partial
-from Rutas import get_db_path, get_images_dir
+from nucleo.Rutas import get_db_path, get_images_dir
 
 DB_PATH = get_db_path()
 

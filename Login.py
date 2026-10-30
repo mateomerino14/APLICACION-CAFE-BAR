@@ -4,8 +4,8 @@ from PyQt5.QtCore import *
 import sys
 import sqlite3
 import os
-from SeguridadUtils import verificar_password
-from Rutas import get_db_path, get_resource_path
+from nucleo.SeguridadUtils import verificar_password
+from nucleo.Rutas import get_db_path, get_resource_path
 
 DB_PATH = get_db_path()
 

@@ -5,8 +5,8 @@ import sqlite3
 from datetime import datetime
 from Impresion import ManejadorImpresion
 import webbrowser
-from SeguridadUtils import verificar_password
-from Rutas import get_db_path
+from nucleo.SeguridadUtils import verificar_password
+from nucleo.Rutas import get_db_path
 
 DB_PATH = get_db_path()
 

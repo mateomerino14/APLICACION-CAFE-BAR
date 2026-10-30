@@ -7,7 +7,7 @@ import usb.util
 import serial
 import win32print
 import serial.tools.list_ports
-from Rutas import get_db_path
+from nucleo.Rutas import get_db_path
 
 DB_PATH = get_db_path()
 

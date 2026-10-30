@@ -3,7 +3,7 @@ from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
 from PyQt5.QtCore import *
 import sqlite3
-from Rutas import get_db_path
+from nucleo.Rutas import get_db_path
 
 DB_PATH = get_db_path()
 

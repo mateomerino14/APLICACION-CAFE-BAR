@@ -5,7 +5,7 @@ from PyQt5.QtCore import *
 import sqlite3
 from Pop_up_Registro_Seccion import Pop_up_Registro_Seccion
 from ModificacionSeccion import ModificacionSeccion
-from Rutas import get_db_path
+from nucleo.Rutas import get_db_path
 
 
 DB_PATH = get_db_path()

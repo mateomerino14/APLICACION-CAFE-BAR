@@ -5,7 +5,7 @@ from PyQt5.QtCore import *
 import os
 import sqlite3
 from Pop_up_ModificacionSubcategoria import Pop_up_ModificacionSubcategoria
-from Rutas import get_db_path, get_resource_path
+from nucleo.Rutas import get_db_path, get_resource_path
 
 DB_PATH = get_db_path()
 

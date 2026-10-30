@@ -1,6 +1,6 @@
 import sqlite3
 import os
-from Rutas import get_db_path
+from nucleo.Rutas import get_db_path
 
 DB_PATH = get_db_path()
 
@@ -542,7 +542,7 @@ def migrarHoraCierreVenta():
 # Convierte a bcrypt las contraseñas que sigan en texto plano
 def migrarPasswordsAHash():
     try:
-        from SeguridadUtils import hashear_password, es_hash_bcrypt
+        from nucleo.SeguridadUtils import hashear_password, es_hash_bcrypt
     except ImportError:
         print("ADVERTENCIA: no se encontró el paquete 'bcrypt' (o SeguridadUtils.py).")
         print("Instala bcrypt con: pip install bcrypt --break-system-packages")

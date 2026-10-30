@@ -8,7 +8,7 @@ import usb.core
 import usb.util
 import serial.tools.list_ports
 import serial
-from Rutas import get_db_path
+from nucleo.Rutas import get_db_path
 
 DB_PATH = get_db_path()
 

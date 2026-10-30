@@ -1,7 +1,8 @@
 import os
 import sys
 
-CARPETA_PROYECTO = os.path.dirname(os.path.abspath(__file__))
+# Rutas.py vive en nucleo/, así que la raíz del proyecto es la carpeta superior
+CARPETA_PROYECTO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
 # Carpeta del ejecutable o del proyecto, donde vive la base de datos del local

@@ -7,7 +7,7 @@ import os
 import shutil
 import math
 from datetime import datetime
-from Rutas import get_resource_path, get_writable_base_path
+from nucleo.Rutas import get_resource_path, get_writable_base_path
 
 
 def get_banner_path():

@@ -30,7 +30,7 @@ from RegistroCargos import RegistroCargos
 from ModificacionCargos import ModificacionCargos
 from ModificacionCategorias import ModificacionCategorias
 from Login import Login
-from Rutas import get_db_path
+from nucleo.Rutas import get_db_path
 
 DB_PATH = get_db_path()
 

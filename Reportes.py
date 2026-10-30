@@ -18,7 +18,7 @@ from collections import defaultdict
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
-from Rutas import get_db_path
+from nucleo.Rutas import get_db_path
 
 
 def _fmt2(x):

@@ -6,7 +6,7 @@ import os
 import sqlite3
 from Pop_up_RegistroProductoModificacionIngrediente import Pop_up_RegistroProductoModificacionIngrediente
 from Pop_up_RegistroProductos import Pop_up_RegistroProductos
-from Rutas import get_db_path, get_resource_path
+from nucleo.Rutas import get_db_path, get_resource_path
 
 DB_PATH = get_db_path()
 DIRECCION_IMAGENES = get_resource_path('Imagenes')

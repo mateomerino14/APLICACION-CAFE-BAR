@@ -2,8 +2,8 @@ from PyQt5.QtWidgets import QDialog, QVBoxLayout, QLabel, QPushButton, QLineEdit
 from PyQt5.QtCore import Qt
 import sqlite3
 import os
-from SeguridadUtils import hashear_password
-from Rutas import get_db_path
+from nucleo.SeguridadUtils import hashear_password
+from nucleo.Rutas import get_db_path
 
 DB_PATH = get_db_path()
 
