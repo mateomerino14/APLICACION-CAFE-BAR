@@ -23,9 +23,9 @@ from Reportes import Reportes
 from RegistroEmpleados import RegistroEmpleados
 from ModificacionEmpleados import ModificacionEmpleados
 from DarBajaEmpleados import DarBajaEmpleados
-from RegistroPromociones import RegistroPromociones
-from ModificacionPromociones import ModificacionPromociones
-from DarBajaPromociones import DarBajaPromociones
+from paginas.promociones.RegistroPromociones import RegistroPromociones
+from paginas.promociones.ModificacionPromociones import ModificacionPromociones
+from paginas.promociones.DarBajaPromociones import DarBajaPromociones
 from RegistroCargos import RegistroCargos
 from ModificacionCargos import ModificacionCargos
 from paginas.productos.ModificacionCategorias import ModificacionCategorias

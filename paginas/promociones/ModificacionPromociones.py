@@ -3,7 +3,7 @@ from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
 from PyQt5.QtCore import *
 import sqlite3
-from Pop_up_ModificarPromocion import Pop_up_ModificarPromocion
+from paginas.promociones.Pop_up_ModificarPromocion import Pop_up_ModificarPromocion
 from nucleo.Rutas import get_db_path, get_images_dir
 
 DB_PATH = get_db_path()
