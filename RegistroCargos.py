@@ -445,10 +445,6 @@ class RegistroCargos(QWidget):
         
         layoutVertical.addLayout(layoutBotones)
 
-    def seleccionar_todas_seccion(self, id_pant, estado):
-        for checkbox in self.checkboxes[id_pant]:
-            checkbox.setChecked(estado)
-
     def subirDatos(self):
         if not os.path.exists(DB_PATH):
             QMessageBox.critical(

@@ -2046,15 +2046,15 @@ class Reportes(QWidget):
         productos_detalle = self.obtenerDetallesProductosVenta(num_venta, fecha)
 
         class CustomTableWidget(QTableWidget):
-            def resizeEvent(inner_self, event):
-                QTableWidget.resizeEvent(inner_self, event)
-                ancho_tabla = inner_self.viewport().width()
+            def resizeEvent(self, event):
+                QTableWidget.resizeEvent(self, event)
+                ancho_tabla = self.viewport().width()
                 if ancho_tabla > 0:
-                    inner_self.setColumnWidth(0, int(ancho_tabla * 0.10))
-                    inner_self.setColumnWidth(1, int(ancho_tabla * 0.45))
-                    inner_self.setColumnWidth(2, int(ancho_tabla * 0.12))
-                    inner_self.setColumnWidth(3, int(ancho_tabla * 0.15))
-                    inner_self.setColumnWidth(4, int(ancho_tabla * 0.18))
+                    self.setColumnWidth(0, int(ancho_tabla * 0.10))
+                    self.setColumnWidth(1, int(ancho_tabla * 0.45))
+                    self.setColumnWidth(2, int(ancho_tabla * 0.12))
+                    self.setColumnWidth(3, int(ancho_tabla * 0.15))
+                    self.setColumnWidth(4, int(ancho_tabla * 0.18))
                     
         dialog = QDialog(self)
         dialog.setWindowTitle(f"Detalle Venta #{num_venta}")
