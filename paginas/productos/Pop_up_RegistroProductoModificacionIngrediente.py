@@ -13,7 +13,6 @@ class Pop_up_RegistroProductoModificacionIngrediente(QDialog):
         self.nuevoIden = elemento
         self.nuevoIng = lista[0]
         self.nuevaDesc = lista[2]
-        self.nuevCant = lista[1]
         self.nuevoIdIng = self._buscarIdIng(lista[0])
         self.setWindowTitle("MODIFICACIÓN DE INGREDIENTE")
         self.setFixedSize(480, 300)

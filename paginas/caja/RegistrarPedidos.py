@@ -18,7 +18,6 @@ def q2(x) -> float:
 
 
 DB_PATH = get_db_path()
-MESAS_DIRECCION = get_resource_path('Imagenes')
 
 
 class ImpresionSignals(QObject):
@@ -31,7 +30,6 @@ class RegistrarPedidos(QWidget):
         super().__init__()
         self.cajero = cajero
         self.banderaCocina = False
-        self.modificacion = False
         self.validar_stock = False
         self.banderaTicket = False
         self.enviada = False
@@ -42,8 +40,6 @@ class RegistrarPedidos(QWidget):
         self.signals.resultado_ticket.connect(self._procesar_resultado_ticket)
         self.signals.resultado_cocina.connect(self._procesar_resultado_cocina)
         self.dialogo_detalles = None
-        self.fecha_actual_dialogo = None
-        self.temporizador_dialogo = None
         self.idSeccionActual = None
         self.dialogo_cards = None
         self.numMesa_actual = None
@@ -1296,7 +1292,6 @@ class RegistrarPedidos(QWidget):
         self.banderaTicket = False
         self.enviada = False
         self.ticket_print_count = 0
-        self.modificacion = False
         self.cocina_print_count = 0
         self.exclusiones_por_fila = {}
         self.extras_por_fila = {}
@@ -3421,7 +3416,6 @@ class RegistrarPedidos(QWidget):
         self.conn.close()
 
     def mostrarDetallesVentaMesa(self, numMesa, idSeccion):
-        self.fecha_actual_dialogo = None
         self.numMesa_actual = numMesa
         self.idSeccion_actual = idSeccion
         self.fila_expandida = -1
@@ -4008,7 +4002,6 @@ class RegistrarPedidos(QWidget):
         return card
 
     def mostrarCardsParaMarcar(self, fecha_detalle, numMesa, idSeccion):
-        self.fecha_actual_dialogo = fecha_detalle
         self.actualizar_al_cerrar = False
         if self.dialogo_cards is not None:
             try:

@@ -229,7 +229,7 @@ class RegistroEmpleados(QWidget):
         c = conn.cursor()
         consulta = """SELECT * FROM Cargo"""
         resultado = c.execute(consulta)
-        for id, cargo in resultado.fetchall():
+        for _, cargo in resultado.fetchall():
             self.campo8.addItem(cargo)
         conn.close()
 

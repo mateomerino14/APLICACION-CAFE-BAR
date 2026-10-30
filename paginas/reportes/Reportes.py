@@ -121,7 +121,7 @@ class PDFReport(FPDF):
         self.ln()
         self.set_font('Arial', '', 8)
         row_count = 0
-        for row_idx, row in enumerate(data):
+        for row in data:
             if row_count >= max_rows_per_page:
                 self.add_page()
                 self.set_font('Arial', 'B', 9)

@@ -25,13 +25,6 @@ class DialogoCobroVenta(QDialog):
         self.rbMixto = None
         self.txtEfectivo = None
         self.txtQR = None
-        self.cajero_actual = None
-        self.mesero_actual = None
-
-        if parent and hasattr(parent, 'campoCajero'):
-            self.cajero_actual = parent.campoCajero.text() if parent.campoCajero else None
-        if parent and hasattr(parent, 'campoEncargado'):
-            self.mesero_actual = parent.campoEncargado.text() if parent.campoEncargado else None
 
         self.setWindowTitle("CAJA")
         self.setFixedSize(1600, 900)

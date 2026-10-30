@@ -1,7 +1,7 @@
 import os
 import sqlite3
 from datetime import datetime
-from PyQt5.QtCore import QObject, pyqtSignal
+from PyQt5.QtCore import QObject
 import usb.core
 import usb.util
 import serial
@@ -13,8 +13,6 @@ DB_PATH = get_db_path()
 
 
 class ManejadorImpresion(QObject):
-    impresion_completada = pyqtSignal(str, bool)
-
     def __init__(self):
         super().__init__()
         self.conn_impresion = sqlite3.connect(DB_PATH)
@@ -220,7 +218,7 @@ class ManejadorImpresion(QObject):
             hprinter = win32print.OpenPrinter(nombre_impresora)
             try:
                 doc_info = ("Ticket Cafebar", None, "RAW")
-                job_id = win32print.StartDocPrinter(hprinter, 1, doc_info)
+                win32print.StartDocPrinter(hprinter, 1, doc_info)
                 win32print.StartPagePrinter(hprinter)
                 win32print.WritePrinter(hprinter, contenido_bytes)
                 win32print.EndPagePrinter(hprinter)
@@ -556,7 +554,7 @@ class ManejadorImpresion(QObject):
             hprinter = win32print.OpenPrinter(impresora_default)
             try:
                 doc_info = ("Ticket Cafebar", None, "RAW")
-                job_id = win32print.StartDocPrinter(hprinter, 1, doc_info)
+                win32print.StartDocPrinter(hprinter, 1, doc_info)
                 win32print.StartPagePrinter(hprinter)
                 win32print.WritePrinter(hprinter, contenido_bytes)
                 win32print.EndPagePrinter(hprinter)
