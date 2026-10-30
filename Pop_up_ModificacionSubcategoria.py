@@ -5,6 +5,7 @@ from Rutas import get_db_path
 
 DB_PATH = get_db_path()
 
+
 class Pop_up_ModificacionSubcategoria(QDialog):
     def __init__(self, elemento, conjunto, imagen_data=None, parent=None):
         super().__init__(parent)
@@ -78,7 +79,6 @@ class Pop_up_ModificacionSubcategoria(QDialog):
         """)
         self.conjunto = conjunto
         self.initUI()
-        
 
     def initUI(self):
         layoutPrincipal = QVBoxLayout(self)
@@ -108,7 +108,7 @@ class Pop_up_ModificacionSubcategoria(QDialog):
         titulo.setAlignment(Qt.AlignCenter)
         titulo_layout.addWidget(titulo)
         layoutPrincipal.addWidget(titulo_container)
-        
+
         form_container = QFrame()
         form_container.setStyleSheet("""
             QFrame {
@@ -249,14 +249,10 @@ class Pop_up_ModificacionSubcategoria(QDialog):
         botones_layout.addWidget(btn_confirmar)
         botones_layout.addStretch()
         layoutPrincipal.addWidget(botones_container)
-    
 
     def seleccionarImagen(self):
         file_path, _ = QFileDialog.getOpenFileName(
-            self,
-            "Seleccionar Imagen",
-            "",
-            "Imágenes (*.png *.jpg *.jpeg *.bmp *.gif *.webp)"
+            self, "Seleccionar Imagen", "", "Imágenes (*.png *.jpg *.jpeg *.bmp *.gif *.webp)"
         )
         if file_path:
             try:
@@ -280,7 +276,6 @@ class Pop_up_ModificacionSubcategoria(QDialog):
                 msg.setWindowTitle("Error")
                 msg.setText(f"No se pudo cargar la imagen: {str(e)}")
                 msg.exec_()
-    
 
     def cambiarSub(self):
         nuevo = self.campo2.text().strip()
@@ -300,15 +295,12 @@ class Pop_up_ModificacionSubcategoria(QDialog):
             return
         self.nuevaSub = nuevo
         self.accept()
-    
 
     def getSub(self):
         return self.nuevaSub
-    
 
     def getImagen(self):
         return self.nuevaImagen
-    
 
     def cerrarVentana(self):
         self.reject()

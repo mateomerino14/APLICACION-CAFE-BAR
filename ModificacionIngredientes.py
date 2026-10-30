@@ -19,12 +19,12 @@ class ModificacionIngredientes(QWidget):
             font-family: 'Segoe UI', Arial, sans-serif;
         """)
         self.set_up()
-        
+
     def set_up(self):
         self.layoutDatos = QHBoxLayout()
         self.layoutPrincipal = QVBoxLayout()
         self.setLayout(self.layoutPrincipal)
-        self.layoutPrincipal.setContentsMargins(20,20,20,20)
+        self.layoutPrincipal.setContentsMargins(20, 20, 20, 20)
         self.crearFiltro()
         self.campoModificar()
         self.showMaximized()
@@ -41,11 +41,11 @@ class ModificacionIngredientes(QWidget):
             return []
 
     def crearFiltro(self):
-        layoutFiltro=QHBoxLayout()
-        self.campoBusqueda=QLineEdit()
+        layoutFiltro = QHBoxLayout()
+        self.campoBusqueda = QLineEdit()
         self.campoBusqueda.setFixedWidth(300)
-        textoBusqueda=QLabel("Nombre: ")
-        botonBusqueda=QPushButton()
+        textoBusqueda = QLabel("Nombre: ")
+        botonBusqueda = QPushButton()
         self.campoBusqueda.setStyleSheet("""
                             QLineEdit {
                                 padding: 8px 12px;
@@ -58,14 +58,14 @@ class ModificacionIngredientes(QWidget):
                                 border-color: #6a9cec;
                             }
                         """)
-                        
+
         textoBusqueda.setStyleSheet("""
                             font-size: 18px;
                             font-weight: bold;
                             color: #4a7dbc;
                             background-color:transparent;
                         """)
-                        
+
         botonBusqueda.setStyleSheet("""
                             QPushButton {
                                 background-color: #4a7dbc;
@@ -78,22 +78,20 @@ class ModificacionIngredientes(QWidget):
                             }
                         """)
 
-        
         botonBusqueda.setIcon(QIcon(f"{DIRECCION_IMAGENES}\\lupa.png"))
-        botonBusqueda.clicked.connect(lambda:self.filtrarDatos(self.campoBusqueda.text().strip()))
+        botonBusqueda.clicked.connect(lambda: self.filtrarDatos(self.campoBusqueda.text().strip()))
         layoutFiltro.addStretch(3)
-        layoutFiltro.addWidget(textoBusqueda,alignment=Qt.AlignLeft,stretch=0)
-        layoutFiltro.addWidget(self.campoBusqueda,alignment=Qt.AlignLeft,stretch=60)
-        layoutFiltro.addWidget(botonBusqueda,alignment=Qt.AlignLeft,stretch=40)
+        layoutFiltro.addWidget(textoBusqueda, alignment=Qt.AlignLeft, stretch=0)
+        layoutFiltro.addWidget(self.campoBusqueda, alignment=Qt.AlignLeft, stretch=60)
+        layoutFiltro.addWidget(botonBusqueda, alignment=Qt.AlignLeft, stretch=40)
         layoutFiltro.addStretch(100)
         self.layoutPrincipal.addLayout(layoutFiltro)
-   
-        
-    def filtrarDatos(self,texto):
-        tabla=self.tabla
+
+    def filtrarDatos(self, texto):
+        tabla = self.tabla
         tabla.setRowCount(0)
-        conn = sqlite3.connect(DB_PATH) 
-        if(texto==""):
+        conn = sqlite3.connect(DB_PATH)
+        if texto == "":
             consulta = """SELECT idIng,nomIng,descripcion,cantidadStock,unidadMedida,COALESCE(precioExtra,0)
                           FROM Stock
                           ORDER BY nomIng ASC"""
@@ -105,52 +103,52 @@ class ModificacionIngredientes(QWidget):
                  WHERE nomIng LIKE ?
                  ORDER BY nomIng ASC"""
             c = conn.cursor()
-            resultado = c.execute(consulta,(f"{texto}%",))
-        
+            resultado = c.execute(consulta, (f"{texto}%",))
+
         registros = resultado.fetchall()
         for f, registro in enumerate(registros):
             self.tabla.insertRow(f)
             for c, campo in enumerate(registro):
-                if c!=0:
-                    if c == len(registro)-1: 
-                        boton=QPushButton()
+                if c != 0:
+                    if c == len(registro) - 1:
+                        boton = QPushButton()
                         boton.setStyleSheet("""background-color: #f8f9fa;""")
                         boton.setCursor(Qt.PointingHandCursor)
                         boton.setIcon(QIcon(f"{DIRECCION_IMAGENES}\\modificarEmpleado.jpg"))
-                        boton.setIconSize(QSize(50,50))
-                        boton.clicked.connect(lambda checked,fila=f,idIng=registro[0]: self.pantallaModificar(idIng,fila))
-                        self.tabla.setCellWidget(f,c,boton)
-      
+                        boton.setIconSize(QSize(50, 50))
+                        boton.clicked.connect(
+                            lambda checked, fila=f, idIng=registro[0]: self.pantallaModificar(idIng, fila)
+                        )
+                        self.tabla.setCellWidget(f, c, boton)
+
                     valor = str(campo) if campo is not None else ""
                     item = QTableWidgetItem(valor)
                     item.setTextAlignment(Qt.AlignCenter)
-                    item.setToolTip(valor) 
-                    self.tabla.setItem(f, c-1, item)
-        
+                    item.setToolTip(valor)
+                    self.tabla.setItem(f, c - 1, item)
+
         conn.close()
-        
-        
-        
+
     def campoModificar(self):
-        layoutCampoModificar=QHBoxLayout()
+        layoutCampoModificar = QHBoxLayout()
         layoutCampoModificar.setSpacing(0)
-        campoModificar=QWidget()
-        campoTabla=QWidget()
-        campoEstilo="""background-color:white;
+        campoModificar = QWidget()
+        campoTabla = QWidget()
+        campoEstilo = """background-color:white;
                        margin-bottom:20px;
                        border-radius:10px;"""
-                      
-        editEstilo=("""font-size:15px;
+
+        editEstilo = """font-size:15px;
                        font-weight:bold;
-                       """)
-        campoEscribirEstilo=("""border:1px solid black;
-                                border-radius:3px;""")
+                       """
+        campoEscribirEstilo = """border:1px solid black;
+                                border-radius:3px;"""
         campoModificar.setStyleSheet(campoEstilo)
         campoTabla.setStyleSheet(campoEstilo)
-        layoutTabla=QVBoxLayout()
+        layoutTabla = QVBoxLayout()
         campoTabla.setLayout(layoutTabla)
-        
-        self.tabla=QTableWidget()
+
+        self.tabla = QTableWidget()
         self.tabla.setFocusPolicy(False)
         self.tabla.setStyleSheet("""
                              QTableWidget {
@@ -182,24 +180,22 @@ class ModificacionIngredientes(QWidget):
                                 border: none;
                             }
                             """)
-        
+
         self.cargarDatos()
         self.tabla.verticalHeader().setDefaultSectionSize(130)
         self.tabla.horizontalHeader().setStretchLastSection(True)
         self.tabla.verticalHeader().setVisible(False)
         self.tabla.setFocusPolicy(Qt.NoFocus)
-        self.tabla.setSelectionMode(QTableWidget.NoSelection) 
-        self.tabla.setEditTriggers(QTableWidget.NoEditTriggers) 
+        self.tabla.setSelectionMode(QTableWidget.NoSelection)
+        self.tabla.setEditTriggers(QTableWidget.NoEditTriggers)
         layoutTabla.addWidget(self.tabla)
         layoutCampoModificar.addWidget(campoTabla)
         self.tabla.horizontalHeader().setStretchLastSection(True)
         self.tabla.verticalHeader().setDefaultSectionSize(150)
         self.layoutPrincipal.addLayout(layoutCampoModificar)
-        
-    
-    
+
     def cargarDatos(self):
-        conn = sqlite3.connect(DB_PATH) 
+        conn = sqlite3.connect(DB_PATH)
         consulta = """SELECT idIng,nomIng,descripcion,cantidadStock,unidadMedida,COALESCE(precioExtra,0)
                       FROM Stock
                       ORDER BY nomIng ASC"""
@@ -212,9 +208,9 @@ class ModificacionIngredientes(QWidget):
             'descripcion': 'Descripcion',
             'cantidadStock': 'Cantidad',
             'unidadMedida': 'Unidad de Medida',
-            'COALESCE(precioExtra,0)': 'Precio Extra'
+            'COALESCE(precioExtra,0)': 'Precio Extra',
         }
-        
+
         columnasNuevas = [mapeo_nombres[colum] for colum in columnas]
         columnasNuevas.append("Accion")
         self.tabla.setColumnCount(len(columnasNuevas))
@@ -225,31 +221,32 @@ class ModificacionIngredientes(QWidget):
             'Descripcion': 380,
             'Cantidad': 250,
             'Unidad de Medida': 250,
-            'Precio Extra': 200
+            'Precio Extra': 200,
         }
         for i, col_name in enumerate(columnasNuevas):
-            self.tabla.setColumnWidth(i, anchos_columnas.get(col_name, 100)) 
+            self.tabla.setColumnWidth(i, anchos_columnas.get(col_name, 100))
         self.tabla.horizontalHeader().setSectionResizeMode(QHeaderView.Fixed)
         registros = resultado.fetchall()
         for f, registro in enumerate(registros):
             self.tabla.insertRow(f)
             for c, campo in enumerate(registro):
-               if c!=0:
-                    if c == len(registro)-1:  
-                        boton=QPushButton()
+                if c != 0:
+                    if c == len(registro) - 1:
+                        boton = QPushButton()
                         boton.setStyleSheet("""background-color: #f8f9fa;""")
                         boton.setCursor(Qt.PointingHandCursor)
                         boton.setIcon(QIcon(f"{DIRECCION_IMAGENES}\\modificarEmpleado.jpg"))
-                        boton.setIconSize(QSize(50,50))
-                        boton.clicked.connect(lambda checked,fila=f,idIng=registro[0]: self.pantallaModificar(idIng,fila))
-                        self.tabla.setCellWidget(f,c,boton)
+                        boton.setIconSize(QSize(50, 50))
+                        boton.clicked.connect(
+                            lambda checked, fila=f, idIng=registro[0]: self.pantallaModificar(idIng, fila)
+                        )
+                        self.tabla.setCellWidget(f, c, boton)
                     valor = str(campo) if campo is not None else ""
                     item = QTableWidgetItem(valor)
                     item.setTextAlignment(Qt.AlignCenter)
-                    item.setToolTip(valor) 
-                    self.tabla.setItem(f, c-1, item)
+                    item.setToolTip(valor)
+                    self.tabla.setItem(f, c - 1, item)
         conn.close()
-    
 
     def pantallaModificar(self, idIng, fila):
         if not (0 <= fila < self.tabla.rowCount()):
@@ -257,7 +254,7 @@ class ModificacionIngredientes(QWidget):
             return
         try:
             datos = [idIng]
-            for c in range(self.tabla.columnCount()-1): 
+            for c in range(self.tabla.columnCount() - 1):
                 item = self.tabla.item(fila, c)
                 datos.append(item.text() if item else "")
             scroll_pos = self.tabla.verticalScrollBar().value()
@@ -268,10 +265,9 @@ class ModificacionIngredientes(QWidget):
             self.tabla.verticalScrollBar().setValue(scroll_pos)
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Error al modificar: {str(e)}")
-        
-    
-    
-if __name__=="__main__":
+
+
+if __name__ == "__main__":
     app = QApplication(sys.argv)
     pagina = ModificacionIngredientes()
     pagina.show()

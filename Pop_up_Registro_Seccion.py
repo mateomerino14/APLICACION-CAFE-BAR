@@ -7,19 +7,19 @@ from Rutas import get_db_path
 
 DB_PATH = get_db_path()
 
+
 class Pop_up_Registro_Seccion(QDialog):
-   def __init__(self, parent):
+    def __init__(self, parent):
         super().__init__(parent)
         self.setWindowTitle("REGISTRO DE SECCIÓN")
-        self.setFixedSize(500, 500) 
+        self.setFixedSize(500, 500)
         self.setStyleSheet("""
             background-color: #f8f9fa;
             font-family: 'Segoe UI', Arial, sans-serif;
         """)
         self.crearPantallaModificacion()
 
-
-   def crearPantallaModificacion(self):
+    def crearPantallaModificacion(self):
         main_style = """
             QDialog {
                 background-color: #f8f9fa;
@@ -149,65 +149,61 @@ class Pop_up_Registro_Seccion(QDialog):
         botones_layout.addWidget(cancelar)
         botones_layout.addWidget(modificar)
         layoutDatos.addLayout(botones_layout)
-   
-       
-   
-   def subirInformacion(self):
-       nombreSeccion = self.campoSeccion.text().strip()
-       descripcionSeccion = self.campoDedscripcion.text().strip()
-       cantidadTexto = self.campoCantidad.text().strip()
-       lista=[nombreSeccion, cantidadTexto]
-       for elem in lista:
-           if elem=="":
-               QMessageBox.information(self,"Advertencia", "¡Llene los campos solicitados porfavor!" )
-               return
-       try:
-           cantidad=int(cantidadTexto)
-       except ValueError:
-           QMessageBox.information(self,"Advertencia", "La cantidad de mesas debe ser un numero valido.")
-           return
-       if cantidad<0:
-           QMessageBox.information(self,"Advertencia", "La cantidad debe ser un numero mayor o igual a 0")
-           return
-       conn=sqlite3.connect(DB_PATH)
-       c=conn.cursor()
-       try:
-           consulta="""SELECT * FROM Seccion WHERE nombSeccion=?"""
-           c.execute(consulta,(nombreSeccion,))
-           resultados=c.fetchall()
-           if resultados:
-               QMessageBox.information(self,"Advertencia", "¡Este nombre de seccion ya ha sido registrado!" )
-               return
-           consulta="""INSERT INTO Seccion(nombSeccion,descripcion) VALUES(?,?)"""
-           c.execute(consulta,(nombreSeccion,descripcionSeccion))
 
-           indice=c.lastrowid
-           for i in range(cantidad):
-               consulta="""INSERT INTO Mesa(idMesa,idSeccion) VALUES(NULL,?)"""
-               c.execute(consulta,(indice,))
-           conn.commit()
-       except Exception as e:
-           conn.rollback()
-           QMessageBox.critical(self,"Error", f"No se pudo registrar la seccion: {str(e)}")
-           return
-       finally:
-           conn.close()
-       QMessageBox.information(self,"Confirmación", "¡Se registro con exito!" )
-       self.cerrarVentana()
-       
-        
-   def cerrarVentanaCancelar(self):
-       self.reject()
-       self.close()
-       
-   def cerrarVentana(self):
-       self.accept() 
-       self.close()
-       
-        
-        
-if __name__=="__main__":
+    def subirInformacion(self):
+        nombreSeccion = self.campoSeccion.text().strip()
+        descripcionSeccion = self.campoDedscripcion.text().strip()
+        cantidadTexto = self.campoCantidad.text().strip()
+        lista = [nombreSeccion, cantidadTexto]
+        for elem in lista:
+            if elem == "":
+                QMessageBox.information(self, "Advertencia", "¡Llene los campos solicitados porfavor!")
+                return
+        try:
+            cantidad = int(cantidadTexto)
+        except ValueError:
+            QMessageBox.information(self, "Advertencia", "La cantidad de mesas debe ser un numero valido.")
+            return
+        if cantidad < 0:
+            QMessageBox.information(self, "Advertencia", "La cantidad debe ser un numero mayor o igual a 0")
+            return
+        conn = sqlite3.connect(DB_PATH)
+        c = conn.cursor()
+        try:
+            consulta = """SELECT * FROM Seccion WHERE nombSeccion=?"""
+            c.execute(consulta, (nombreSeccion,))
+            resultados = c.fetchall()
+            if resultados:
+                QMessageBox.information(self, "Advertencia", "¡Este nombre de seccion ya ha sido registrado!")
+                return
+            consulta = """INSERT INTO Seccion(nombSeccion,descripcion) VALUES(?,?)"""
+            c.execute(consulta, (nombreSeccion, descripcionSeccion))
+
+            indice = c.lastrowid
+            for i in range(cantidad):
+                consulta = """INSERT INTO Mesa(idMesa,idSeccion) VALUES(NULL,?)"""
+                c.execute(consulta, (indice,))
+            conn.commit()
+        except Exception as e:
+            conn.rollback()
+            QMessageBox.critical(self, "Error", f"No se pudo registrar la seccion: {str(e)}")
+            return
+        finally:
+            conn.close()
+        QMessageBox.information(self, "Confirmación", "¡Se registro con exito!")
+        self.cerrarVentana()
+
+    def cerrarVentanaCancelar(self):
+        self.reject()
+        self.close()
+
+    def cerrarVentana(self):
+        self.accept()
+        self.close()
+
+
+if __name__ == "__main__":
     app = QApplication(sys.argv)
-    pagina=Pop_up_Registro_Seccion(None)
+    pagina = Pop_up_Registro_Seccion(None)
     pagina.show()
     sys.exit(app.exec_())

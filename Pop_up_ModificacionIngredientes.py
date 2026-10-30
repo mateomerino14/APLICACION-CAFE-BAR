@@ -7,6 +7,7 @@ from Rutas import get_db_path
 
 DB_PATH = get_db_path()
 
+
 class Pop_up_ModificacionIngredientes(QDialog):
     def __init__(self, datos, parent=None):
         super().__init__(parent)
@@ -45,9 +46,9 @@ class Pop_up_ModificacionIngredientes(QDialog):
                 background-color: #2980b9; 
             }
         """)
-        
+
         self.crearPantallaModificacion(datos)
-        
+
     def crearPantallaModificacion(self, datos):
         main_layout = QVBoxLayout(self)
         main_layout.setSpacing(15)
@@ -195,6 +196,7 @@ class Pop_up_ModificacionIngredientes(QDialog):
         self.campoDescripcion.setFixedHeight(70)
         self.campoDescripcion.setStyleSheet(field_style)
         MAX_LARGO_DESCRIPCION_ING = 200
+
         def limitar_descripcion_ing_mod():
             texto = self.campoDescripcion.toPlainText()
             if len(texto) > MAX_LARGO_DESCRIPCION_ING:
@@ -205,6 +207,7 @@ class Pop_up_ModificacionIngredientes(QDialog):
                 cursor.setPosition(min(posicion, MAX_LARGO_DESCRIPCION_ING))
                 self.campoDescripcion.setTextCursor(cursor)
                 self.campoDescripcion.blockSignals(False)
+
         self.campoDescripcion.textChanged.connect(limitar_descripcion_ing_mod)
         form_layout.addWidget(self.campoDescripcion)
         cantidad_label = QLabel("⚖️ CANTIDAD EN STOCK")
@@ -317,7 +320,7 @@ class Pop_up_ModificacionIngredientes(QDialog):
                 transform: translateY(1px);
             }
         """)
-        
+
         botones_layout.addStretch()
         botones_layout.addWidget(self.btn_cancelar)
         botones_layout.addWidget(self.btn_modificar)
@@ -327,20 +330,20 @@ class Pop_up_ModificacionIngredientes(QDialog):
     def showEvent(self, event):
         super().showEvent(event)
         self.completerNombre.setModel(QStringListModel(self.nombres_existentes))
-        
+
     def modificarRegistro(self, datos):
         if not self.campoNombre.text().strip():
             QMessageBox.warning(self, "Advertencia", "¡El nombre del ingrediente es obligatorio!")
             return
-            
+
         if not self.campoUnidadMedida.currentText().strip():
             QMessageBox.warning(self, "Advertencia", "¡La unidad de medida es obligatoria!")
             return
-            
+
         if not self.campoCantidad.text().strip():
             QMessageBox.warning(self, "Advertencia", "¡La cantidad en stock es obligatoria!")
             return
-        
+
         conn = sqlite3.connect(DB_PATH)
         c = conn.cursor()
         consulta = """SELECT * FROM Stock WHERE UPPER(nomIng)=UPPER(?) AND idIng != ?"""
@@ -350,21 +353,24 @@ class Pop_up_ModificacionIngredientes(QDialog):
             QMessageBox.warning(self, "Advertencia", "Este ingrediente ya está registrado")
             conn.close()
             return
-            
+
         try:
             precio_extra_texto = self.campoPrecioExtra.text().strip()
             precio_extra_valor = float(precio_extra_texto) if precio_extra_texto != "" else 0.0
             consulta = """UPDATE Stock 
                        SET nomIng=?, descripcion=?, cantidadStock=?, unidadMedida=?, precioExtra=?
                        WHERE idIng=?"""
-            c.execute(consulta, (
-                self.campoNombre.text().strip(), 
-                self.campoDescripcion.toPlainText().strip(), 
-                float(self.campoCantidad.text()) if self.campoCantidad.text() else 0.00,
-                self.campoUnidadMedida.currentText().strip(),
-                precio_extra_valor,
-                int(datos[0])
-            ))
+            c.execute(
+                consulta,
+                (
+                    self.campoNombre.text().strip(),
+                    self.campoDescripcion.toPlainText().strip(),
+                    float(self.campoCantidad.text()) if self.campoCantidad.text() else 0.00,
+                    self.campoUnidadMedida.currentText().strip(),
+                    precio_extra_valor,
+                    int(datos[0]),
+                ),
+            )
             conn.commit()
             msg = QMessageBox(self)
             msg.setIcon(QMessageBox.Information)
@@ -399,14 +405,15 @@ class Pop_up_ModificacionIngredientes(QDialog):
             QMessageBox.critical(self, "Error", f"Error al modificar: {str(e)}")
         finally:
             conn.close()
-        
+
     def cerrarVentanaCancelar(self):
         self.reject()
+
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     app.setStyle('Fusion')
-    
+
     datos_ejemplo = [1, "Azúcar", "Azúcar refinada para repostería", "50", "Kilogramos", "0.50"]
     pagina = Pop_up_ModificacionIngredientes(datos_ejemplo)
     pagina.show()

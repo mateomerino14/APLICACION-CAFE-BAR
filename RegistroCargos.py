@@ -8,6 +8,7 @@ from Rutas import get_db_path
 
 DB_PATH = get_db_path()
 
+
 class RegistroCargos(QWidget):
     def __init__(self):
         super().__init__()
@@ -122,21 +123,14 @@ class RegistroCargos(QWidget):
         """)
         resultados = c.fetchall()
         conn.close()
-        
+
         pantallas = {}
         for id_pant, nom_pant, id_sub, nom_sub, accion in resultados:
             if id_pant not in pantallas:
-                pantallas[id_pant] = {
-                    'nombre': nom_pant,
-                    'subpantallas': []
-                }
+                pantallas[id_pant] = {'nombre': nom_pant, 'subpantallas': []}
             if id_sub:
                 if not (nom_pant == "Caja" and nom_sub in ["Ver Pedidos Pendientes", "Cobrar Pedidos"]):
-                    pantallas[id_pant]['subpantallas'].append({
-                        'id': id_sub,
-                        'nombre': nom_sub,
-                        'accion': accion
-                    })
+                    pantallas[id_pant]['subpantallas'].append({'id': id_sub, 'nombre': nom_sub, 'accion': accion})
         return pantallas
 
     def seleccionar_todas_seccion(self, id_pant, estado):
@@ -154,14 +148,14 @@ class RegistroCargos(QWidget):
         """)
         area.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.layoutPrincipal.addWidget(area)
-        
+
         layoutVertical = QVBoxLayout(area)
         layoutVertical.setContentsMargins(40, 40, 40, 40)
         layoutVertical.setSpacing(20)
-        
+
         layoutCampos = QHBoxLayout()
         layoutCampos.setSpacing(20)
-        
+
         nombre = QLabel("Nombre del Cargo: ")
         nombre.setStyleSheet("""
             font-size: 18px;
@@ -170,15 +164,15 @@ class RegistroCargos(QWidget):
             padding: 5px 0;
         """)
         layoutCampos.addWidget(nombre)
-        
+
         self.campoNombre = QComboBox()
         self.campoNombre.setEditable(True)
-        
+
         cargos_base = ["Cocinero", "Mesero", "Cajero"]
         todos_cargos = list(set(cargos_base + self.cargos_existentes))
         todos_cargos.sort()
         self.campoNombre.addItems(todos_cargos)
-        
+
         self.campoNombre.setStyleSheet("""
             QComboBox {
                 border: 2px solid #d1d5db;
@@ -222,13 +216,13 @@ class RegistroCargos(QWidget):
         self.campoNombre.setCurrentIndex(-1)
         layoutCampos.addWidget(self.campoNombre, 1)
         layoutVertical.addLayout(layoutCampos)
-        
+
         separador = QFrame()
         separador.setFrameShape(QFrame.HLine)
         separador.setFrameShadow(QFrame.Sunken)
         separador.setStyleSheet("background-color: #e5e7eb; max-height: 2px;")
         layoutVertical.addWidget(separador)
-        
+
         tituloPermisos = QLabel("Permisos de Acción por Subsección")
         tituloPermisos.setStyleSheet("""
             font-size: 20px;
@@ -241,13 +235,13 @@ class RegistroCargos(QWidget):
         """)
         tituloPermisos.setAlignment(Qt.AlignCenter)
         layoutVertical.addWidget(tituloPermisos)
-        
+
         scroll_area = QScrollArea()
         scroll_area.setWidgetResizable(True)
         scroll_area.setMinimumHeight(400)
         scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        
+
         scroll_area.setStyleSheet("""
             QScrollArea {
                 border: 2px solid #e2e8f0;
@@ -255,13 +249,13 @@ class RegistroCargos(QWidget):
                 background-color: #f8fafc;
             }
         """)
-        
+
         scroll_content = QWidget()
         scroll_content.setStyleSheet("background-color: #f8fafc;")
         scroll_layout = QVBoxLayout(scroll_content)
         scroll_layout.setSpacing(20)
         scroll_layout.setContentsMargins(25, 25, 25, 25)
-        
+
         checkbox_style = """
             QCheckBox {
                 font-size: 14px;
@@ -293,9 +287,9 @@ class RegistroCargos(QWidget):
                 background-position: center;
             }
         """
-        
+
         self.pantallas = self.obtener_pantallas_con_subpantallas()
-        
+
         for id_pant, pantalla in self.pantallas.items():
             seccion_widget = QWidget()
             seccion_widget.setStyleSheet("""
@@ -307,9 +301,9 @@ class RegistroCargos(QWidget):
             """)
             seccion_layout = QVBoxLayout(seccion_widget)
             seccion_layout.setSpacing(12)
-            
+
             header_seccion = QHBoxLayout()
-            
+
             titulo_seccion = QLabel(f"📌 {pantalla['nombre']}")
             titulo_seccion.setStyleSheet("""
                 font-size: 18px;
@@ -321,7 +315,7 @@ class RegistroCargos(QWidget):
                 margin: 5px;
             """)
             header_seccion.addWidget(titulo_seccion, 1)
-            
+
             btn_seleccionar_todas = QPushButton("✓ Seleccionar Todas")
             btn_seleccionar_todas.setStyleSheet("""
                 QPushButton {
@@ -338,9 +332,11 @@ class RegistroCargos(QWidget):
                 }
             """)
             btn_seleccionar_todas.setCursor(Qt.PointingHandCursor)
-            btn_seleccionar_todas.clicked.connect(lambda checked, pid=id_pant: self.seleccionar_todas_seccion(pid, True))
+            btn_seleccionar_todas.clicked.connect(
+                lambda checked, pid=id_pant: self.seleccionar_todas_seccion(pid, True)
+            )
             header_seccion.addWidget(btn_seleccionar_todas)
-            
+
             btn_deseleccionar_todas = QPushButton("✗ Deseleccionar Todas")
             btn_deseleccionar_todas.setStyleSheet("""
                 QPushButton {
@@ -357,43 +353,45 @@ class RegistroCargos(QWidget):
                 }
             """)
             btn_deseleccionar_todas.setCursor(Qt.PointingHandCursor)
-            btn_deseleccionar_todas.clicked.connect(lambda checked, pid=id_pant: self.seleccionar_todas_seccion(pid, False))
+            btn_deseleccionar_todas.clicked.connect(
+                lambda checked, pid=id_pant: self.seleccionar_todas_seccion(pid, False)
+            )
             header_seccion.addWidget(btn_deseleccionar_todas)
-            
+
             seccion_layout.addLayout(header_seccion)
-            
+
             grid_sub = QGridLayout()
             grid_sub.setSpacing(15)
             grid_sub.setContentsMargins(20, 15, 20, 15)
-            
+
             self.checkboxes[id_pant] = []
-            
+
             for i, sub in enumerate(pantalla['subpantallas']):
                 checkbox = QCheckBox(sub['nombre'])
                 checkbox.setStyleSheet(checkbox_style)
                 checkbox.setProperty("idSubPant", sub['id'])
                 self.checkboxes[id_pant].append(checkbox)
-                
+
                 fila = i // 2
                 columna = i % 2
                 grid_sub.addWidget(checkbox, fila, columna)
-            
+
             seccion_layout.addLayout(grid_sub)
             scroll_layout.addWidget(seccion_widget)
-        
+
         scroll_area.setWidget(scroll_content)
         layoutVertical.addWidget(scroll_area, 1)
-        
+
         layoutBotones = QHBoxLayout()
         layoutBotones.setSpacing(30)
         layoutBotones.setContentsMargins(100, 20, 100, 20)
-        
+
         botonSubir = QPushButton("Registrar Cargo")
         botonSubir.clicked.connect(self.subirDatos)
-        
+
         botonCancelar = QPushButton("Cancelar")
         botonCancelar.clicked.connect(self.limpiarTodo)
-        
+
         button_style = """
             QPushButton {
                 border: none;
@@ -403,8 +401,10 @@ class RegistroCargos(QWidget):
                 font-weight: 500;
             }
         """
-        
-        botonSubir.setStyleSheet(button_style + """
+
+        botonSubir.setStyleSheet(
+            button_style
+            + """
             QPushButton {
                 background-color: #4f46e5;
                 color: white;
@@ -415,9 +415,12 @@ class RegistroCargos(QWidget):
             QPushButton:pressed {
                 background-color: #3730a3;
             }
-        """)
-        
-        botonCancelar.setStyleSheet(button_style + """
+        """
+        )
+
+        botonCancelar.setStyleSheet(
+            button_style
+            + """
             QPushButton {
                 background-color: #f3f4f6;
                 color: #374151;
@@ -429,97 +432,84 @@ class RegistroCargos(QWidget):
             QPushButton:pressed {
                 background-color: #d1d5db;
             }
-        """)
-        
+        """
+        )
+
         for btn in [botonSubir, botonCancelar]:
             btn.setCursor(Qt.PointingHandCursor)
             btn.setMinimumSize(180, 50)
             btn.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Fixed)
             layoutBotones.addWidget(btn)
-        
+
         layoutVertical.addLayout(layoutBotones)
 
     def subirDatos(self):
         if not os.path.exists(DB_PATH):
             QMessageBox.critical(
-                self,
-                "Error de base de datos",
-                f"No se encontró la base de datos en la ruta:\n{DB_PATH}"
+                self, "Error de base de datos", f"No se encontró la base de datos en la ruta:\n{DB_PATH}"
             )
             return
-        
+
         conn = None
         try:
             conn = sqlite3.connect(DB_PATH, timeout=10)
             c = conn.cursor()
-            
+
             nuevoCargo = self.campoNombre.currentText().strip()
             if not nuevoCargo:
                 QMessageBox.warning(self, "Advertencia", "El nombre del cargo no puede estar vacío")
                 return
-            
+
             subpantallas_seleccionadas = []
             for id_pant, checkboxes in self.checkboxes.items():
                 for cb in checkboxes:
                     if cb.isChecked():
                         id_sub = cb.property("idSubPant")
                         subpantallas_seleccionadas.append(id_sub)
-            
+
             if len(subpantallas_seleccionadas) == 0:
                 QMessageBox.information(self, "Advertencia", "Se debe dar acceso por lo menos a una subsección")
                 return
-            
+
             conn.execute("BEGIN TRANSACTION")
-            
+
             c.execute("INSERT INTO Cargo(nomCarg) VALUES(?)", (nuevoCargo,))
             id_cargo = c.lastrowid
-            
+
             for id_sub in subpantallas_seleccionadas:
-                c.execute("INSERT INTO PermisosCargoSubpantalla(idCarg, idSubPant) VALUES(?, ?)",
-                         (id_cargo, id_sub))
-            
+                c.execute("INSERT INTO PermisosCargoSubpantalla(idCarg, idSubPant) VALUES(?, ?)", (id_cargo, id_sub))
+
             conn.commit()
-            
+
             QMessageBox.information(
                 self,
                 "Operación exitosa",
-                f"El cargo '{nuevoCargo}' se registró correctamente con {len(subpantallas_seleccionadas)} permisos"
+                f"El cargo '{nuevoCargo}' se registró correctamente con {len(subpantallas_seleccionadas)} permisos",
             )
             self.limpiarTodo()
-            
+
         except sqlite3.IntegrityError:
             if conn:
                 conn.rollback()
-            QMessageBox.critical(
-                self,
-                "Error",
-                "Este cargo ya existe en la base de datos"
-            )
+            QMessageBox.critical(self, "Error", "Este cargo ya existe en la base de datos")
         except sqlite3.Error as e:
             if conn:
                 conn.rollback()
-            QMessageBox.critical(
-                self,
-                "Error de base de datos",
-                f"No se pudo completar la operación:\n{str(e)}"
-            )
+            QMessageBox.critical(self, "Error de base de datos", f"No se pudo completar la operación:\n{str(e)}")
         except Exception as e:
             if conn:
                 conn.rollback()
-            QMessageBox.critical(
-                self,
-                "Error inesperado",
-                f"Ocurrió un error no previsto:\n{str(e)}"
-            )
+            QMessageBox.critical(self, "Error inesperado", f"Ocurrió un error no previsto:\n{str(e)}")
         finally:
             if conn:
                 conn.close()
-    
+
     def limpiarTodo(self):
         self.campoNombre.setCurrentIndex(-1)
         for id_pant, checkboxes in self.checkboxes.items():
             for checkbox in checkboxes:
                 checkbox.setChecked(False)
+
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)

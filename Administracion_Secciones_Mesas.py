@@ -10,35 +10,35 @@ from Rutas import get_db_path
 
 DB_PATH = get_db_path()
 
+
 class Administracion_Secciones_Mesas(QWidget):
     def __init__(self):
         super().__init__()
-       
+
         self.setStyleSheet("""
             QWidget {
                 font-family: 'Segoe UI', Arial, sans-serif;
             }
         """)
         self.set_up()
-        
+
     def set_up(self):
         self.numeroElemento = 0
         self.resultados = []
         self.layoutPrincipal = QVBoxLayout()
         self.setLayout(self.layoutPrincipal)
-        self.layoutPrincipal.setContentsMargins(20,20,20,20)
+        self.layoutPrincipal.setContentsMargins(20, 20, 20, 20)
         self.layoutPrincipal.setSpacing(25)
         self.crearAreaSecciones()
         self.showMaximized()
-        
+
     def crearAreaSecciones(self):
         conn = sqlite3.connect(DB_PATH)
         c = conn.cursor()
         c.execute("SELECT nombSeccion, descripcion FROM Seccion")
         self.resultados = c.fetchall()
         conn.close()
-        
-        
+
         titulo = QLabel("◷ SECCIONES ◷")
         titulo.setStyleSheet("""
             QLabel {
@@ -84,10 +84,10 @@ class Administracion_Secciones_Mesas(QWidget):
             }
         """)
         self.botonAnterior.clicked.connect(self.anteriorSecuencia)
-        
+
         self.layoutCentral = QHBoxLayout()
         self.layoutCentral.setSpacing(30)
-        
+
         self.botonSiguiente = QPushButton("▶")
         self.botonSiguiente.setCursor(Qt.PointingHandCursor)
         self.botonSiguiente.setStyleSheet("""
@@ -125,7 +125,7 @@ class Administracion_Secciones_Mesas(QWidget):
         botonNuevo = QPushButton("➕ AÑADIR NUEVA SECCIÓN")
         botonNuevo.setCursor(Qt.PointingHandCursor)
         botonNuevo.clicked.connect(self.crearSeccionRegistro)
-        botonNuevo.setFixedSize(350,60)
+        botonNuevo.setFixedSize(350, 60)
         botonNuevo.setStyleSheet("""
             QPushButton {
                 background-color: #27ae60;
@@ -145,31 +145,29 @@ class Administracion_Secciones_Mesas(QWidget):
             }
         """)
         self.layoutPrincipal.addWidget(botonNuevo, alignment=Qt.AlignCenter)
-    
-        
+
     def crearSeccionRegistro(self):
-        pagina=Pop_up_Registro_Seccion(self)
+        pagina = Pop_up_Registro_Seccion(self)
         pagina.exec_()
         conn = sqlite3.connect(DB_PATH)
-        c=conn.cursor()
+        c = conn.cursor()
         c.execute("SELECT nombSeccion, descripcion FROM Seccion")
-        self.resultados=c.fetchall()
+        self.resultados = c.fetchall()
         conn.close()
         self.actualizarVista()
-        
-    
+
     def actualizarVista(self):
         self.vaciarLayout(self.layoutCentral)
         inicio = self.numeroElemento
-        fin = min(inicio+4,len(self.resultados))
+        fin = min(inicio + 4, len(self.resultados))
         for i in range(inicio, fin):
             dupla = self.resultados[i]
             layoutElemento = QVBoxLayout()
             layoutElemento.setSpacing(15)
-            
+
             boton = QPushButton(dupla[0])
             boton.setCursor(Qt.PointingHandCursor)
-            boton.setFixedSize(220,220)
+            boton.setFixedSize(220, 220)
             boton.setStyleSheet("""
                 QPushButton {
                     background-color: #34495e;
@@ -204,14 +202,18 @@ class Administracion_Secciones_Mesas(QWidget):
             etiqueta.setFixedHeight(80)
             etiqueta.setWordWrap(True)
             etiqueta.setAlignment(Qt.AlignCenter)
-            boton.clicked.connect(lambda _,nomSec=boton.text().strip(),descSec=etiqueta.text().strip():self.cargarRegistro(nomSec,descSec))
+            boton.clicked.connect(
+                lambda _, nomSec=boton.text().strip(), descSec=etiqueta.text().strip(): self.cargarRegistro(
+                    nomSec, descSec
+                )
+            )
             layoutElemento.addWidget(boton, alignment=Qt.AlignCenter)
             layoutElemento.addWidget(etiqueta, alignment=Qt.AlignCenter)
             self.layoutCentral.addLayout(layoutElemento)
-        
-        elementos_faltantes=4-(fin-inicio)
+
+        elementos_faltantes = 4 - (fin - inicio)
         for _ in range(elementos_faltantes):
-            layoutVacio = QVBoxLayout() 
+            layoutVacio = QVBoxLayout()
             layoutVacio.setSpacing(15)
             botonVacio = QPushButton()
             botonVacio.setFixedSize(220, 220)
@@ -227,14 +229,13 @@ class Administracion_Secciones_Mesas(QWidget):
             layoutVacio.addWidget(etiquetaVacia, alignment=Qt.AlignCenter)
             self.layoutCentral.addLayout(layoutVacio)
         self.actualizarBotones()
-    
-    
+
     def cargarRegistro(self, nomSeccion, descSec):
         self.pagina = ModificacionSeccion(nomSeccion, descSec)
         self.pagina.show()
         self.hide()
         self.pagina.destroyed.connect(self.actualizarYMostrar)
-    
+
     def actualizarYMostrar(self):
         conn = sqlite3.connect(DB_PATH)
         c = conn.cursor()
@@ -243,22 +244,21 @@ class Administracion_Secciones_Mesas(QWidget):
         conn.close()
         self.actualizarVista()
         self.show()
-        
 
     def siguienteSecuencia(self):
-        self.numeroElemento+=4
-        if self.numeroElemento>=len(self.resultados):
-            self.numeroElemento=max(0,len(self.resultados)-4)
+        self.numeroElemento += 4
+        if self.numeroElemento >= len(self.resultados):
+            self.numeroElemento = max(0, len(self.resultados) - 4)
         self.actualizarVista()
-        
+
     def anteriorSecuencia(self):
-        self.numeroElemento=max(0,self.numeroElemento-4)
+        self.numeroElemento = max(0, self.numeroElemento - 4)
         self.actualizarVista()
-        
+
     def actualizarBotones(self):
-        self.botonAnterior.setEnabled(self.numeroElemento>0)
-        self.botonSiguiente.setEnabled(self.numeroElemento+4<len(self.resultados))
-        
+        self.botonAnterior.setEnabled(self.numeroElemento > 0)
+        self.botonSiguiente.setEnabled(self.numeroElemento + 4 < len(self.resultados))
+
     def vaciarLayout(self, layout):
         while layout.count():
             item = layout.takeAt(0)
@@ -267,10 +267,10 @@ class Administracion_Secciones_Mesas(QWidget):
             elif item.layout():
                 self.vaciarLayout(item.layout())
                 item.layout().deleteLater()
-                
-     
-if __name__=="__main__":
+
+
+if __name__ == "__main__":
     app = QApplication(sys.argv)
-    pagina=Administracion_Secciones_Mesas()
+    pagina = Administracion_Secciones_Mesas()
     pagina.show()
     sys.exit(app.exec_())

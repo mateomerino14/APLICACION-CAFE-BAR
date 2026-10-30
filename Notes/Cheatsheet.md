@@ -201,12 +201,13 @@ O mediante el ejecutable generado con PyInstaller:
     def main():
         inciarBaseDatos()
         aplicacion = QApplication(sys.argv)
-        
+
         vigilante = VigilanteCambios()
-        
+
         inicio = Login()
         inicio.show()
         resultado = aplicacion.exec_()
+
 
     if __name__ == "__main__":
         main()

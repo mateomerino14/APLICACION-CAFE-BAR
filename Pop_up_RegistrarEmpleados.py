@@ -7,11 +7,12 @@ from Rutas import get_db_path
 
 DB_PATH = get_db_path()
 
+
 class Pop_up_RegistrarEmpleados(QDialog):
     def __init__(self, datosEmpleado, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Confirmación de Registro")
-        self.setFixedSize(500, 450) 
+        self.setFixedSize(500, 450)
         self.setModal(True)
         self.setStyleSheet("""
             QDialog {
@@ -53,7 +54,7 @@ class Pop_up_RegistrarEmpleados(QDialog):
                 background-color: #2b6cb0;
             }
         """)
-        
+
         layout = QVBoxLayout()
         layout.setContentsMargins(25, 25, 25, 25)
         layout.setSpacing(20)
@@ -135,7 +136,6 @@ class Pop_up_RegistrarEmpleados(QDialog):
         layout.addWidget(nota)
         self.setLayout(layout)
 
-
     def registrarInformacion(self, datosEmpleado):
         try:
             if len(datosEmpleado) != 9:
@@ -149,7 +149,7 @@ class Pop_up_RegistrarEmpleados(QDialog):
             if len(c10) < 4:
                 QMessageBox.warning(self, "Error", "El usuario debe tener al menos 4 caracteres")
                 return
-                
+
             if len(c11) < 6:
                 QMessageBox.warning(self, "Error", "La contraseña debe tener al menos 6 caracteres")
                 return
@@ -161,7 +161,7 @@ class Pop_up_RegistrarEmpleados(QDialog):
                 if c.fetchone():
                     QMessageBox.warning(self, "Error", "Nombre de usuario ya existe")
                     return
-                elif c10=="ADMINISTRADOR":
+                elif c10 == "ADMINISTRADOR":
                     QMessageBox.warning(self, "Error", "Nombre de usuario ya existe")
                     return
                 c.execute("SELECT idCargo FROM Cargo WHERE nomCarg=?", (c8,))
@@ -175,12 +175,9 @@ class Pop_up_RegistrarEmpleados(QDialog):
                     apellPatEmp, apellMatEmp, numCelEmp,
                     direccionEmp, correoElEmp, idCargo, imgEmp
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"""
-                c.execute(consulta, (
-                    c10, c11_hash, c4, c1,
-                    c2, c3, c5,
-                    c6, c7, id_cargo, 
-                    sqlite3.Binary(c9) if c9 else None
-                ))
+                c.execute(
+                    consulta, (c10, c11_hash, c4, c1, c2, c3, c5, c6, c7, id_cargo, sqlite3.Binary(c9) if c9 else None)
+                )
                 conn.commit()
                 QMessageBox.information(self, "Éxito", "Registro completado exitosamente")
                 self.accept()

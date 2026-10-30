@@ -8,9 +8,10 @@ from Rutas import get_db_path, get_resource_path
 
 DB_PATH = get_db_path()
 
+
 class RegistroPromociones(QWidget):
     def __init__(self):
-        super().__init__()  
+        super().__init__()
         self.setStyleSheet("""
         QWidget{ 
             background-color: #f8fafc;
@@ -102,11 +103,10 @@ class RegistroPromociones(QWidget):
         """)
         self.set_up()
 
-
     def set_up(self):
-        self.layoutPrincipal=QVBoxLayout()
+        self.layoutPrincipal = QVBoxLayout()
         self.setLayout(self.layoutPrincipal)
-        self.layoutPrincipal.setContentsMargins(15,15,15,15)
+        self.layoutPrincipal.setContentsMargins(15, 15, 15, 15)
         self.iniciarPagina()
         self.showMaximized()
 
@@ -123,19 +123,21 @@ class RegistroPromociones(QWidget):
 
     def iniciarPagina(self):
         QLocale.setDefault(QLocale(QLocale.Spanish, QLocale.Bolivia))
-        layout1=QHBoxLayout()
-        self.layoutPrincipal.addLayout(layout1,stretch=20)
-        layout2=QVBoxLayout()
+        layout1 = QHBoxLayout()
+        self.layoutPrincipal.addLayout(layout1, stretch=20)
+        layout2 = QVBoxLayout()
         layout2.setSpacing(12)
         layout1.addLayout(layout2)
-        tablaRegistrados=QTableWidget()
+        tablaRegistrados = QTableWidget()
         tablaRegistrados.setColumnCount(6)
-        conjunto=set()
-        tablaRegistrados.setHorizontalHeaderLabels(["Producto","Precio de Venta","Cantidad","Subtotal","Operadores","Accion"])
+        conjunto = set()
+        tablaRegistrados.setHorizontalHeaderLabels(
+            ["Producto", "Precio de Venta", "Cantidad", "Subtotal", "Operadores", "Accion"]
+        )
         tablaRegistrados.setEditTriggers(QTableWidget.NoEditTriggers)
         tablaRegistrados.setSelectionMode(QTableWidget.NoSelection)
         tablaRegistrados.setFocusPolicy(Qt.NoFocus)
-        header=tablaRegistrados.horizontalHeader()
+        header = tablaRegistrados.horizontalHeader()
         header.setSectionResizeMode(QHeaderView.Stretch)
         tablaRegistrados.setStyleSheet("""
             QTableWidget {
@@ -156,13 +158,13 @@ class RegistroPromociones(QWidget):
                 font-size: 13px;
             }
         """)
-        layout3=QVBoxLayout()
+        layout3 = QVBoxLayout()
         layout3.addWidget(tablaRegistrados)
-        layout4=QHBoxLayout()
+        layout4 = QHBoxLayout()
         layout4.setSpacing(0)
         layout4.addStretch(10)
-        layout4.setContentsMargins(0,0,0,0)
-        totalEtiqueta=QLabel("Total:")
+        layout4.setContentsMargins(0, 0, 0, 0)
+        totalEtiqueta = QLabel("Total:")
         totalEtiqueta.setStyleSheet("""
             QLabel {
                 font-size: 16px;
@@ -174,7 +176,7 @@ class RegistroPromociones(QWidget):
                 border: 2px solid #bdc3c7;
             }
         """)
-        self.totalCampo=QLabel("0.00")
+        self.totalCampo = QLabel("0.00")
         self.totalCampo.setStyleSheet("""
          QLabel {
              font-size: 18px;
@@ -188,15 +190,15 @@ class RegistroPromociones(QWidget):
          }
      """)
         self.totalCampo.setAlignment(Qt.AlignCenter)
-        layout4.addWidget(totalEtiqueta,stretch=1,alignment=Qt.AlignCenter)
-        layout4.addWidget(self.totalCampo,stretch=1,alignment=Qt.AlignRight)
+        layout4.addWidget(totalEtiqueta, stretch=1, alignment=Qt.AlignCenter)
+        layout4.addWidget(self.totalCampo, stretch=1, alignment=Qt.AlignRight)
         layout3.addLayout(layout4)
         layout1.addLayout(layout3)
-        layoutCategoria=QHBoxLayout()
-        nombre=QLabel("Nombre:")
+        layoutCategoria = QHBoxLayout()
+        nombre = QLabel("Nombre:")
         nombre.setProperty("class", "miLabelPersonalizado")
         nombre.setStyleSheet("""background-color:transparent;""")
-        campoNombre=QLineEdit()
+        campoNombre = QLineEdit()
         campoNombre.setPlaceholderText("Nombre de la Promocion")
         campoNombre.setFixedHeight(35)
         nombre_promocion_regex = QRegExp("[A-Za-záéíóúÁÉÍÓÚñÑ0-9°%.,\\-\\s]*")
@@ -210,14 +212,14 @@ class RegistroPromociones(QWidget):
 
         layoutCategoria.addWidget(nombre)
         layoutCategoria.addWidget(campoNombre)
-        layoutCategoria3=QHBoxLayout()
-        precioVenta=QLabel("Precio Venta:")
+        layoutCategoria3 = QHBoxLayout()
+        precioVenta = QLabel("Precio Venta:")
         precioVenta.setProperty("class", "miLabelPersonalizado")
         precioVenta.setStyleSheet("""background-color:transparent;""")
-        campoPrecioVenta=QLineEdit()
+        campoPrecioVenta = QLineEdit()
         campoPrecioVenta.setPlaceholderText("0.00")
         campoPrecioVenta.setFixedHeight(35)
-        validador=QRegExpValidator(QRegExp(r"[0-9]{1,8}(\.[0-9]{0,2})?"))
+        validador = QRegExpValidator(QRegExp(r"[0-9]{1,8}(\.[0-9]{0,2})?"))
         campoPrecioVenta.setValidator(validador)
         campoPrecioVenta.setMaxLength(11)
         layoutCategoria3.addWidget(precioVenta)
@@ -245,18 +247,18 @@ class RegistroPromociones(QWidget):
         layoutFiltros.addWidget(self.comboSubcategoria)
         layoutFiltros.addStretch()
         layout2.addLayout(layoutFiltros)
-        layoutCategoria7=QHBoxLayout()
-        ingrediente=QLabel("Producto:")
+        layoutCategoria7 = QHBoxLayout()
+        ingrediente = QLabel("Producto:")
         ingrediente.setProperty("class", "miLabelPersonalizado")
         ingrediente.setStyleSheet("""background-color:transparent;""")
-        self.campoProducto=QComboBox()
+        self.campoProducto = QComboBox()
         self.campoProducto.setFixedWidth(250)
         self.campoProducto.setFixedHeight(35)
         self.cargar_categorias()
-        cantidad=QLabel("Cantidad: ")
+        cantidad = QLabel("Cantidad: ")
         cantidad.setProperty("class", "miLabelPersonalizado")
         cantidad.setStyleSheet("""background-color:transparent;""")
-        campoCantidad=QLineEdit()
+        campoCantidad = QLineEdit()
         campoCantidad.setPlaceholderText("0")
         campoCantidad.setValidator(QRegExpValidator(QRegExp("[0-9]+")))
         campoCantidad.setMaxLength(3)
@@ -265,7 +267,7 @@ class RegistroPromociones(QWidget):
         layoutCategoria7.addWidget(self.campoProducto)
         layoutCategoria7.addWidget(cantidad)
         layoutCategoria7.addWidget(campoCantidad)
-        botonAnadir=QPushButton("Añadir")
+        botonAnadir = QPushButton("Añadir")
         botonAnadir.setFixedHeight(32)
         botonAnadir.setStyleSheet("""
             QPushButton {
@@ -306,7 +308,7 @@ class RegistroPromociones(QWidget):
         self.timeFinFechaEspec.setTime(QTime(18, 0))
         self.timeFinFechaEspec.setEnabled(False)
         self.timeFinFechaEspec.setFixedHeight(28)
-        
+
         def toggle_fecha_espec(checked):
             self.dateFechaEspec.setEnabled(checked)
             self.timeInicioFechaEspec.setEnabled(checked)
@@ -314,7 +316,7 @@ class RegistroPromociones(QWidget):
             if checked:
                 self.checkPeriodo.setChecked(False)
                 self.checkDiasSemana.setChecked(False)
-        
+
         self.checkFechaEspec.toggled.connect(toggle_fecha_espec)
         layoutFechaEspec.addWidget(self.checkFechaEspec)
         layoutFechaEspec.addWidget(QLabel("Fecha:"))
@@ -352,7 +354,7 @@ class RegistroPromociones(QWidget):
         self.timeFinPeriodo.setTime(QTime(18, 0))
         self.timeFinPeriodo.setEnabled(False)
         self.timeFinPeriodo.setFixedHeight(28)
-        
+
         def toggle_periodo(checked):
             self.dateInicio.setEnabled(checked)
             self.dateFin.setEnabled(checked)
@@ -360,7 +362,7 @@ class RegistroPromociones(QWidget):
             self.timeFinPeriodo.setEnabled(checked)
             if checked:
                 self.checkFechaEspec.setChecked(False)
-        
+
         self.checkPeriodo.toggled.connect(toggle_periodo)
         layoutFechas.addWidget(self.checkPeriodo)
         layoutFechas.addWidget(QLabel("Desde:"))
@@ -403,6 +405,7 @@ class RegistroPromociones(QWidget):
         grupoDiasSemana.setLayout(layoutDias)
         layoutControlTiempo.addWidget(grupoDiasSemana)
         self.checkDiasSemana = QCheckBox("Activar días de la semana")
+
         def toggle_dias_semana(checked):
             if checked:
                 self.checkFechaEspec.setChecked(False)
@@ -487,8 +490,10 @@ class RegistroPromociones(QWidget):
                             font-size: 12px;
                         }
                     """)
+
         self.checkDiasSemana.toggled.connect(toggle_dias_semana)
         layoutControlTiempo.insertWidget(2, self.checkDiasSemana)
+
         def actualizar_estilos_periodo():
             if self.checkPeriodo.isChecked() and self.checkDiasSemana.isChecked():
                 self.timeInicioPeriodo.setStyleSheet("""
@@ -549,10 +554,11 @@ class RegistroPromociones(QWidget):
                         font-size: 12px;
                     }
                 """)
+
         self.checkPeriodo.toggled.connect(actualizar_estilos_periodo)
         layout2.addLayout(layoutControlTiempo)
-        layoutCategoria8=QHBoxLayout()
-        imagenPromocion=QPushButton()
+        layoutCategoria8 = QHBoxLayout()
+        imagenPromocion = QPushButton()
         camara_icon_path = get_resource_path(os.path.join('Imagenes', 'camara.png'))
         if os.path.exists(camara_icon_path):
             imagenPromocion.setIcon(QIcon(camara_icon_path))
@@ -575,12 +581,12 @@ class RegistroPromociones(QWidget):
               border: 2px solid #2c81ba;
           }
       """)
-        imagenPromocion.setFixedSize(140,140)
-        imagenPromocion.setIconSize(QSize(120,120))
-        imagenPromocion.clicked.connect(lambda:self.actualizarFoto(imagenPromocion))
+        imagenPromocion.setFixedSize(140, 140)
+        imagenPromocion.setIconSize(QSize(120, 120))
+        imagenPromocion.clicked.connect(lambda: self.actualizarFoto(imagenPromocion))
         layoutCategoria8.addWidget(imagenPromocion)
         layout2.addLayout(layoutCategoria8)
-        botonRegistrar=QPushButton("Registrar")
+        botonRegistrar = QPushButton("Registrar")
         botonRegistrar.setStyleSheet("""
             QPushButton {
                 background-color: #e74c3c;
@@ -595,15 +601,24 @@ class RegistroPromociones(QWidget):
                 background-color: #c0392b;
             }
         """)
-        botonRegistrar.clicked.connect(lambda:self.subirInformacion(
-            campoNombre, campoPrecioVenta, self.campoProducto, campoCantidad, 
-            imagenPromocion, tablaRegistrados, conjunto))
-        botonAnadir.clicked.connect(lambda:self.anadirElemento(
-            [self.campoProducto.currentText(), campoCantidad.text()], 
-            tablaRegistrados, conjunto,campoCantidad))
+        botonRegistrar.clicked.connect(
+            lambda: self.subirInformacion(
+                campoNombre,
+                campoPrecioVenta,
+                self.campoProducto,
+                campoCantidad,
+                imagenPromocion,
+                tablaRegistrados,
+                conjunto,
+            )
+        )
+        botonAnadir.clicked.connect(
+            lambda: self.anadirElemento(
+                [self.campoProducto.currentText(), campoCantidad.text()], tablaRegistrados, conjunto, campoCantidad
+            )
+        )
         self.layoutPrincipal.addStretch(2)
         self.layoutPrincipal.addWidget(botonRegistrar)
-    
 
     def cargar_categorias(self):
         conn = sqlite3.connect(DB_PATH)
@@ -620,7 +635,6 @@ class RegistroPromociones(QWidget):
         if self.comboCategoria.count() > 0:
             self.comboCategoria.setCurrentIndex(0)
             self.cargar_subcategorias()
-    
 
     def cargar_subcategorias(self):
         categoria_id = self.comboCategoria.currentData()
@@ -632,8 +646,11 @@ class RegistroPromociones(QWidget):
         if categoria_id == -1:
             c.execute("""SELECT idSubcategoria, nombre FROM Subcategoria WHERE activa = 1 ORDER BY nombre""")
         else:
-            c.execute("""SELECT idSubcategoria, nombre FROM Subcategoria 
-                        WHERE idCategoria = ? AND activa = 1 ORDER BY nombre""", (categoria_id,))
+            c.execute(
+                """SELECT idSubcategoria, nombre FROM Subcategoria 
+                        WHERE idCategoria = ? AND activa = 1 ORDER BY nombre""",
+                (categoria_id,),
+            )
         subcategorias = c.fetchall()
         for id_subcat, nombre_subcat in subcategorias:
             self.comboSubcategoria.addItem(nombre_subcat, id_subcat)
@@ -641,7 +658,6 @@ class RegistroPromociones(QWidget):
         if self.comboSubcategoria.count() > 0:
             self.comboSubcategoria.setCurrentIndex(0)
             self.cargar_productos_por_subcategoria()
-    
 
     def cargar_productos_por_subcategoria(self):
         subcategoria_id = self.comboSubcategoria.currentData()
@@ -676,7 +692,7 @@ class RegistroPromociones(QWidget):
                 letra = producto[0].upper() if producto else ""
                 if letra and letra not in letras_actuales:
                     self.campoProducto.addItem(f"--- {letra} ---")
-                    self.campoProducto.model().item(self.campoProducto.count()-1).setEnabled(False)
+                    self.campoProducto.model().item(self.campoProducto.count() - 1).setEnabled(False)
                     letras_actuales.add(letra)
                 self.campoProducto.addItem(producto)
         else:
@@ -688,32 +704,30 @@ class RegistroPromociones(QWidget):
                 if self.campoProducto.model().item(i).isEnabled():
                     self.campoProducto.setCurrentIndex(i)
                     break
-    
 
     def actualizarProductos(self):
         self.cargar_categorias()
 
-
-    def calcularTotal(self,tabla):
-        total=0;
+    def calcularTotal(self, tabla):
+        total = 0
         for i in range(tabla.rowCount()):
-            item=tabla.item(i,3)
-            subtotal=float(item.text())
-            total+=subtotal
+            item = tabla.item(i, 3)
+            subtotal = float(item.text())
+            total += subtotal
         self.totalCampo.setText(f"{total:.2f}")
 
-
-    def actualizarFoto(self,imagenProducto):
-        file_path,_=QFileDialog.getOpenFileName(self,"Seleccionar una imagen","","Imágenes (*.png *.jpg *.jpeg *.bmp *.webp)")
+    def actualizarFoto(self, imagenProducto):
+        file_path, _ = QFileDialog.getOpenFileName(
+            self, "Seleccionar una imagen", "", "Imágenes (*.png *.jpg *.jpeg *.bmp *.webp)"
+        )
         if file_path:
-            pixmap=QPixmap(file_path)
+            pixmap = QPixmap(file_path)
             if not pixmap.isNull():
-                pixmap=pixmap.scaled(120, 120, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+                pixmap = pixmap.scaled(120, 120, Qt.KeepAspectRatio, Qt.SmoothTransformation)
                 imagenProducto.setIcon(QIcon(pixmap))
-                imagenProducto.setIconSize(QSize(120,120))
+                imagenProducto.setIconSize(QSize(120, 120))
 
-
-    def limpiarCampos(self,campo1,campo2,campo3,campo4,campo5,tabla,conjunto):
+    def limpiarCampos(self, campo1, campo2, campo3, campo4, campo5, tabla, conjunto):
         campo1.setText("")
         campo2.setText("")
         campo3.setCurrentIndex(-1)
@@ -772,32 +786,31 @@ class RegistroPromociones(QWidget):
         self.completerPromociones.setModel(QStringListModel(self.cargarNombresPromociones()))
         self.cargar_categorias()
 
-
-    def subirInformacion(self,nombre,precioVenta,campoProducto,campoCantidad,campoImagen,tabla,conjunto):
-        campo11=nombre.text()
-        campo22=precioVenta.text()       
-        if campo11=="" or campo22=="":
-            QMessageBox.information(self,"Advertencia","Debe llenar los campos obligatorios")
-            return 
-        if tabla.rowCount()==0:
-            QMessageBox.information(self,"Advertencia","La promocion debe tener por lo menos un producto")
+    def subirInformacion(self, nombre, precioVenta, campoProducto, campoCantidad, campoImagen, tabla, conjunto):
+        campo11 = nombre.text()
+        campo22 = precioVenta.text()
+        if campo11 == "" or campo22 == "":
+            QMessageBox.information(self, "Advertencia", "Debe llenar los campos obligatorios")
             return
-        conn=sqlite3.connect(DB_PATH)
-        c=conn.cursor()
-        c.execute("""SELECT * FROM Promocion WHERE nomProm=?""",(campo11,))
-        resultados=c.fetchall()
+        if tabla.rowCount() == 0:
+            QMessageBox.information(self, "Advertencia", "La promocion debe tener por lo menos un producto")
+            return
+        conn = sqlite3.connect(DB_PATH)
+        c = conn.cursor()
+        c.execute("""SELECT * FROM Promocion WHERE nomProm=?""", (campo11,))
+        resultados = c.fetchall()
         conn.close()
         if resultados:
-            QMessageBox.information(self,"Advertencia","Esta promocion ya ha sido registrada")
+            QMessageBox.information(self, "Advertencia", "Esta promocion ya ha sido registrada")
             return
-        icono=campoImagen.icon()
-        imagen=icono.pixmap(120,120)
-        buffer=QBuffer()
+        icono = campoImagen.icon()
+        imagen = icono.pixmap(120, 120)
+        buffer = QBuffer()
         buffer.open(QIODevice.ReadWrite)
-        imagen.save(buffer,"PNG")
-        datosImagen=buffer.data()
-        conn=sqlite3.connect(DB_PATH)
-        c=conn.cursor()
+        imagen.save(buffer, "PNG")
+        datosImagen = buffer.data()
+        conn = sqlite3.connect(DB_PATH)
+        c = conn.cursor()
         fecha_especifica = None
         fecha_inicio = None
         fecha_fin = None
@@ -819,57 +832,60 @@ class RegistroPromociones(QWidget):
         elif self.checkDiasSemana.isChecked():
             hora_inicio = self.timeInicioDias.time().toString("HH:mm:00")
             hora_fin = self.timeFinDias.time().toString("HH:mm:00")
-        consulta="""INSERT INTO Promocion(
+        consulta = """INSERT INTO Promocion(
                     nomProm, precioProm, imgProm, fechaEspecifica, 
                     fechaInicio, fechaFin, horaInicio, horaFin) 
                     VALUES(?,?,?,?,?,?,?,?)"""
-        c.execute(consulta,(campo11, campo22, datosImagen, fecha_especifica, fecha_inicio, fecha_fin, hora_inicio, hora_fin))
-        indicePromocion=c.lastrowid
+        c.execute(
+            consulta, (campo11, campo22, datosImagen, fecha_especifica, fecha_inicio, fecha_fin, hora_inicio, hora_fin)
+        )
+        indicePromocion = c.lastrowid
         if self.checkDiasSemana.isChecked():
             for checkbox in self.diasCheckboxes:
                 if checkbox.isChecked():
-                    c.execute("""INSERT INTO PromocionDias (idProm, diaSemana) VALUES (?,?)""",
-                             (indicePromocion, checkbox.diaNum))
+                    c.execute(
+                        """INSERT INTO PromocionDias (idProm, diaSemana) VALUES (?,?)""",
+                        (indicePromocion, checkbox.diaNum),
+                    )
         for i in range(tabla.rowCount()):
-            item=tabla.item(i,0)
-            c.execute("""SELECT idProd FROM Producto WHERE nomProd=?""",(item.text(),))
-            resultados=c.fetchone()
-            indiceProducto=resultados[0]
-            item=tabla.item(i,2)
-            cantidad=int(item.text())
-            consulta="""INSERT INTO PromocionProd VALUES(?,?,?)"""
-            c.execute(consulta,(indicePromocion,indiceProducto,cantidad))
+            item = tabla.item(i, 0)
+            c.execute("""SELECT idProd FROM Producto WHERE nomProd=?""", (item.text(),))
+            resultados = c.fetchone()
+            indiceProducto = resultados[0]
+            item = tabla.item(i, 2)
+            cantidad = int(item.text())
+            consulta = """INSERT INTO PromocionProd VALUES(?,?,?)"""
+            c.execute(consulta, (indicePromocion, indiceProducto, cantidad))
         conn.commit()
         conn.close()
-        QMessageBox.information(self,"Confirmacion","La promocion se registro con exito")
-        self.limpiarCampos(nombre,precioVenta,campoProducto,campoCantidad,campoImagen,tabla,conjunto)
-    
+        QMessageBox.information(self, "Confirmacion", "La promocion se registro con exito")
+        self.limpiarCampos(nombre, precioVenta, campoProducto, campoCantidad, campoImagen, tabla, conjunto)
 
-    def anadirElemento(self,lista,tabla,conjunto,campoCantidad,bandera=True):
+    def anadirElemento(self, lista, tabla, conjunto, campoCantidad, bandera=True):
         if self.campoProducto.currentIndex() >= 0:
             current_item = self.campoProducto.model().item(self.campoProducto.currentIndex())
             if current_item and not current_item.isEnabled():
-                QMessageBox.critical(self,"Error","No puede seleccionar un separador")
+                QMessageBox.critical(self, "Error", "No puede seleccionar un separador")
                 return
-        if lista[0]=="" or lista[1]=="":
-            QMessageBox.critical(self,"Error","Debe llenar los campos obligatorios porfavor")
+        if lista[0] == "" or lista[1] == "":
+            QMessageBox.critical(self, "Error", "Debe llenar los campos obligatorios porfavor")
             return
-        if lista[0] in conjunto and bandera==True:
-           QMessageBox.critical(self,"Error","El producto ya esta registrado")
-           return
-        fila=tabla.rowCount()
+        if lista[0] in conjunto and bandera == True:
+            QMessageBox.critical(self, "Error", "El producto ya esta registrado")
+            return
+        fila = tabla.rowCount()
         tabla.insertRow(fila)
-        layoutBotonesCantidad=QHBoxLayout()
+        layoutBotonesCantidad = QHBoxLayout()
         layoutBotonesCantidad.setSpacing(12)
-        layoutBotonesCantidad.setContentsMargins(0,0,0,0)
-        botonAumentar=QPushButton()
+        layoutBotonesCantidad.setContentsMargins(0, 0, 0, 0)
+        botonAumentar = QPushButton()
         botonAumentar.setFixedHeight(22)
         suma_icon_path = get_resource_path(os.path.join('Imagenes', 'suma.jpg'))
         if os.path.exists(suma_icon_path):
             botonAumentar.setIcon(QIcon(suma_icon_path))
         else:
             botonAumentar.setText("+")
-        botonAumentar.setIconSize(QSize(28,35))
+        botonAumentar.setIconSize(QSize(28, 35))
         botonAumentar.setCursor(Qt.PointingHandCursor)
         estilo_botones_tabla = """
             QPushButton {
@@ -880,7 +896,7 @@ class RegistroPromociones(QWidget):
             }
         """
         botonAumentar.setStyleSheet(estilo_botones_tabla)
-        botonRestar=QPushButton()
+        botonRestar = QPushButton()
         botonRestar.setFixedHeight(22)
         botonRestar.setCursor(Qt.PointingHandCursor)
         resta_icon_path = get_resource_path(os.path.join('Imagenes', 'resta.png'))
@@ -888,88 +904,87 @@ class RegistroPromociones(QWidget):
             botonRestar.setIcon(QIcon(resta_icon_path))
         else:
             botonRestar.setText("-")
-        botonRestar.setIconSize(QSize(22,30))
+        botonRestar.setIconSize(QSize(22, 30))
         botonRestar.setStyleSheet(estilo_botones_tabla)
-        botonAumentar.clicked.connect(lambda:self.aumentar(tabla,botonAumentar))
-        botonRestar.clicked.connect(lambda:self.restar(tabla,botonRestar))
-        layoutBotonesCantidad.addWidget(botonAumentar,alignment=Qt.AlignTop)
-        layoutBotonesCantidad.addWidget(botonRestar,alignment=Qt.AlignTop)
-        botonEliminar=QPushButton()
+        botonAumentar.clicked.connect(lambda: self.aumentar(tabla, botonAumentar))
+        botonRestar.clicked.connect(lambda: self.restar(tabla, botonRestar))
+        layoutBotonesCantidad.addWidget(botonAumentar, alignment=Qt.AlignTop)
+        layoutBotonesCantidad.addWidget(botonRestar, alignment=Qt.AlignTop)
+        botonEliminar = QPushButton()
         eliminar_icon_path = get_resource_path(os.path.join('Imagenes', 'eliminarSubcategoria.png'))
         if os.path.exists(eliminar_icon_path):
             botonEliminar.setIcon(QIcon(eliminar_icon_path))
         else:
             botonEliminar.setText("🗑️")
         botonEliminar.setStyleSheet(estilo_botones_tabla)
-        botonEliminar.clicked.connect(lambda _,e=lista[0]:self.eliminarElemento(e,tabla,conjunto,botonEliminar))
-        conn=sqlite3.connect(DB_PATH)
-        c=conn.cursor()
-        c.execute("""SELECT precioVenta FROM Producto WHERE nomProd=?""",(lista[0],))
-        resultados=c.fetchall()
-        precio=resultados[0][0]
+        botonEliminar.clicked.connect(lambda _, e=lista[0]: self.eliminarElemento(e, tabla, conjunto, botonEliminar))
+        conn = sqlite3.connect(DB_PATH)
+        c = conn.cursor()
+        c.execute("""SELECT precioVenta FROM Producto WHERE nomProd=?""", (lista[0],))
+        resultados = c.fetchall()
+        precio = resultados[0][0]
         conn.close()
-        item=QTableWidgetItem(lista[0])
+        item = QTableWidgetItem(lista[0])
         item.setTextAlignment(Qt.AlignCenter)
-        tabla.setItem(fila,0,item)
-        item=QTableWidgetItem(str(precio))
+        tabla.setItem(fila, 0, item)
+        item = QTableWidgetItem(str(precio))
         item.setTextAlignment(Qt.AlignCenter)
-        tabla.setItem(fila,1,item)
-        item=QTableWidgetItem(lista[1])
+        tabla.setItem(fila, 1, item)
+        item = QTableWidgetItem(lista[1])
         item.setTextAlignment(Qt.AlignCenter)
-        tabla.setItem(fila,2,item)
-        subTotal=float(precio)*int(lista[1])
-        item=QTableWidgetItem(f"{subTotal:.2f}")
+        tabla.setItem(fila, 2, item)
+        subTotal = float(precio) * int(lista[1])
+        item = QTableWidgetItem(f"{subTotal:.2f}")
         item.setTextAlignment(Qt.AlignCenter)
-        tabla.setItem(fila,3,item)
-        contenedorIncrementales=QWidget()
+        tabla.setItem(fila, 3, item)
+        contenedorIncrementales = QWidget()
         contenedorIncrementales.setStyleSheet("""background-color:transparent;""")
         contenedorIncrementales.setLayout(layoutBotonesCantidad)
-        tabla.setCellWidget(fila,4,contenedorIncrementales)
-        tabla.setCellWidget(fila,5,botonEliminar)
+        tabla.setCellWidget(fila, 4, contenedorIncrementales)
+        tabla.setCellWidget(fila, 5, botonEliminar)
         conjunto.add(lista[0])
         self.calcularTotal(tabla)
         tabla.scrollToBottom()
         campoCantidad.setText("")
 
-    def aumentar(self,tabla,boton):
-        indice=tabla.indexAt(boton.mapTo(tabla.viewport(),QPoint(0,0)))
-        fila=indice.row()
-        cantidad=int(tabla.item(fila,2).text())
-        item=QTableWidgetItem(str(cantidad+1))
+    def aumentar(self, tabla, boton):
+        indice = tabla.indexAt(boton.mapTo(tabla.viewport(), QPoint(0, 0)))
+        fila = indice.row()
+        cantidad = int(tabla.item(fila, 2).text())
+        item = QTableWidgetItem(str(cantidad + 1))
         item.setTextAlignment(Qt.AlignCenter)
-        tabla.setItem(fila,2,item)
-        nuevoPrecio=float(tabla.item(fila,1).text())*int(tabla.item(fila,2).text())
-        item=QTableWidgetItem(f"{nuevoPrecio:.2f}")
+        tabla.setItem(fila, 2, item)
+        nuevoPrecio = float(tabla.item(fila, 1).text()) * int(tabla.item(fila, 2).text())
+        item = QTableWidgetItem(f"{nuevoPrecio:.2f}")
         item.setTextAlignment(Qt.AlignCenter)
-        tabla.setItem(fila,3,QTableWidgetItem(item))
+        tabla.setItem(fila, 3, QTableWidgetItem(item))
         self.calcularTotal(tabla)
-    
 
-    def restar(self,tabla,boton):
-        indice=tabla.indexAt(boton.mapTo(tabla.viewport(),QPoint(0,0)))
-        fila=indice.row()
-        cantidad=int(tabla.item(fila,2).text())
-        if cantidad==0:
+    def restar(self, tabla, boton):
+        indice = tabla.indexAt(boton.mapTo(tabla.viewport(), QPoint(0, 0)))
+        fila = indice.row()
+        cantidad = int(tabla.item(fila, 2).text())
+        if cantidad == 0:
             return
-        item=QTableWidgetItem(str(cantidad-1))
+        item = QTableWidgetItem(str(cantidad - 1))
         item.setTextAlignment(Qt.AlignCenter)
-        tabla.setItem(fila,2,item)
-        nuevoPrecio=float(tabla.item(fila,1).text())*int(tabla.item(fila,2).text())
-        item=QTableWidgetItem(f"{nuevoPrecio:.2f}")
+        tabla.setItem(fila, 2, item)
+        nuevoPrecio = float(tabla.item(fila, 1).text()) * int(tabla.item(fila, 2).text())
+        item = QTableWidgetItem(f"{nuevoPrecio:.2f}")
         item.setTextAlignment(Qt.AlignCenter)
-        tabla.setItem(fila,3,item)
+        tabla.setItem(fila, 3, item)
         self.calcularTotal(tabla)
-    
-    
-    def eliminarElemento(self,elemento,tabla,conjunto,boton):
+
+    def eliminarElemento(self, elemento, tabla, conjunto, boton):
         conjunto.discard(elemento)
-        indice=tabla.indexAt(boton.mapTo(tabla.viewport(),QPoint(0,0)))
-        fila=indice.row()
+        indice = tabla.indexAt(boton.mapTo(tabla.viewport(), QPoint(0, 0)))
+        fila = indice.row()
         tabla.removeRow(fila)
         self.calcularTotal(tabla)
 
-if __name__=="__main__":
+
+if __name__ == "__main__":
     app = QApplication(sys.argv)
-    pagina=RegistroPromociones()
+    pagina = RegistroPromociones()
     pagina.show()
     sys.exit(app.exec_())

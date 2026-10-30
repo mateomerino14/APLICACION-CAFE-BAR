@@ -12,6 +12,7 @@ from Rutas import get_db_path
 
 DB_PATH = get_db_path()
 
+
 class Impresoras(QWidget):
     def __init__(self):
         super().__init__()
@@ -66,7 +67,7 @@ class Impresoras(QWidget):
             QMessageBox QPushButton:hover { background-color: #2980b9; }
         """)
         self.set_up()
-        
+
     def set_up(self):
         self.layoutPrincipal = QVBoxLayout()
         self.setLayout(self.layoutPrincipal)
@@ -74,7 +75,7 @@ class Impresoras(QWidget):
         self.crearInterfazImpresoras()
         self.cargarImpresoras()
         self.showMaximized()
-        
+
     def crearInterfazImpresoras(self):
         scroll_area = QScrollArea()
         scroll_area.setWidgetResizable(True)
@@ -115,7 +116,7 @@ class Impresoras(QWidget):
         btnDetectar.setCursor(Qt.PointingHandCursor)
         btnDetectar.clicked.connect(self.detectarImpresorasTermicas)
         frameLayout.addWidget(btnDetectar)
-        texto1=QLabel("Impresoras térmicas detectadas:")
+        texto1 = QLabel("Impresoras térmicas detectadas:")
         texto1.setStyleSheet("""color:purple;
                                 font-weight:bold; 
                                 font-size:20px;""")
@@ -237,7 +238,7 @@ class Impresoras(QWidget):
             }
         """)
         layoutBarra = QVBoxLayout(frameBarra)
-        texto2=QLabel("Impresora para Barra:")
+        texto2 = QLabel("Impresora para Barra:")
         texto2.setStyleSheet("""color:#004A00;
                                 font-weight:bold; 
                                 font-size:20px;""")
@@ -304,7 +305,7 @@ class Impresoras(QWidget):
             }
         """)
         layoutCocina = QVBoxLayout(frameCocina)
-        texto3=QLabel("Impresora para Cocina:")
+        texto3 = QLabel("Impresora para Cocina:")
         texto3.setStyleSheet("""color:#804400;
                                 font-weight:bold; 
                                 font-size:20px;""")
@@ -386,7 +387,7 @@ class Impresoras(QWidget):
         frameLayout.addStretch(1)
         scroll_area.setWidget(frame)
         self.layoutPrincipal.addWidget(scroll_area)
-    
+
     def onCheckBarraChanged(self):
         if self.checkboxDual.isChecked():
             if not self.checkBarra.signalsBlocked():
@@ -394,7 +395,7 @@ class Impresoras(QWidget):
                 id_impresora = self.comboBarra.currentData()
                 if id_impresora:
                     self.marcarImpresoraExclusiva("Barra", id_impresora, is_checked)
-    
+
     def onCheckCocinaChanged(self):
         if self.checkboxDual.isChecked():
             if not self.checkCocina.signalsBlocked():
@@ -402,7 +403,7 @@ class Impresoras(QWidget):
                 id_impresora = self.comboCocina.currentData()
                 if id_impresora:
                     self.marcarImpresoraExclusiva("Cocina", id_impresora, is_checked)
-    
+
     def marcarImpresoraExclusiva(self, tipo, id_impresora, activado):
         columna = "es_barra" if tipo == "Barra" else "es_cocina"
         try:
@@ -420,7 +421,7 @@ class Impresoras(QWidget):
             self.actualizarCombosModoDual()
         except Exception as e:
             QMessageBox.critical(self, "Error", f"No se pudo actualizar: {str(e)}")
-    
+
     def actualizarSeleccion(self):
         if self.checkboxDual.isChecked():
             self.actualizarCombosModoDual()
@@ -436,7 +437,7 @@ class Impresoras(QWidget):
             self.checkCocina.setChecked(False)
             self.checkBarra.blockSignals(False)
             self.checkCocina.blockSignals(False)
-    
+
     def actualizarCombosModoDual(self):
         try:
             conn = sqlite3.connect(DB_PATH)
@@ -461,22 +462,22 @@ class Impresoras(QWidget):
                     texto += " [Cocina ✓]"
                 self.comboBarra.addItem(texto, id_impresora)
                 self.comboCocina.addItem(texto, id_impresora)
-            
+
             if seleccion_barra_actual:
                 index = self.comboBarra.findData(seleccion_barra_actual)
                 if index >= 0:
                     self.comboBarra.setCurrentIndex(index)
-            
+
             if seleccion_cocina_actual:
                 index = self.comboCocina.findData(seleccion_cocina_actual)
                 if index >= 0:
                     self.comboCocina.setCurrentIndex(index)
-            
+
             self.actualizarCheckboxes()
-            
+
         except Exception as e:
             print(f"Error al actualizar combos modo dual: {e}")
-    
+
     def actualizarCheckboxes(self):
         id_impresora_barra = self.comboBarra.currentData()
         id_impresora_cocina = self.comboCocina.currentData()
@@ -490,7 +491,7 @@ class Impresoras(QWidget):
                     self.checkBarra.blockSignals(True)
                     self.checkBarra.setChecked(resultado[0] == 1)
                     self.checkBarra.blockSignals(False)
-            
+
             if id_impresora_cocina:
                 cursor.execute("SELECT es_cocina FROM Impresora WHERE idImpresora = ?", (id_impresora_cocina,))
                 resultado = cursor.fetchone()
@@ -501,15 +502,15 @@ class Impresoras(QWidget):
             conn.close()
         except Exception as e:
             print(f"Error al actualizar checkboxes: {e}")
-    
+
     def onComboBarraChanged(self):
         if self.checkboxDual.isChecked():
             self.actualizarCheckboxes()
-    
+
     def onComboCocinaChanged(self):
         if self.checkboxDual.isChecked():
             self.actualizarCheckboxes()
-    
+
     def seleccionarImpresoraDesdeBoton(self, tipo):
         if tipo == "Barra":
             combo = self.comboBarra
@@ -528,7 +529,7 @@ class Impresoras(QWidget):
             self.marcarImpresoraExclusiva(tipo, id_impresora, True)
         else:
             self.seleccionarImpresoraExclusiva(tipo, id_impresora)
-    
+
     def deseleccionarImpresoraDesdeBoton(self, tipo):
         if tipo == "Barra":
             combo = self.comboBarra
@@ -538,7 +539,9 @@ class Impresoras(QWidget):
             checkbox = self.checkCocina
         id_impresora = combo.currentData()
         if not id_impresora:
-            QMessageBox.warning(self, "Advertencia", f"Por favor, seleccione una impresora para deseleccionar de {tipo}.")
+            QMessageBox.warning(
+                self, "Advertencia", f"Por favor, seleccione una impresora para deseleccionar de {tipo}."
+            )
             return
         if self.checkboxDual.isChecked():
             checkbox.blockSignals(True)
@@ -547,7 +550,7 @@ class Impresoras(QWidget):
             self.marcarImpresoraExclusiva(tipo, id_impresora, False)
         else:
             self.deseleccionarImpresoraExclusiva(tipo, id_impresora)
-    
+
     def seleccionarImpresoraExclusiva(self, tipo, id_impresora):
         columna = "es_barra" if tipo == "Barra" else "es_cocina"
         otro_tipo = "es_cocina" if tipo == "Barra" else "es_barra"
@@ -563,7 +566,7 @@ class Impresoras(QWidget):
             self.cargarImpresoras()
         except Exception as e:
             QMessageBox.critical(self, "Error", f"No se pudo seleccionar la impresora: {str(e)}")
-    
+
     def deseleccionarImpresoraExclusiva(self, tipo, id_impresora):
         columna = "es_barra" if tipo == "Barra" else "es_cocina"
         try:
@@ -576,7 +579,7 @@ class Impresoras(QWidget):
             self.cargarImpresoras()
         except Exception as e:
             QMessageBox.critical(self, "Error", f"No se pudo deseleccionar la impresora: {str(e)}")
-    
+
     def detectarImpresorasTermicas(self):
         self.listaImpresoras.clear()
         dispositivos_encontrados = False
@@ -585,16 +588,44 @@ class Impresoras(QWidget):
             puertos = serial.tools.list_ports.comports()
             for puerto in puertos:
                 descripcion = puerto.description.lower()
-                es_impresora_termica = any(term in descripcion for term in [
-                    'thermal', 'pos', 'receipt', 'ticket', 'termica', 
-                    'ethernet/thermal', 'usb receipt', 'serial printer',
-                    'bixolon', 'epson tm', 'citizen', 'starmicro', 'zjiang'
-                ])
-                es_impresora_normal = any(term in descripcion for term in [
-                    'printer', 'print', 'laser', 'inkjet', 'deskjet', 
-                    'epson', 'hp', 'canon', 'brother', 'lexmark',
-                    'xerox', 'samsung', 'ricoh', 'kyocera', 'okidata'
-                ])
+                es_impresora_termica = any(
+                    term in descripcion
+                    for term in [
+                        'thermal',
+                        'pos',
+                        'receipt',
+                        'ticket',
+                        'termica',
+                        'ethernet/thermal',
+                        'usb receipt',
+                        'serial printer',
+                        'bixolon',
+                        'epson tm',
+                        'citizen',
+                        'starmicro',
+                        'zjiang',
+                    ]
+                )
+                es_impresora_normal = any(
+                    term in descripcion
+                    for term in [
+                        'printer',
+                        'print',
+                        'laser',
+                        'inkjet',
+                        'deskjet',
+                        'epson',
+                        'hp',
+                        'canon',
+                        'brother',
+                        'lexmark',
+                        'xerox',
+                        'samsung',
+                        'ricoh',
+                        'kyocera',
+                        'okidata',
+                    ]
+                )
                 if es_impresora_termica or es_impresora_normal:
                     tipo = "TÉRMICA" if es_impresora_termica else "NORMAL"
                     clave = f"SERIAL:{puerto.device}"
@@ -611,15 +642,18 @@ class Impresoras(QWidget):
                     if en_bd:
                         item_text += " (Ya en BD)"
                     item = QListWidgetItem(item_text)
-                    item.setData(Qt.UserRole, {
-                        'vid': puerto.vid or 0,
-                        'pid': puerto.pid or 0,
-                        'en_bd': en_bd,
-                        'dispositivo': puerto.device,
-                        'descripcion': puerto.description,
-                        'es_termica': es_impresora_termica,
-                        'es_normal': es_impresora_normal
-                    })
+                    item.setData(
+                        Qt.UserRole,
+                        {
+                            'vid': puerto.vid or 0,
+                            'pid': puerto.pid or 0,
+                            'en_bd': en_bd,
+                            'dispositivo': puerto.device,
+                            'descripcion': puerto.description,
+                            'es_termica': es_impresora_termica,
+                            'es_normal': es_impresora_normal,
+                        },
+                    )
                     if en_bd:
                         item.setForeground(QColor("#7f8c8d"))
                     self.listaImpresoras.addItem(item)
@@ -643,9 +677,7 @@ class Impresoras(QWidget):
                         desc_lower = descripcion.lower()
                         if any(term in desc_lower for term in ['printer', 'print', 'epson', 'hp', 'canon', 'brother']):
                             es_probable_impresora = True
-                        vids_impresoras = [
-                            0x04B8, 0x03F0, 0x04A9, 0x04F9, 0x043D, 0x0924
-                        ]
+                        vids_impresoras = [0x04B8, 0x03F0, 0x04A9, 0x04F9, 0x043D, 0x0924]
                         if id_vendor in vids_impresoras:
                             es_probable_impresora = True
                         if es_probable_impresora and descripcion:
@@ -660,15 +692,18 @@ class Impresoras(QWidget):
                             if en_bd:
                                 item_text += " (Ya en BD)"
                             item = QListWidgetItem(item_text)
-                            item.setData(Qt.UserRole, {
-                                'vid': id_vendor,
-                                'pid': id_product,
-                                'en_bd': en_bd,
-                                'dispositivo': '',
-                                'descripcion': descripcion,
-                                'es_termica': False,
-                                'es_normal': True
-                            })
+                            item.setData(
+                                Qt.UserRole,
+                                {
+                                    'vid': id_vendor,
+                                    'pid': id_product,
+                                    'en_bd': en_bd,
+                                    'dispositivo': '',
+                                    'descripcion': descripcion,
+                                    'es_termica': False,
+                                    'es_normal': True,
+                                },
+                            )
                             if en_bd:
                                 item.setForeground(QColor("#7f8c8d"))
                             self.listaImpresoras.addItem(item)
@@ -681,9 +716,13 @@ class Impresoras(QWidget):
             print(f"Error con pyUSB: {e}")
         try:
             import platform
+
             if platform.system() == "Windows":
                 import win32print
-                impresoras_windows = win32print.EnumPrinters(win32print.PRINTER_ENUM_LOCAL | win32print.PRINTER_ENUM_CONNECTIONS)
+
+                impresoras_windows = win32print.EnumPrinters(
+                    win32print.PRINTER_ENUM_LOCAL | win32print.PRINTER_ENUM_CONNECTIONS
+                )
                 for impresora in impresoras_windows:
                     nombre_impresora = impresora[2]
                     if nombre_impresora:
@@ -695,8 +734,7 @@ class Impresoras(QWidget):
                         try:
                             conn = sqlite3.connect(DB_PATH)
                             cursor = conn.cursor()
-                            cursor.execute("SELECT * FROM Impresora WHERE dispositivo = ?", 
-                                          (nombre_impresora,))
+                            cursor.execute("SELECT * FROM Impresora WHERE dispositivo = ?", (nombre_impresora,))
                             en_bd = cursor.fetchone() is not None
                             conn.close()
                         except Exception:
@@ -704,15 +742,18 @@ class Impresoras(QWidget):
                         if en_bd:
                             item_text += " (Ya en BD)"
                         item = QListWidgetItem(item_text)
-                        item.setData(Qt.UserRole, {
-                            'vid': 0,
-                            'pid': 0,
-                            'en_bd': en_bd,
-                            'dispositivo': nombre_impresora,
-                            'descripcion': nombre_impresora,
-                            'es_termica': False,
-                            'es_normal': True
-                        })
+                        item.setData(
+                            Qt.UserRole,
+                            {
+                                'vid': 0,
+                                'pid': 0,
+                                'en_bd': en_bd,
+                                'dispositivo': nombre_impresora,
+                                'descripcion': nombre_impresora,
+                                'es_termica': False,
+                                'es_normal': True,
+                            },
+                        )
                         if en_bd:
                             item.setForeground(QColor("#7f8c8d"))
                         self.listaImpresoras.addItem(item)
@@ -721,11 +762,11 @@ class Impresoras(QWidget):
             print("win32print no disponible (no es Windows)")
         except Exception as e:
             print(f"Error con win32print: {e}")
-        
+
         if not dispositivos_encontrados:
             self.listaImpresoras.addItem("No se detectaron impresoras")
             self.listaImpresoras.addItem("Conecte una impresora y vuelva a intentar")
-    
+
     def impresoraEnBD(self, id_vendor, id_product):
         try:
             conn = sqlite3.connect(DB_PATH)
@@ -736,7 +777,7 @@ class Impresoras(QWidget):
             return resultado is not None
         except Exception:
             return False
-    
+
     def anadirImpresoraBD(self):
         item_actual = self.listaImpresoras.currentItem()
         if not item_actual:
@@ -756,12 +797,16 @@ class Impresoras(QWidget):
             conn = sqlite3.connect(DB_PATH)
             cursor = conn.cursor()
             if id_vendor == 0 and id_product == 0 and dispositivo:
-                cursor.execute("INSERT INTO Impresora (idVendor, idProducto, dispositivo, es_barra, es_cocina) VALUES (?, ?, ?, 0, 0)", 
-                              (0, 0, dispositivo))
+                cursor.execute(
+                    "INSERT INTO Impresora (idVendor, idProducto, dispositivo, es_barra, es_cocina) VALUES (?, ?, ?, 0, 0)",
+                    (0, 0, dispositivo),
+                )
             else:
-                cursor.execute("INSERT INTO Impresora (idVendor, idProducto, dispositivo, es_barra, es_cocina) VALUES (?, ?, ?, 0, 0)", 
-                              (id_vendor, id_product, dispositivo))
-            
+                cursor.execute(
+                    "INSERT INTO Impresora (idVendor, idProducto, dispositivo, es_barra, es_cocina) VALUES (?, ?, ?, 0, 0)",
+                    (id_vendor, id_product, dispositivo),
+                )
+
             conn.commit()
             conn.close()
             QMessageBox.information(self, "Éxito", "Impresora añadida correctamente a la base de datos.")
@@ -769,7 +814,7 @@ class Impresoras(QWidget):
             self.detectarImpresorasTermicas()
         except Exception as e:
             QMessageBox.critical(self, "Error", f"No se pudo añadir la impresora: {str(e)}")
-    
+
     def cargarImpresoras(self):
         try:
             conn = sqlite3.connect(DB_PATH)
@@ -823,7 +868,6 @@ class Impresoras(QWidget):
             self.actualizarCheckboxes()
         except Exception as e:
             QMessageBox.critical(self, "Error", f"No se pudieron cargar las impresoras: {str(e)}")
-    
 
     def probarImpresion(self):
         dialog = QDialog(self)
@@ -897,22 +941,27 @@ class Impresoras(QWidget):
         if dialog.exec_() == QDialog.Accepted:
             tipo = combo.currentData()
             self.ejecutarPruebaImpresion(tipo)
-    
 
     def ejecutarPruebaImpresion(self, tipo):
         try:
             conn = sqlite3.connect(DB_PATH)
             cursor = conn.cursor()
             if tipo == "Barra":
-                cursor.execute("SELECT idImpresora, idVendor, idProducto, dispositivo FROM Impresora WHERE es_barra = 1")
+                cursor.execute(
+                    "SELECT idImpresora, idVendor, idProducto, dispositivo FROM Impresora WHERE es_barra = 1"
+                )
             else:
-                cursor.execute("SELECT idImpresora, idVendor, idProducto, dispositivo FROM Impresora WHERE es_cocina = 1")
+                cursor.execute(
+                    "SELECT idImpresora, idVendor, idProducto, dispositivo FROM Impresora WHERE es_cocina = 1"
+                )
             impresoras = cursor.fetchall()
             conn.close()
             if not impresoras:
-                QMessageBox.warning(self, "Advertencia", 
-                                  f"No hay una impresora seleccionada para {tipo}.\n"
-                                  f"Por favor, seleccione una impresora primero.")
+                QMessageBox.warning(
+                    self,
+                    "Advertencia",
+                    f"No hay una impresora seleccionada para {tipo}.\nPor favor, seleccione una impresora primero.",
+                )
                 return
             for impresora in impresoras:
                 id_impresora, id_vendor, id_producto, dispositivo = impresora
@@ -926,16 +975,19 @@ class Impresoras(QWidget):
                 mensaje += "¡Impresión exitosa!\n"
                 mensaje += "\n" * 3
                 if self.imprimir_realmente(dispositivo, id_vendor, id_producto, mensaje):
-                    QMessageBox.information(self, "Éxito", 
-                                          f"Se envió correctamente la prueba a la impresora de {tipo}.\n"
-                                          f"Dispositivo: {dispositivo}")
+                    QMessageBox.information(
+                        self,
+                        "Éxito",
+                        f"Se envió correctamente la prueba a la impresora de {tipo}.\nDispositivo: {dispositivo}",
+                    )
                 else:
-                    QMessageBox.warning(self, "Advertencia", 
-                                      f"No se pudo imprimir en la impresora {dispositivo}.\n"
-                                      f"Verifique que esté conectada.")
+                    QMessageBox.warning(
+                        self,
+                        "Advertencia",
+                        f"No se pudo imprimir en la impresora {dispositivo}.\nVerifique que esté conectada.",
+                    )
         except Exception as e:
             QMessageBox.critical(self, "Error", f"No se pudo realizar la prueba: {str(e)}")
-    
 
     def imprimir_realmente(self, dispositivo, vid, pid, texto):
         try:
@@ -947,7 +999,7 @@ class Impresoras(QWidget):
                         bytesize=serial.EIGHTBITS,
                         parity=serial.PARITY_NONE,
                         stopbits=serial.STOPBITS_ONE,
-                        timeout=2
+                        timeout=2,
                     )
                     comando_inicial = b'\x1b\x40'
                     comando_corte = b'\n' * 5 + b'\x1d\x56\x00'
@@ -968,7 +1020,7 @@ class Impresoras(QWidget):
                         dev.detach_kernel_driver(0)
                     dev.set_configuration()
                     cfg = dev.get_active_configuration()
-                    intf = cfg[(0,0)]
+                    intf = cfg[(0, 0)]
                     ep_out = None
                     for ep in intf:
                         if usb.util.endpoint_direction(ep.bEndpointAddress) == usb.util.ENDPOINT_OUT:
@@ -987,14 +1039,27 @@ class Impresoras(QWidget):
             elif dispositivo:
                 try:
                     import platform
+
                     if platform.system() == "Windows":
                         import win32print
-                        
-                        es_termica = any(term in dispositivo.lower() for term in [
-                            'thermal', 'termica', 'ticket', 'receipt', 'pos',
-                            'tm-', 'tsp', 'bixolon', 'star', 'citizen', 'zjiang'
-                        ])
-                        
+
+                        es_termica = any(
+                            term in dispositivo.lower()
+                            for term in [
+                                'thermal',
+                                'termica',
+                                'ticket',
+                                'receipt',
+                                'pos',
+                                'tm-',
+                                'tsp',
+                                'bixolon',
+                                'star',
+                                'citizen',
+                                'zjiang',
+                            ]
+                        )
+
                         if es_termica:
                             texto_limpio = texto.encode('latin-1', errors='ignore')
                             contenido_bytes = b'\x1b\x40'
@@ -1014,15 +1079,18 @@ class Impresoras(QWidget):
                                 win32print.ClosePrinter(hPrinter)
                         else:
                             import win32ui
+
                             hdc = win32ui.CreateDC()
                             hdc.CreatePrinterDC(dispositivo)
                             hdc.StartDoc("Prueba Impresión")
                             hdc.StartPage()
-                            font = win32ui.CreateFont({
-                                "name": "Courier New",
-                                "height": 100,
-                                "weight": 400,
-                            })
+                            font = win32ui.CreateFont(
+                                {
+                                    "name": "Courier New",
+                                    "height": 100,
+                                    "weight": 400,
+                                }
+                            )
                             hdc.SelectObject(font)
                             line_height = 150
                             y = 100
@@ -1037,10 +1105,11 @@ class Impresoras(QWidget):
                     print(f"Error impresión Windows: {e}")
                     return False
             return False
-            
+
         except Exception as e:
             print(f"Error general en impresión: {e}")
             return False
+
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)

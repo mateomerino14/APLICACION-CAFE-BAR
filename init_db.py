@@ -4,6 +4,7 @@ from Rutas import get_db_path
 
 DB_PATH = get_db_path()
 
+
 # Crea las tablas y carga los datos iniciales que falten
 def crear_db():
     os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
@@ -18,7 +19,7 @@ def crear_db():
                               disponible BOOLEAN DEFAULT TRUE,
                               unidadMedida VARCHAR(10) NOT NULL,
                               precioExtra DECIMAL(10,2) DEFAULT 0.00)"""
-    
+
     tablaProductos = """CREATE TABLE IF NOT EXISTS Producto(
                       idProd INTEGER PRIMARY KEY AUTOINCREMENT,
                       nomProd VARCHAR(30) NOT NULL,
@@ -29,13 +30,13 @@ def crear_db():
                       imgProd BLOB NOT NULL,
                       idSubcategoria INTEGER NOT NULL,
                       FOREIGN KEY (idSubcategoria) REFERENCES Subcategoria(idSubcategoria))"""
-    
+
     tablaCategoria = """CREATE TABLE IF NOT EXISTS Categoria(
                       idCategoria INTEGER PRIMARY KEY AUTOINCREMENT,
                       nomCategoria VARCHAR(30) UNIQUE NOT NULL,
                       imagenCategoria  BLOB NOT NULL, 
                       activa BOOLEAN DEFAULT TRUE)"""
-    
+
     tablaSubcategoria = """CREATE TABLE IF NOT EXISTS Subcategoria(
                          idSubcategoria INTEGER PRIMARY KEY AUTOINCREMENT,
                          idCategoria INTEGER NOT NULL,
@@ -44,7 +45,7 @@ def crear_db():
                          activa BOOLEAN DEFAULT TRUE,
                          FOREIGN KEY (idCategoria) REFERENCES Categoria(idCategoria)
                       )"""
-    
+
     tablaProductosIngredientes = """CREATE TABLE IF NOT EXISTS ProductosIngredientes(
                                   idProd INTEGER NOT NULL,
                                   idIng INTEGER NOT NULL,
@@ -52,7 +53,7 @@ def crear_db():
                                   PRIMARY KEY(idProd,idIng),
                                   FOREIGN KEY (idProd) REFERENCES Producto(idProd),
                                   FOREIGN KEY (idIng) REFERENCES Stock(idIng))"""
-                                  
+
     tablaMesas = """CREATE TABLE IF NOT EXISTS Mesa(
                   idMesa INTEGER,
                   disponible BOOLEAN DEFAULT TRUE,
@@ -60,12 +61,12 @@ def crear_db():
                   idSeccion INTEGER NOT NULL,
                   PRIMARY KEY (idMesa,idSeccion),
                   FOREIGN KEY (idSeccion) REFERENCES Seccion(idSeccion))"""
-    
+
     tablaSecciones = """CREATE TABLE IF NOT EXISTS Seccion(
                       idSeccion INTEGER PRIMARY KEY AUTOINCREMENT,
                       nombSeccion VARCHAR(30) NOT NULL,
                       descripcion TEXT)"""
-    
+
     tablaCliente = """CREATE TABLE IF NOT EXISTS Cliente(
                     nit INTEGER PRIMARY KEY,
                     nombCli VARCHAR(20) NOT NULL,
@@ -73,7 +74,7 @@ def crear_db():
                     apellMatCli VARCHAR(30) NOT NULL,
                     correoElCli VARCHAR(40) NOT NULL,
                     habilitado BOOLEAN DEFAULT TRUE)"""
-    
+
     tablaImpresora = """CREATE TABLE IF NOT EXISTS Impresora (
                         idImpresora INTEGER PRIMARY KEY AUTOINCREMENT,
                         idVendor INTEGER,
@@ -83,36 +84,36 @@ def crear_db():
                         es_barra BOOLEAN DEFAULT 0,
                         es_cocina BOOLEAN DEFAULT 0
                     );"""
-    
+
     tablaPantallas = """CREATE TABLE IF NOT EXISTS Pantalla(
                       idPant INTEGER PRIMARY KEY AUTOINCREMENT,
                       nomPant VARCHAR(40) NOT NULL)"""
-    
+
     tablaSubpantalla = """CREATE TABLE IF NOT EXISTS Subpantalla(
                         idSubPant INTEGER PRIMARY KEY AUTOINCREMENT,
                         idPant INTEGER NOT NULL,
                         nomSubPant VARCHAR(50) NOT NULL,
                         accion VARCHAR(50) NOT NULL,
                         FOREIGN KEY (idPant) REFERENCES Pantalla(idPant))"""
-    
+
     tablaCargos = """CREATE TABLE IF NOT EXISTS Cargo(
                    idCargo INTEGER PRIMARY KEY AUTOINCREMENT,
                    nomCarg VARCHAR(20) UNIQUE NOT NULL)"""
-    
+
     tablaPermisosCargos = """CREATE TABLE IF NOT EXISTS PermisosCargo(
                            idCarg INTEGER,
                            idPant INTEGER,
                            PRIMARY KEY(idCarg,idPant),
                            FOREIGN KEY (idCarg) REFERENCES Cargo(idCarg),
                            FOREIGN KEY (idPant) REFERENCES Pantalla(idPant))"""
-    
+
     tablaPermisosCargoSubpantalla = """CREATE TABLE IF NOT EXISTS PermisosCargoSubpantalla(
                                       idCarg INTEGER NOT NULL,
                                       idSubPant INTEGER NOT NULL,
                                       PRIMARY KEY(idCarg, idSubPant),
                                       FOREIGN KEY (idCarg) REFERENCES Cargo(idCarg),
                                       FOREIGN KEY (idSubPant) REFERENCES Subpantalla(idSubPant))"""
-    
+
     tablaEmpleado = """CREATE TABLE IF NOT EXISTS Empleado(
                      codEmp INTEGER PRIMARY KEY AUTOINCREMENT,
                      aliasEmp VARCHAR(30) NOT NULL,
@@ -128,21 +129,21 @@ def crear_db():
                      idCargo INTEGER NOT NULL,
                      imgEmp BLOB NOT NULL,
                      FOREIGN KEY (idCargo) REFERENCES Cargo(idCargo))"""
-    
+
     tablaPermisosPersonal = """CREATE TABLE IF NOT EXISTS PermisosPersonal(
                              codEmp INTEGER NOT NULL,
                              idPant INTEGER NOT NULL,
                              PRIMARY KEY(codEmp,idPant),
                              FOREIGN KEY (codEmp) REFERENCES Empleado(codEmp),
                              FOREIGN KEY (idPant) REFERENCES Pantalla(idPant))"""
-    
+
     tablaPermisosPersonalSubpantalla = """CREATE TABLE IF NOT EXISTS PermisosPersonalSubpantalla(
                                          codEmp INTEGER NOT NULL,
                                          idSubPant INTEGER NOT NULL,
                                          PRIMARY KEY(codEmp, idSubPant),
                                          FOREIGN KEY (codEmp) REFERENCES Empleado(codEmp),
                                          FOREIGN KEY (idSubPant) REFERENCES Subpantalla(idSubPant))"""
-    
+
     tablaPromociones = """CREATE TABLE IF NOT EXISTS Promocion(
                             idProm INTEGER PRIMARY KEY AUTOINCREMENT,
                             nomProm VARCHAR(30) NOT NULL,
@@ -160,7 +161,7 @@ def crear_db():
                        diaSemana INTEGER NOT NULL, 
                        PRIMARY KEY(idProm, diaSemana),
                        FOREIGN KEY (idProm) REFERENCES Promocion(idProm))"""
-    
+
     tablaPromocionProductos = """CREATE TABLE IF NOT EXISTS PromocionProd(
                                idProm INTEGER NOT NULL,
                                idProd INTEGER NOT NULL,
@@ -168,7 +169,7 @@ def crear_db():
                                PRIMARY KEY (idProm,idProd),
                                FOREIGN KEY (idProm) REFERENCES Promocion(idProm),
                                FOREIGN KEY (idProd) REFERENCES Producto(idProd))"""
-    
+
     tablaVenta = """CREATE TABLE IF NOT EXISTS Venta(
                   numVenta INTEGER NOT NULL,
                   fechaReg TEXT DEFAULT (DATETIME('now','localtime')),
@@ -187,11 +188,11 @@ def crear_db():
                   FOREIGN KEY (codEmp) REFERENCES Empleado(codEmp),
                   FOREIGN KEY (codEmp2) REFERENCES Empleado(codEmp)
                  )"""
-    
+
     tablaMetodosPago = """CREATE TABLE IF NOT EXISTS MetodoPago(
                         idMetodo INTEGER PRIMARY KEY AUTOINCREMENT,
                         nombre VARCHAR(50) NOT NULL)"""
-    
+
     tablaPago = """CREATE TABLE IF NOT EXISTS Pago(
                  numVenta INT NOT NULL,
                  fechaRegVenta TEXT DEFAULT (DATETIME('now','localtime')),
@@ -200,7 +201,7 @@ def crear_db():
                  PRIMARY KEY(numVenta, fechaRegVenta, idMetodo), 
                  FOREIGN KEY (numVenta, fechaRegVenta) REFERENCES Venta(numVenta, fechaReg),
                  FOREIGN KEY (idMetodo) REFERENCES MetodoPago(idMetodo))"""
-    
+
     tablaDetallesVenta = """CREATE TABLE IF NOT EXISTS DetallesVenta(
                           idDetalleVenta INTEGER PRIMARY KEY AUTOINCREMENT,
                           numVenta INTEGER NOT NULL,
@@ -228,7 +229,7 @@ def crear_db():
                           nomIng VARCHAR(30) NOT NULL,
                           FOREIGN KEY (idDetalleVenta) REFERENCES DetallesVenta(idDetalleVenta),
                           FOREIGN KEY (idIng) REFERENCES Stock(idIng))"""
-                          
+
     tablaDetallesVentaExclusionesPromo = """CREATE TABLE IF NOT EXISTS DetallesVentaExclusionesPromo(
                           idExclusion INTEGER PRIMARY KEY AUTOINCREMENT,
                           idDetalleVenta INTEGER NOT NULL,
@@ -251,24 +252,23 @@ def crear_db():
                           FOREIGN KEY (idDetalleVenta) REFERENCES DetallesVenta(idDetalleVenta),
                           FOREIGN KEY (idIng) REFERENCES Stock(idIng),
                           FOREIGN KEY (idProd) REFERENCES Producto(idProd))"""
-    
 
     tablaDirectorio = """CREATE TABLE IF NOT EXISTS Directorio(
                        idAmin INTEGER PRIMARY KEY AUTOINCREMENT,
                        nomAdmin VARCHAR(30) NOT NULL,
                        contrasenaAdmin VARCHAR(30) NOT NULL)"""
-    
+
     tablaCorreos = """CREATE TABLE IF NOT EXISTS Cuenta(
                     idCuenta INTEGER PRIMARY KEY AUTOINCREMENT,
                     activaCuenta BOOLEAN DEFAULT FALSE,
                     correoCuenta VARCHAR NOT NULL,
                     contCuenta VARCHAR NOT NULL)"""
-    
+
     tablaEnlace = """CREATE TABLE IF NOT EXISTS Enlace(
                     idEnlace INTEGER PRIMARY KEY AUTOINCREMENT,
                     enlace VARCHAR(100) NOT NULL DEFAULT 'https://siat.impuestos.gob.bo/v2/launcher/'
                 )"""
-    
+
     c.executescript(tablaIngredientesStock)
     c.executescript(tablaCategoria)
     c.executescript(tablaSubcategoria)
@@ -292,7 +292,7 @@ def crear_db():
     c.executescript(tablaMetodosPago)
     c.executescript(tablaPago)
     c.executescript(tablaDetallesVenta)
-    c.executescript(tablaDetallesVentaExclusiones)   
+    c.executescript(tablaDetallesVentaExclusiones)
     c.executescript(tablaDirectorio)
     c.executescript(tablaCorreos)
     c.executescript(tablaEnlace)
@@ -310,10 +310,10 @@ def crear_db():
                         ('Promociones'),
                         ('Empleados'),
                         ('Reportes')"""
-    
+
     consultaMetodosPago = """INSERT INTO MetodoPago(nombre) VALUES ('Efectivo')"""
     consultaMetodosPago2 = """INSERT INTO MetodoPago(nombre) VALUES ('Qr')"""
-    
+
     c.execute("SELECT COUNT(*) FROM Pantalla")
     count = c.fetchone()[0]
     if count == 0:
@@ -340,24 +340,24 @@ def crear_db():
             (8, 'Registrar Empleados', 'REGISTRAR_EMPLEADOS'),
             (8, 'Modificar Empleados', 'MODIFICAR_EMPLEADOS'),
             (8, 'Dar de Baja Empleados', 'BAJA_EMPLEADOS'),
-            (9, 'Ver Reportes', 'VER_REPORTES')
+            (9, 'Ver Reportes', 'VER_REPORTES'),
         ]
         for id_pant, nombre, accion in subpantallas:
-            c.execute("INSERT INTO Subpantalla (idPant, nomSubPant, accion) VALUES (?, ?, ?)",
-                     (id_pant, nombre, accion))
-        
+            c.execute(
+                "INSERT INTO Subpantalla (idPant, nomSubPant, accion) VALUES (?, ?, ?)", (id_pant, nombre, accion)
+            )
+
     c.execute("SELECT COUNT(*) FROM MetodoPago")
     count = c.fetchone()[0]
     if count == 0:
         c.execute(consultaMetodosPago)
         c.execute(consultaMetodosPago2)
-    
+
     try:
         c.execute("SELECT COUNT(*) FROM Enlace")
         count = c.fetchone()[0]
         if count == 0:
-            c.execute("INSERT INTO Enlace (enlace) VALUES (?)", 
-                     ("https://siat.impuestos.gob.bo/v2/launcher/",))
+            c.execute("INSERT INTO Enlace (enlace) VALUES (?)", ("https://siat.impuestos.gob.bo/v2/launcher/",))
     except Exception as e:
         print(f"Error al insertar enlace por defecto: {e}")
 
@@ -369,9 +369,10 @@ def crear_db():
             c.execute(ingresarAdmin, ("DIRECTORIO", "79213966482250"))
     except Exception as e:
         print(f"Error al insertar directorio por defecto: {e}")
-    
+
     conn.commit()
     conn.close()
+
 
 # Crea el trigger que numera las mesas de cada sección
 def crearTriggers():
@@ -399,6 +400,7 @@ def crearTriggers():
     conn.commit()
     conn.close()
 
+
 # Crea la tabla de ingredientes excluidos dentro de promociones
 def migrarTablaExclusionesPromo():
     try:
@@ -414,7 +416,7 @@ def migrarTablaExclusionesPromo():
                       FOREIGN KEY (idDetalleVenta) REFERENCES DetallesVenta(idDetalleVenta),
                       FOREIGN KEY (idProd) REFERENCES Producto(idProd),
                       FOREIGN KEY (idIng) REFERENCES Stock(idIng))""")
-        
+
         c.execute("""CREATE TABLE IF NOT EXISTS DetallesVentaUnidades(
                       idUnidad INTEGER PRIMARY KEY AUTOINCREMENT,
                       idDetalleVenta INTEGER NOT NULL,
@@ -429,6 +431,7 @@ def migrarTablaExclusionesPromo():
         conn.close()
     except Exception as e:
         print(f"Error en migración: {e}")
+
 
 # Crea la tabla de ingredientes excluidos en bases creadas antes de existir
 def migrarTablaExclusiones():
@@ -450,18 +453,18 @@ def migrarTablaExclusiones():
 
 # Relaciona cada unidad vendida con su producto
 def migrar_unidades_con_producto():
-        conn = sqlite3.connect(DB_PATH)
-        c = conn.cursor()
-        try:
-            c.execute("ALTER TABLE DetallesVentaUnidades ADD COLUMN idProd INTEGER")
-            print("Columna idProd agregada a DetallesVentaUnidades")
-        except sqlite3.OperationalError as e:
-            if "duplicate column name" in str(e):
-                print("La columna idProd ya existe")
-            else:
-                raise
-        c.execute("CREATE INDEX IF NOT EXISTS idx_unidades_idprod ON DetallesVentaUnidades(idProd)")
-        c.execute("""
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    try:
+        c.execute("ALTER TABLE DetallesVentaUnidades ADD COLUMN idProd INTEGER")
+        print("Columna idProd agregada a DetallesVentaUnidades")
+    except sqlite3.OperationalError as e:
+        if "duplicate column name" in str(e):
+            print("La columna idProd ya existe")
+        else:
+            raise
+    c.execute("CREATE INDEX IF NOT EXISTS idx_unidades_idprod ON DetallesVentaUnidades(idProd)")
+    c.execute("""
             UPDATE DetallesVentaUnidades 
             SET idProd = (
                 SELECT idProd FROM DetallesVenta 
@@ -471,9 +474,10 @@ def migrar_unidades_con_producto():
                 SELECT idDetalleVenta FROM DetallesVenta WHERE idProd IS NOT NULL
             )
         """)
-        print(f"Actualizadas {c.rowcount} unidades de productos normales")
-        conn.commit()
-        conn.close()
+    print(f"Actualizadas {c.rowcount} unidades de productos normales")
+    conn.commit()
+    conn.close()
+
 
 # Agrega el precio extra de ingredientes y la tabla de extras por pedido
 def migrarIngredientesExtra():
@@ -515,6 +519,7 @@ def migrarIngredientesExtra():
     except Exception as e:
         print(f"Error en migración de ingredientes extra: {e}")
 
+
 # Agrega la hora de cierre de la venta, que se llena al cobrarla
 def migrarHoraCierreVenta():
     try:
@@ -532,6 +537,7 @@ def migrarHoraCierreVenta():
         conn.close()
     except Exception as e:
         print(f"Error en migración de horaCierre: {e}")
+
 
 # Convierte a bcrypt las contraseñas que sigan en texto plano
 def migrarPasswordsAHash():
@@ -567,20 +573,24 @@ def migrarPasswordsAHash():
         conn.commit()
         conn.close()
         if migrados_emp or migrados_admin:
-            print(f"Migración de contraseñas: {migrados_emp} empleado(s) y {migrados_admin} cuenta(s) de directorio hasheadas.")
+            print(
+                f"Migración de contraseñas: {migrados_emp} empleado(s) y {migrados_admin} cuenta(s) de directorio hasheadas."
+            )
     except Exception as e:
         print(f"Error en migración de contraseñas: {e}")
+
 
 # Prepara la base al iniciar: tablas, triggers y migraciones pendientes
 def inciarBaseDatos():
     crear_db()
     crearTriggers()
-    migrarTablaExclusiones()   
+    migrarTablaExclusiones()
     migrarTablaExclusionesPromo()
     migrar_unidades_con_producto()
     migrarIngredientesExtra()
     migrarHoraCierreVenta()
     migrarPasswordsAHash()
-    
+
+
 if __name__ == "__main__":
     inciarBaseDatos()

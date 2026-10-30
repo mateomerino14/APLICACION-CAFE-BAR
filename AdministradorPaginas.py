@@ -83,8 +83,18 @@ class AdministradorPaginas(QMainWindow):
 
     def cargar_permisos_usuario(self):
         if self.usuario == "DIRECTORIO":
-            return ["Home", "Familia", "Caja", "Administracion",
-                    "Productos", "Secciones", "Stock", "Promociones", "Empleados", "Reportes"]
+            return [
+                "Home",
+                "Familia",
+                "Caja",
+                "Administracion",
+                "Productos",
+                "Secciones",
+                "Stock",
+                "Promociones",
+                "Empleados",
+                "Reportes",
+            ]
         conn = None
         try:
             conn = sqlite3.connect(DB_PATH)
@@ -94,19 +104,25 @@ class AdministradorPaginas(QMainWindow):
             if not resultado:
                 return ["Home"]
             id_cargo = resultado[0]
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT DISTINCT p.nomPant
                 FROM PermisosCargo pc
                 JOIN Pantalla p ON pc.idPant = p.idPant
                 WHERE pc.idCarg = ?
-            """, (id_cargo,))
+            """,
+                (id_cargo,),
+            )
             permisos_pantallas = [fila[0] for fila in cursor.fetchall()]
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT DISTINCT sp.accion
                 FROM PermisosCargoSubpantalla pcs
                 JOIN Subpantalla sp ON pcs.idSubPant = sp.idSubPant
                 WHERE pcs.idCarg = ?
-            """, (id_cargo,))
+            """,
+                (id_cargo,),
+            )
             permisos_subpantallas = [fila[0] for fila in cursor.fetchall()]
             permisos = list(set(permisos_pantallas + permisos_subpantallas))
             if "Home" not in permisos:
@@ -250,7 +266,7 @@ class AdministradorPaginas(QMainWindow):
             "DAR DE BAJA EMPLEADOS": "BAJA_EMPLEADOS",
             "VER REPORTES": "VER_REPORTES",
             "ADMINISTRAR SECCIONES": "ADMIN_SECCIONES",
-            "VER FAMILIA": "VER_FAMILIA"
+            "VER FAMILIA": "VER_FAMILIA",
         }
         opciones_permisos = {
             "HOME": "Home",
@@ -262,27 +278,44 @@ class AdministradorPaginas(QMainWindow):
             "STOCK": "Stock",
             "PROMOCIONES": "Promociones",
             "EMPLEADOS": "Empleados",
-            "REPORTES": "Reportes"
+            "REPORTES": "Reportes",
         }
         opciones = {
             "HOME": [],
             "FAMILIA": [],
             "CAJA": ["REGISTRAR PEDIDO"],
             "ADMINISTRACION": ["CONFIGURACION", "IMPRESORAS"],
-            "PRODUCTOS": ["REGISTRAR CATEGORIA", "MODIFICAR CATEGORIA",  "DAR DE BAJA CATEGORIA", "REGISTRAR PRODUCTO", "MODIFICAR PRODUCTO", "DAR DE BAJA PRODUCTO"],
+            "PRODUCTOS": [
+                "REGISTRAR CATEGORIA",
+                "MODIFICAR CATEGORIA",
+                "DAR DE BAJA CATEGORIA",
+                "REGISTRAR PRODUCTO",
+                "MODIFICAR PRODUCTO",
+                "DAR DE BAJA PRODUCTO",
+            ],
             "SECCIONES": ["ADMINISTRAR SECCIONES"],
             "STOCK": ["REGISTRAR INGREDIENTES", "MODIFICAR INGREDIENTES"],
             "PROMOCIONES": ["REGISTRAR PROMOCIONES", "MODIFICAR PROMOCIONES", "DAR DE BAJA PROMOCIONES"],
-            "EMPLEADOS": ["REGISTRAR CARGOS", "MODIFICACION CARGOS", "REGISTRAR EMPLEADOS", "MODIFICAR EMPLEADOS", "DAR DE BAJA EMPLEADOS"],
-            "REPORTES": ["VER REPORTES"]
+            "EMPLEADOS": [
+                "REGISTRAR CARGOS",
+                "MODIFICACION CARGOS",
+                "REGISTRAR EMPLEADOS",
+                "MODIFICAR EMPLEADOS",
+                "DAR DE BAJA EMPLEADOS",
+            ],
+            "REPORTES": ["VER REPORTES"],
         }
+
         def add_action(menu, text, func):
             act = QAction(text, self)
             menu.addAction(act)
             act.triggered.connect(func)
+
         for opcion, subopciones in opciones.items():
             permiso_requerido = opciones_permisos.get(opcion)
-            if permiso_requerido not in self.permisos and permiso_requerido not in [p for p in self.permisos if '_' in p]:
+            if permiso_requerido not in self.permisos and permiso_requerido not in [
+                p for p in self.permisos if '_' in p
+            ]:
                 tiene_permiso = False
                 for subopcion in subopciones:
                     accion = mapa_acciones.get(subopcion)
@@ -382,12 +415,12 @@ class AdministradorPaginas(QMainWindow):
             self._pages[name] = w
             self.administradorMenu.addWidget(w)
         self.administradorMenu.setCurrentWidget(self._pages[name])
-        if name=="RegistrarPedidos":
+        if name == "RegistrarPedidos":
             self._pages[name]._clear_grid(self._pages[name].layoutProductos)
             self._pages[name].cargarCategorias()
             self._pages[name].actualizarNumeroVenta(datetime.now().date())
         else:
-            if name=="Secciones":
+            if name == "Secciones":
                 self._pages[name].actualizarYMostrar()
         if after:
             after(self._pages[name])
@@ -419,7 +452,7 @@ class AdministradorPaginas(QMainWindow):
     def iniciarPaginaDarBajaCategorias(self):
         self.titulo.setText("DAR DE BAJA CATEGORÍAS")
         self.show_page("DarBajaCategorias", after=lambda p: p.filtrarDatos(""))
-    
+
     def iniciarPaginaImpresoras(self):
         self.titulo.setText("ADMINISTRACION DE IMPRESORAS")
         self.show_page("Impresoras")
@@ -430,8 +463,12 @@ class AdministradorPaginas(QMainWindow):
 
     def iniciarPaginaRegistoProducto(self):
         self.titulo.setText("REGISTRAR PRODUCTO")
+
         def post(p):
-            p.cargarSubcategorias(); p.cargarCategorias(); p.cargarIngredientes()
+            p.cargarSubcategorias()
+            p.cargarCategorias()
+            p.cargarIngredientes()
+
         self.show_page("RegistroProductos", after=post)
 
     def iniciarPaginaModificacionProducto(self):
@@ -473,10 +510,10 @@ class AdministradorPaginas(QMainWindow):
     def iniciarPaginaRegistrarPromociones(self):
         self.titulo.setText("REGISTRAR PROMOCIONES")
         self.show_page("RegistroPromociones", after=lambda p: p.cargar_categorias())
-        
+
     def iniciarPaginaModificacionCategorias(self):
         self.titulo.setText("MODIFICAR CATEGORIAS")
-        self.show_page("ModificacionCategorias", after=lambda p: p.filtrarDatos(""))    
+        self.show_page("ModificacionCategorias", after=lambda p: p.filtrarDatos(""))
 
     def iniciarPaginaModificacionPromociones(self):
         self.titulo.setText("MODIFICAR PROMOCIONES")
@@ -502,6 +539,7 @@ class AdministradorPaginas(QMainWindow):
     def cerrarAplicacion(self):
         self.close()
         sys.exit(0)
+
 
 if __name__ == "__main__":
     aplicacion = QApplication(sys.argv)

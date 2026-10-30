@@ -10,8 +10,9 @@ DB_PATH = get_db_path()
 
 DIRECCION_IMAGENES = get_images_dir()
 
+
 class ModificacionSeccion(QWidget):
-    def __init__(self,nombSeccion,descSec):
+    def __init__(self, nombSeccion, descSec):
         super().__init__()
         self.setStyleSheet("""
             QWidget {
@@ -159,41 +160,40 @@ class ModificacionSeccion(QWidget):
                 background-color: #2980b9; 
             }
         """)
-        self.set_up(nombSeccion,descSec)
-        
-        
-    def set_up(self,nombSeccion,descSec):
+        self.set_up(nombSeccion, descSec)
+
+    def set_up(self, nombSeccion, descSec):
         self.layoutPrincipal = QVBoxLayout()
         self.setLayout(self.layoutPrincipal)
-        self.layoutPrincipal.setContentsMargins(20,20,20,20)
-        self.anadirAreaRegistro(nombSeccion,descSec)
+        self.layoutPrincipal.setContentsMargins(20, 20, 20, 20)
+        self.anadirAreaRegistro(nombSeccion, descSec)
         self.showMaximized()
-    
-    def anadirAreaRegistro(self,nombSeccion,descSec):
-        self.nombSeccion=nombSeccion
-        self.descSec=descSec
-        conn=sqlite3.connect(DB_PATH)
-        c=conn.cursor()
-        consulta="""SELECT * FROM Seccion S,Mesa M WHERE S.idSeccion=M.idSeccion AND nombSeccion=? AND existe=TRUE"""
-        c.execute(consulta,(nombSeccion,))
-        resultados=c.fetchall()
+
+    def anadirAreaRegistro(self, nombSeccion, descSec):
+        self.nombSeccion = nombSeccion
+        self.descSec = descSec
+        conn = sqlite3.connect(DB_PATH)
+        c = conn.cursor()
+        consulta = """SELECT * FROM Seccion S,Mesa M WHERE S.idSeccion=M.idSeccion AND nombSeccion=? AND existe=TRUE"""
+        c.execute(consulta, (nombSeccion,))
+        resultados = c.fetchall()
         conn.close()
-        contenedorSeccion=QWidget()
-        layoutSeccion=QHBoxLayout()
-        layoutAnadirSeccion=QVBoxLayout()
-        self.etiqueta1=QLabel("Nombre de Seccion")
-        self.campo1=QLineEdit(nombSeccion)
+        contenedorSeccion = QWidget()
+        layoutSeccion = QHBoxLayout()
+        layoutAnadirSeccion = QVBoxLayout()
+        self.etiqueta1 = QLabel("Nombre de Seccion")
+        self.campo1 = QLineEdit(nombSeccion)
         self.campo1.setMaxLength(17)
         letras_regex = QRegExp("[A-Za-záéíóúÁÉÍÓÚñÑ\\s]+")
         self.campo1.setValidator(QRegExpValidator(letras_regex))
-        self.etiqueta2=QLabel("Descripcion")
-        self.campo2=QLineEdit(descSec)
+        self.etiqueta2 = QLabel("Descripcion")
+        self.campo2 = QLineEdit(descSec)
         self.campo2.setMaxLength(40)
         descripcion_regex = QRegExp("[A-Za-záéíóúÁÉÍÓÚñÑ0-9.,\\-\\s]*")
         self.campo2.setValidator(QRegExpValidator(descripcion_regex))
-        self.etiqueta3=QLabel("Numero de Mesas")
-        self.cantidadMesas=str(len(resultados))
-        self.campo3=QLineEdit(self.cantidadMesas)
+        self.etiqueta3 = QLabel("Numero de Mesas")
+        self.cantidadMesas = str(len(resultados))
+        self.campo3 = QLineEdit(self.cantidadMesas)
         cantidad_regex = QRegExp("[0-9]*")
         self.campo3.setValidator(QRegExpValidator(cantidad_regex))
         self.campo3.setMaxLength(4)
@@ -203,15 +203,15 @@ class ModificacionSeccion(QWidget):
         layoutAnadirSeccion.addWidget(self.campo2)
         layoutAnadirSeccion.addWidget(self.etiqueta3)
         layoutAnadirSeccion.addWidget(self.campo3)
-        botonModificar=QPushButton("MODIFICAR")
+        botonModificar = QPushButton("MODIFICAR")
         botonModificar.setStyleSheet("""background-color:green;
                                         color:white;""")
         botonModificar.clicked.connect(self.subirInformacion)
-        botonCancelar=QPushButton("CANCELAR")
+        botonCancelar = QPushButton("CANCELAR")
         botonCancelar.setStyleSheet("""background-color:red;
                                     color:white;""")
         botonCancelar.clicked.connect(self.reestablecerDatos)
-        botonVolver=QPushButton("VOLVER")
+        botonVolver = QPushButton("VOLVER")
         botonVolver.setStyleSheet("""background-color:gray;
                                     color:white;""")
         botonVolver.clicked.connect(self.cerrar)
@@ -219,181 +219,178 @@ class ModificacionSeccion(QWidget):
         layoutAnadirSeccion.addWidget(botonCancelar)
         layoutAnadirSeccion.addWidget(botonVolver)
         layoutAnadirSeccion.addStretch()
-        layoutSeccion.addLayout(layoutAnadirSeccion,stretch=2)
-        contenedorMesas=QWidget()
+        layoutSeccion.addLayout(layoutAnadirSeccion, stretch=2)
+        contenedorMesas = QWidget()
         contenedorMesas.setStyleSheet("""background-color:white;""")
-        self.layoutMesas=QVBoxLayout()
+        self.layoutMesas = QVBoxLayout()
         self.layoutMesas.setSpacing(5)
         contenedorMesas.setLayout(self.layoutMesas)
-        scroll=QScrollArea()
+        scroll = QScrollArea()
         scroll.setWidget(contenedorMesas)
         scroll.setWidgetResizable(True)
         scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
-        layoutSeccion.addWidget(scroll,stretch=10)
+        layoutSeccion.addWidget(scroll, stretch=10)
         contenedorSeccion.setLayout(layoutSeccion)
-        self.layoutPrincipal.addWidget(contenedorSeccion,stretch=8)
+        self.layoutPrincipal.addWidget(contenedorSeccion, stretch=8)
         self.generarMesas()
         return
-   
+
     def cerrar(self):
-         self.deleteLater()
-   
+        self.deleteLater()
+
     def subirInformacion(self):
-        nuevoNombSeccion=self.campo1.text().strip()
-        nuevaDescSeccion=self.campo2.text().strip()
-        nuevaCantidadTexto=self.campo3.text().strip()
-        if nuevoNombSeccion=="" or nuevaCantidadTexto=="":
-           QMessageBox.information(self,"Advertencia","¡Los campos requeridos no pueden estar vacios!")
-           return
+        nuevoNombSeccion = self.campo1.text().strip()
+        nuevaDescSeccion = self.campo2.text().strip()
+        nuevaCantidadTexto = self.campo3.text().strip()
+        if nuevoNombSeccion == "" or nuevaCantidadTexto == "":
+            QMessageBox.information(self, "Advertencia", "¡Los campos requeridos no pueden estar vacios!")
+            return
         try:
-            nuevaCantidad=int(nuevaCantidadTexto)
+            nuevaCantidad = int(nuevaCantidadTexto)
         except ValueError:
-            QMessageBox.information(self,"Advertencia","La cantidad de mesas debe ser un numero valido.")
+            QMessageBox.information(self, "Advertencia", "La cantidad de mesas debe ser un numero valido.")
             return
-        if nuevaCantidad<0:
-            QMessageBox.information(self,"Advertencia","La cantidad debe ser un numero mayor o igual a 0")
+        if nuevaCantidad < 0:
+            QMessageBox.information(self, "Advertencia", "La cantidad debe ser un numero mayor o igual a 0")
             return
-        conn=sqlite3.connect(DB_PATH)
-        c=conn.cursor()
+        conn = sqlite3.connect(DB_PATH)
+        c = conn.cursor()
         try:
-            consulta="""SELECT * FROM Seccion WHERE nombSeccion=?"""
-            c.execute(consulta,(nuevoNombSeccion,))
-            resultados=c.fetchall()
+            consulta = """SELECT * FROM Seccion WHERE nombSeccion=?"""
+            c.execute(consulta, (nuevoNombSeccion,))
+            resultados = c.fetchall()
             if resultados:
-                if nuevoNombSeccion!=self.nombSeccion:
-                    QMessageBox.information(self,"Advertencia","¡El nombre pertenece a una seccion ya registrada!")
+                if nuevoNombSeccion != self.nombSeccion:
+                    QMessageBox.information(self, "Advertencia", "¡El nombre pertenece a una seccion ya registrada!")
                     return
 
-            consulta="""SELECT idSeccion FROM Seccion WHERE nombSeccion=?"""
-            c.execute(consulta,(self.nombSeccion,))
-            resultados=c.fetchone()
+            consulta = """SELECT idSeccion FROM Seccion WHERE nombSeccion=?"""
+            c.execute(consulta, (self.nombSeccion,))
+            resultados = c.fetchone()
             if resultados is None:
-                QMessageBox.critical(self,"Error","No se encontro la seccion original en la base de datos.")
+                QMessageBox.critical(self, "Error", "No se encontro la seccion original en la base de datos.")
                 return
-            idSeccion=int(resultados[0])
-            consulta="""SELECT COUNT(*) FROM Mesa WHERE idSeccion=?"""
-            c.execute(consulta,(idSeccion,))
-            resultados=c.fetchone()
-            cantidadRegistrada=resultados[0]
-            consulta="""SELECT COUNT(*) FROM Mesa WHERE idSeccion=? AND existe=TRUE"""
-            c.execute(consulta,(idSeccion,))
-            resultados=c.fetchone()
-            cantidadHabilitada=resultados[0]
-            if cantidadHabilitada>=nuevaCantidad:
-                diferencia=cantidadHabilitada-nuevaCantidad
+            idSeccion = int(resultados[0])
+            consulta = """SELECT COUNT(*) FROM Mesa WHERE idSeccion=?"""
+            c.execute(consulta, (idSeccion,))
+            resultados = c.fetchone()
+            cantidadRegistrada = resultados[0]
+            consulta = """SELECT COUNT(*) FROM Mesa WHERE idSeccion=? AND existe=TRUE"""
+            c.execute(consulta, (idSeccion,))
+            resultados = c.fetchone()
+            cantidadHabilitada = resultados[0]
+            if cantidadHabilitada >= nuevaCantidad:
+                diferencia = cantidadHabilitada - nuevaCantidad
                 for i in range(diferencia):
-                    idMesa=cantidadHabilitada-i
-                    consulta="""UPDATE Mesa SET existe=FALSE WHERE idSeccion=? AND idMesa=?"""
-                    c.execute(consulta,(idSeccion,idMesa))
+                    idMesa = cantidadHabilitada - i
+                    consulta = """UPDATE Mesa SET existe=FALSE WHERE idSeccion=? AND idMesa=?"""
+                    c.execute(consulta, (idSeccion, idMesa))
             else:
-                diferencia=cantidadRegistrada-cantidadHabilitada
-                resto=nuevaCantidad-cantidadHabilitada
-                if diferencia>=resto:
+                diferencia = cantidadRegistrada - cantidadHabilitada
+                resto = nuevaCantidad - cantidadHabilitada
+                if diferencia >= resto:
                     for i in range(resto):
-                       idMesa=cantidadHabilitada+(i+1)
-                       consulta="""UPDATE Mesa SET existe=TRUE WHERE idSeccion=? AND idMesa=?"""
-                       c.execute(consulta,(idSeccion,idMesa))
+                        idMesa = cantidadHabilitada + (i + 1)
+                        consulta = """UPDATE Mesa SET existe=TRUE WHERE idSeccion=? AND idMesa=?"""
+                        c.execute(consulta, (idSeccion, idMesa))
                 else:
                     for i in range(diferencia):
-                        idMesa=cantidadHabilitada+(i+1)
-                        consulta="""UPDATE Mesa SET existe=TRUE WHERE idSeccion=? AND idMesa=?"""
-                        c.execute(consulta,(idSeccion,idMesa))
-                    nuevaDiferencia=nuevaCantidad-cantidadRegistrada
-                    if nuevaDiferencia>0:
+                        idMesa = cantidadHabilitada + (i + 1)
+                        consulta = """UPDATE Mesa SET existe=TRUE WHERE idSeccion=? AND idMesa=?"""
+                        c.execute(consulta, (idSeccion, idMesa))
+                    nuevaDiferencia = nuevaCantidad - cantidadRegistrada
+                    if nuevaDiferencia > 0:
                         for i in range(nuevaDiferencia):
-                         consulta="""INSERT INTO Mesa(idMesa,idSeccion) VALUES(NULL,?)"""
-                         c.execute(consulta,(idSeccion,))
-            consulta="""UPDATE Seccion SET nombSeccion=?,descripcion=? WHERE idSeccion=?"""
-            c.execute(consulta,(nuevoNombSeccion,nuevaDescSeccion,idSeccion))
+                            consulta = """INSERT INTO Mesa(idMesa,idSeccion) VALUES(NULL,?)"""
+                            c.execute(consulta, (idSeccion,))
+            consulta = """UPDATE Seccion SET nombSeccion=?,descripcion=? WHERE idSeccion=?"""
+            c.execute(consulta, (nuevoNombSeccion, nuevaDescSeccion, idSeccion))
             conn.commit()
         except Exception as e:
             conn.rollback()
-            QMessageBox.critical(self,"Error",f"No se pudo modificar la seccion: {str(e)}")
+            QMessageBox.critical(self, "Error", f"No se pudo modificar la seccion: {str(e)}")
             return
         finally:
             conn.close()
-        self.nombSeccion=nuevoNombSeccion
-        self.descSec=nuevaDescSeccion
-        self.cantidadMesas=str(nuevaCantidad)
+        self.nombSeccion = nuevoNombSeccion
+        self.descSec = nuevaDescSeccion
+        self.cantidadMesas = str(nuevaCantidad)
         self.generarMesas()
-        QMessageBox.information(self,"Confirmacion","¡Se modifico con exito el registro!")
-        
-        
+        QMessageBox.information(self, "Confirmacion", "¡Se modifico con exito el registro!")
+
     def reestablecerDatos(self):
         self.limpiarMesas(self.layoutMesas)
         self.campo1.setText(self.nombSeccion)
         self.campo2.setText(self.descSec)
         self.campo3.setText(self.cantidadMesas)
         self.generarMesas()
-        
+
     def generarMesas(self):
         self.limpiarMesas(self.layoutMesas)
-        layoutFilaMesas=QHBoxLayout()
+        layoutFilaMesas = QHBoxLayout()
         layoutFilaMesas.setSpacing(10)
-        if self.cantidadMesas=="":
-            cantidad=0
+        if self.cantidadMesas == "":
+            cantidad = 0
         else:
             try:
-                cantidad=int(self.cantidadMesas)
+                cantidad = int(self.cantidadMesas)
             except ValueError:
-                cantidad=0
-            if cantidad<0:
-                QMessageBox.information(self,"Advertencia","La cantidad debe ser un numero mayor o igual a 0")
+                cantidad = 0
+            if cantidad < 0:
+                QMessageBox.information(self, "Advertencia", "La cantidad debe ser un numero mayor o igual a 0")
                 return
         for i in range(cantidad):
-            if i%10==0 and i != 0:
+            if i % 10 == 0 and i != 0:
                 self.layoutMesas.addLayout(layoutFilaMesas)
-                layoutFilaMesas=QHBoxLayout()
+                layoutFilaMesas = QHBoxLayout()
                 layoutFilaMesas.setSpacing(10)
-            contenedor_mesa=QWidget()
-            layoutMesa=QVBoxLayout()
+            contenedor_mesa = QWidget()
+            layoutMesa = QVBoxLayout()
             layoutMesa.setContentsMargins(5, 5, 5, 5)
             contenedor_mesa.setLayout(layoutMesa)
             contenedor_mesa.setStyleSheet("""background-color:#E0D6D1;
                                              border:3px solid #463730;""")
-            imagen=QLabel()
-            pixmap=QPixmap(f"{DIRECCION_IMAGENES}\\mesa.png")
-            pixmap = pixmap.scaled(90,90, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+            imagen = QLabel()
+            pixmap = QPixmap(f"{DIRECCION_IMAGENES}\\mesa.png")
+            pixmap = pixmap.scaled(90, 90, Qt.KeepAspectRatio, Qt.SmoothTransformation)
             imagen.setPixmap(pixmap)
             imagen.setFixedSize(90, 90)
-            numero=QLabel(str(i+1))
+            numero = QLabel(str(i + 1))
             numero.setAlignment(Qt.AlignCenter)
             numero.setFixedSize(90, 30)
-            layoutMesa.addWidget(imagen,alignment=Qt.AlignCenter)
-            layoutMesa.addWidget(numero,alignment=Qt.AlignCenter)
+            layoutMesa.addWidget(imagen, alignment=Qt.AlignCenter)
+            layoutMesa.addWidget(numero, alignment=Qt.AlignCenter)
             layoutFilaMesas.addWidget(contenedor_mesa)
-        limite=cantidad%10
-        if limite!=0:
-            limite=10-limite
-            for i in range (limite):
-                contenedor_mesa=QWidget()
-                layoutMesa=QVBoxLayout()
+        limite = cantidad % 10
+        if limite != 0:
+            limite = 10 - limite
+            for i in range(limite):
+                contenedor_mesa = QWidget()
+                layoutMesa = QVBoxLayout()
                 layoutMesa.setContentsMargins(5, 5, 5, 5)
                 contenedor_mesa.setLayout(layoutMesa)
-                imagen=QLabel()
+                imagen = QLabel()
                 imagen.setFixedSize(90, 90)
-                numero=QLabel()
-                layoutMesa.addWidget(imagen,alignment=Qt.AlignCenter)
-                layoutMesa.addWidget(numero,alignment=Qt.AlignCenter)
+                numero = QLabel()
+                layoutMesa.addWidget(imagen, alignment=Qt.AlignCenter)
+                layoutMesa.addWidget(numero, alignment=Qt.AlignCenter)
                 layoutFilaMesas.addWidget(contenedor_mesa)
             self.layoutMesas.addLayout(layoutFilaMesas)
         else:
-            self.layoutMesas.addLayout(layoutFilaMesas) 
+            self.layoutMesas.addLayout(layoutFilaMesas)
         self.layoutMesas.addStretch(1)
-    
-    def limpiarMesas(self,layout):
+
+    def limpiarMesas(self, layout):
         if layout is None:
-         return
-        while(layout.count()>0):
-            hijo=layout.takeAt(0)
+            return
+        while layout.count() > 0:
+            hijo = layout.takeAt(0)
             if hijo.widget():
                 hijo.widget().deleteLater()
             else:
                 if hijo.layout():
                     self.limpiarMesas(hijo.layout())
                     hijo.layout().deleteLater()
-                    
-                
 
 
 if __name__ == "__main__":

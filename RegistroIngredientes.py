@@ -7,6 +7,7 @@ from Rutas import get_db_path
 
 DB_PATH = get_db_path()
 
+
 class RegistroIngredientes(QWidget):
     def __init__(self):
         super().__init__()
@@ -40,16 +41,16 @@ class RegistroIngredientes(QWidget):
             }
         """)
         self.set_up()
-        
+
     def set_up(self):
         self.layoutDatos = QHBoxLayout()
         self.layoutPrincipal = QVBoxLayout()
         self.setLayout(self.layoutPrincipal)
-        self.layoutPrincipal.setContentsMargins(20,20,20,20)
+        self.layoutPrincipal.setContentsMargins(20, 20, 20, 20)
         self.anadirAreaRegistro()
         self.showMaximized()
         self.layoutPrincipal.addStretch(1)
-    
+
     def cargarNombresIngredientes(self):
         try:
             conn = sqlite3.connect(DB_PATH)
@@ -69,7 +70,7 @@ class RegistroIngredientes(QWidget):
             font-weight: bold;
             margin-bottom: 5px;
         """
-                       
+
         camposEstilo = """
             background-color: white;
             border: 2px solid #bdc3c7;
@@ -78,8 +79,7 @@ class RegistroIngredientes(QWidget):
             margin:0px;
             font-size: 15px;
         """
-        
-     
+
         botonesEstilo = """
             QPushButton {
                 background-color: #3498db;
@@ -127,11 +127,11 @@ class RegistroIngredientes(QWidget):
         self.etiquetaEstadoNombre.setWordWrap(True)
         self.etiquetaEstadoNombre.setVisible(False)
         self.campo1.textChanged.connect(self._verificarNombreIngrediente)
-        
+
         unidadMedida = QLabel("UNIDAD DE MEDIDA")
         unidadMedida.setStyleSheet(labelEstilo)
         self.campo2 = QComboBox()
-        self.campo2.addItems(["Kilogramos","Litros","Onzas","Gramos","Mililitros","Unidades"])
+        self.campo2.addItems(["Kilogramos", "Litros", "Onzas", "Gramos", "Mililitros", "Unidades"])
         self.campo2.setStyleSheet(camposEstilo)
         self.campo2.setCurrentIndex(-1)
         cantidad = QLabel("CANTIDAD DE STOCK")
@@ -141,13 +141,13 @@ class RegistroIngredientes(QWidget):
         self.campo3.setStyleSheet(camposEstilo)
         self.campo3.setValidator(QRegExpValidator(QRegExp(r"[0-9]{1,8}(\.[0-9]{0,2})?")))
         self.campo3.setMaxLength(11)
-    
+
         def crear_grupo_campo(label, campo):
             grupo = QVBoxLayout()
             grupo.addWidget(label, alignment=Qt.AlignLeft)
             grupo.addWidget(campo)
             return grupo
-        
+
         grupoNombre = QVBoxLayout()
         grupoNombre.addWidget(nombre, alignment=Qt.AlignLeft)
         grupoNombre.addWidget(self.campo1)
@@ -176,6 +176,7 @@ class RegistroIngredientes(QWidget):
         self.campo4.setFixedHeight(200)
         self.campo4.setStyleSheet(camposEstilo)
         MAX_LARGO_DESCRIPCION_ING = 200
+
         def limitar_descripcion_ing():
             texto = self.campo4.toPlainText()
             if len(texto) > MAX_LARGO_DESCRIPCION_ING:
@@ -186,6 +187,7 @@ class RegistroIngredientes(QWidget):
                 cursor.setPosition(min(posicion, MAX_LARGO_DESCRIPCION_ING))
                 self.campo4.setTextCursor(cursor)
                 self.campo4.blockSignals(False)
+
         self.campo4.textChanged.connect(limitar_descripcion_ing)
         layoutH2.addLayout(crear_grupo_campo(descripcion, self.campo4))
         layoutCampos.addLayout(layoutH2)
@@ -219,7 +221,7 @@ class RegistroIngredientes(QWidget):
         layoutCampos.addLayout(layoutBotones)
         self.layoutDatos.addLayout(layoutCampos)
         self.layoutPrincipal.addWidget(widgetRegistro)
- 
+
     def _verificarNombreIngrediente(self, texto):
         texto = texto.strip()
         if not texto:
@@ -243,37 +245,39 @@ class RegistroIngredientes(QWidget):
             self.etiquetaEstadoNombre.setVisible(False)
 
     def confirmarRegistro(self):
-        conn=sqlite3.connect(DB_PATH)
-        c=conn.cursor()
-        lista=[self.campo1.text(),self.campo2.currentText(),self.campo3.text()]
+        conn = sqlite3.connect(DB_PATH)
+        c = conn.cursor()
+        lista = [self.campo1.text(), self.campo2.currentText(), self.campo3.text()]
         for elem in lista:
-            if elem=="":
-                QMessageBox.information(self,"Advertencia","Llene los campos obligatorios porfavor")
+            if elem == "":
+                QMessageBox.information(self, "Advertencia", "Llene los campos obligatorios porfavor")
                 return
-        consulta="""SELECT * FROM Stock WHERE UPPER(nomIng)=UPPER(?)"""
-        registros=c.execute(consulta,(self.campo1.text(),))
-        resultados=registros.fetchone()
+        consulta = """SELECT * FROM Stock WHERE UPPER(nomIng)=UPPER(?)"""
+        registros = c.execute(consulta, (self.campo1.text(),))
+        resultados = registros.fetchone()
         if resultados is not None:
-            QMessageBox.information(self,"Advertencia","Este ingrediente ya ha sido registrado")
+            QMessageBox.information(self, "Advertencia", "Este ingrediente ya ha sido registrado")
             return
         precio_extra_texto = self.campo5.text().strip()
         precio_extra_valor = float(precio_extra_texto) if precio_extra_texto != "" else 0.0
-        consulta="""INSERT INTO Stock(nomIng,descripcion,cantidadStock,unidadMedida,precioExtra) VALUES (?,?,?,?,?)"""
-        c.execute(consulta,(
-            self.campo1.text(),      
-            self.campo4.toPlainText(),       
-            float(self.campo3.text()),     
-            self.campo2.currentText(),
-            precio_extra_valor
-        ))
-        QMessageBox.information(self,"Confirmacion","Se ha registrado con exito")
+        consulta = """INSERT INTO Stock(nomIng,descripcion,cantidadStock,unidadMedida,precioExtra) VALUES (?,?,?,?,?)"""
+        c.execute(
+            consulta,
+            (
+                self.campo1.text(),
+                self.campo4.toPlainText(),
+                float(self.campo3.text()),
+                self.campo2.currentText(),
+                precio_extra_valor,
+            ),
+        )
+        QMessageBox.information(self, "Confirmacion", "Se ha registrado con exito")
         conn.commit()
         conn.close()
         self.nombresExistentes = self.cargarNombresIngredientes()
         self.completer.setModel(QStringListModel(self.nombresExistentes))
         self.limpiarTodo()
-   
-   
+
     def limpiarTodo(self):
         self.campo1.clear()
         self.campo2.setCurrentIndex(-1)
@@ -281,6 +285,7 @@ class RegistroIngredientes(QWidget):
         self.campo4.clear()
         self.campo5.clear()
         self.etiquetaEstadoNombre.setVisible(False)
+
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)

@@ -6,6 +6,7 @@ from Rutas import get_db_path
 
 DB_PATH = get_db_path()
 
+
 class Pop_up_ModificarPromocion(QDialog):
     def __init__(self, nomProm, parent=None):
         super().__init__(parent)
@@ -107,7 +108,7 @@ class Pop_up_ModificarPromocion(QDialog):
             }
         """)
         layoutPrincipal = QVBoxLayout()
-        layoutPrincipal.setContentsMargins(20,20,20,20)
+        layoutPrincipal.setContentsMargins(20, 20, 20, 20)
         layoutPrincipal.setSpacing(15)
         self.setLayout(layoutPrincipal)
         titulo = QLabel(f"Modificar Promoción: {nomProm}")
@@ -147,7 +148,7 @@ class Pop_up_ModificarPromocion(QDialog):
         contenido_layout = QVBoxLayout(contenido_widget)
         contenido_layout.setSpacing(15)
         self.botonImagen = QPushButton()
-        self.botonImagen.setFixedSize(180,180)
+        self.botonImagen.setFixedSize(180, 180)
         self.botonImagen.setCursor(Qt.PointingHandCursor)
         self.botonImagen.setStyleSheet("""
             QPushButton {
@@ -191,10 +192,10 @@ class Pop_up_ModificarPromocion(QDialog):
         self.completerNombres.setFilterMode(Qt.MatchContains)
         self.campoNombre.setCompleter(self.completerNombres)
 
-        form_layout.addWidget(QLabel("📝 Nombre:"),0,0)
-        form_layout.addWidget(self.campoNombre,0,1)
-        form_layout.addWidget(QLabel("💰 Precio:"),1,0)
-        form_layout.addWidget(self.campoPrecio,1,1)
+        form_layout.addWidget(QLabel("📝 Nombre:"), 0, 0)
+        form_layout.addWidget(self.campoNombre, 0, 1)
+        form_layout.addWidget(QLabel("💰 Precio:"), 1, 0)
+        form_layout.addWidget(self.campoPrecio, 1, 1)
         contenido_layout.addWidget(form_container)
         layoutControlTiempo = QVBoxLayout()
         layoutControlTiempo.setSpacing(8)
@@ -216,6 +217,7 @@ class Pop_up_ModificarPromocion(QDialog):
         self.timeFinFechaEspec.setTime(QTime(18, 0))
         self.timeFinFechaEspec.setEnabled(False)
         self.timeFinFechaEspec.setFixedHeight(28)
+
         def toggle_fecha_espec(checked):
             self.dateFechaEspec.setEnabled(checked)
             self.timeInicioFechaEspec.setEnabled(checked)
@@ -224,6 +226,7 @@ class Pop_up_ModificarPromocion(QDialog):
                 self.checkPeriodo.setChecked(False)
                 self.checkDiasSemana.setChecked(False)
             self.actualizar_colores_horas()
+
         self.checkFechaEspec.toggled.connect(toggle_fecha_espec)
         layoutFechaEspec.addWidget(self.checkFechaEspec)
         layoutFechaEspec.addWidget(QLabel("Fecha:"))
@@ -261,6 +264,7 @@ class Pop_up_ModificarPromocion(QDialog):
         self.timeFinPeriodo.setTime(QTime(18, 0))
         self.timeFinPeriodo.setEnabled(False)
         self.timeFinPeriodo.setFixedHeight(28)
+
         def toggle_periodo(checked):
             self.dateInicio.setEnabled(checked)
             self.dateFin.setEnabled(checked)
@@ -269,6 +273,7 @@ class Pop_up_ModificarPromocion(QDialog):
             if checked:
                 self.checkFechaEspec.setChecked(False)
             self.actualizar_colores_horas()
+
         self.checkPeriodo.toggled.connect(toggle_periodo)
         layoutFechas.addWidget(self.checkPeriodo)
         layoutFechas.addWidget(QLabel("Desde:"))
@@ -311,10 +316,12 @@ class Pop_up_ModificarPromocion(QDialog):
         grupoDiasSemana.setLayout(layoutDias)
         layoutControlTiempo.addWidget(grupoDiasSemana)
         self.checkDiasSemana = QCheckBox("Activar días de la semana")
+
         def toggle_dias_semana(checked):
             if checked:
                 self.checkFechaEspec.setChecked(False)
             self.actualizar_colores_horas()
+
         self.checkDiasSemana.toggled.connect(toggle_dias_semana)
         layoutControlTiempo.insertWidget(2, self.checkDiasSemana)
         contenido_layout.addLayout(layoutControlTiempo)
@@ -372,9 +379,9 @@ class Pop_up_ModificarPromocion(QDialog):
         self.tablaProductos = QTableWidget()
         self.tablaProductos.setFixedHeight(250)
         self.tablaProductos.setColumnCount(4)
-        self.tablaProductos.setHorizontalHeaderLabels(["Producto","Cantidad","Modificar","Eliminar"])
+        self.tablaProductos.setHorizontalHeaderLabels(["Producto", "Cantidad", "Modificar", "Eliminar"])
         header = self.tablaProductos.horizontalHeader()
-        header.setSectionResizeMode(QHeaderView.Stretch) 
+        header.setSectionResizeMode(QHeaderView.Stretch)
         self.tablaProductos.verticalHeader().setVisible(False)
         self.tablaProductos.setEditTriggers(QTableWidget.NoEditTriggers)
         self.tablaProductos.setSelectionMode(QTableWidget.NoSelection)
@@ -459,9 +466,12 @@ class Pop_up_ModificarPromocion(QDialog):
         try:
             conn = sqlite3.connect(DB_PATH)
             c = conn.cursor()
-            c.execute("""SELECT nomProm FROM Promocion 
+            c.execute(
+                """SELECT nomProm FROM Promocion 
                          WHERE nomProm != ? 
-                         ORDER BY nomProm COLLATE NOCASE ASC""", (self.nomProm,))
+                         ORDER BY nomProm COLLATE NOCASE ASC""",
+                (self.nomProm,),
+            )
             nombres = [row[0] for row in c.fetchall()]
             conn.close()
             return nombres
@@ -496,21 +506,24 @@ class Pop_up_ModificarPromocion(QDialog):
             """)
             subcategorias = c.fetchall()
             conn.close()
-            
+
             for id_sub, nombre in subcategorias:
                 self.comboSubcategorias.addItem(nombre, id_sub)
         else:
             conn = sqlite3.connect(DB_PATH)
             c = conn.cursor()
-            c.execute("""
+            c.execute(
+                """
                 SELECT S.idSubcategoria, S.nombre 
                 FROM Subcategoria S
                 WHERE S.idCategoria = ? AND S.activa = 1 
                 ORDER BY S.nombre
-            """, (categoria_id,))
+            """,
+                (categoria_id,),
+            )
             subcategorias = c.fetchall()
             conn.close()
-            
+
             self.comboSubcategorias.addItem("Todas las subcategorías", -1)
             for id_sub, nombre in subcategorias:
                 self.comboSubcategorias.addItem(nombre, id_sub)
@@ -532,21 +545,27 @@ class Pop_up_ModificarPromocion(QDialog):
                 ORDER BY P.nomProd
             """)
         elif subcategoria_id == -1 and categoria_id != -1:
-            c.execute("""
+            c.execute(
+                """
                 SELECT P.nomProd 
                 FROM Producto P
                 JOIN Subcategoria S ON P.idSubcategoria = S.idSubcategoria
                 WHERE P.activo = 1 AND S.idCategoria = ?
                 ORDER BY P.nomProd
-            """, (categoria_id,))
+            """,
+                (categoria_id,),
+            )
         else:
-            c.execute("""
+            c.execute(
+                """
                 SELECT P.nomProd 
                 FROM Producto P
                 WHERE P.activo = 1 AND P.idSubcategoria = ?
                 ORDER BY P.nomProd
-            """, (subcategoria_id,))
-        
+            """,
+                (subcategoria_id,),
+            )
+
         productos = [p[0] for p in c.fetchall()]
         conn.close()
         self.comboProductos.addItems(productos)
@@ -554,9 +573,14 @@ class Pop_up_ModificarPromocion(QDialog):
             self.comboProductos.addItem("No hay productos disponibles")
 
     def actualizar_colores_horas(self):
-        for widget in [self.timeInicioFechaEspec, self.timeFinFechaEspec,
-                       self.timeInicioPeriodo, self.timeFinPeriodo,
-                       self.timeInicioDias, self.timeFinDias]:
+        for widget in [
+            self.timeInicioFechaEspec,
+            self.timeFinFechaEspec,
+            self.timeInicioPeriodo,
+            self.timeFinPeriodo,
+            self.timeInicioDias,
+            self.timeFinDias,
+        ]:
             widget.setStyleSheet("""
                 QTimeEdit {
                     background: white;
@@ -630,7 +654,7 @@ class Pop_up_ModificarPromocion(QDialog):
                         font-weight: bold;
                     }
                 """)
-                
+
         elif self.checkDiasSemana.isChecked():
             self.timeInicioDias.setStyleSheet("""
                 QTimeEdit {
@@ -656,13 +680,16 @@ class Pop_up_ModificarPromocion(QDialog):
     def cargarDatos(self):
         conn = sqlite3.connect(DB_PATH)
         c = conn.cursor()
-        c.execute("""
+        c.execute(
+            """
             SELECT idProm, nomProm, precioProm, imgProm, 
                    fechaEspecifica, fechaInicio, fechaFin, 
                    horaInicio, horaFin 
             FROM Promocion 
             WHERE nomProm=?
-        """, (self.nomProm,))
+        """,
+            (self.nomProm,),
+        )
         resultado = c.fetchone()
         if not resultado:
             QMessageBox.critical(self, "Advertencia", "Promoción no encontrada")
@@ -692,7 +719,7 @@ class Pop_up_ModificarPromocion(QDialog):
             if hora_inicio is not None:
                 self.timeInicioFechaEspec.setTime(QTime.fromString(hora_inicio, "HH:mm:ss"))
             if hora_fin is not None:
-                self.timeFinFechaEspec.setTime(QTime.fromString(hora_fin, "HH:mm:ss"))   
+                self.timeFinFechaEspec.setTime(QTime.fromString(hora_fin, "HH:mm:ss"))
         elif fecha_inicio is not None:
             self.checkPeriodo.setChecked(True)
             self.dateInicio.setDate(QDate.fromString(fecha_inicio, "yyyy-MM-dd"))
@@ -708,7 +735,7 @@ class Pop_up_ModificarPromocion(QDialog):
                 if hora_inicio is not None:
                     self.timeInicioPeriodo.setTime(QTime.fromString(hora_inicio, "HH:mm:ss"))
                 if hora_fin is not None:
-                    self.timeFinPeriodo.setTime(QTime.fromString(hora_fin, "HH:mm:ss")) 
+                    self.timeFinPeriodo.setTime(QTime.fromString(hora_fin, "HH:mm:ss"))
         elif tiene_dias_semana:
             self.checkDiasSemana.setChecked(True)
             if hora_inicio is not None:
@@ -720,12 +747,15 @@ class Pop_up_ModificarPromocion(QDialog):
         for checkbox in self.diasCheckboxes:
             checkbox.setChecked(checkbox.diaNum in dias)
         self.actualizar_colores_horas()
-        c.execute("""
+        c.execute(
+            """
             SELECT P.nomProd, PP.cantidadProdProm
             FROM PromocionProd PP
             JOIN Producto P ON PP.idProd = P.idProd
             WHERE PP.idProm = ?
-        """, (self.idProm,))
+        """,
+            (self.idProm,),
+        )
         productos = c.fetchall()
         self.cargarTablaProductos(productos)
         conn.close()
@@ -734,12 +764,12 @@ class Pop_up_ModificarPromocion(QDialog):
         self.tablaProductos.setRowCount(0)
         for row, (nombre, cantidad) in enumerate(productos):
             self.tablaProductos.insertRow(row)
-            item=QTableWidgetItem(nombre)
+            item = QTableWidgetItem(nombre)
             item.setTextAlignment(Qt.AlignCenter)
-            self.tablaProductos.setItem(row,0,item)
-            item=QTableWidgetItem(str(cantidad))
+            self.tablaProductos.setItem(row, 0, item)
+            item = QTableWidgetItem(str(cantidad))
             item.setTextAlignment(Qt.AlignCenter)
-            self.tablaProductos.setItem(row,1,item)
+            self.tablaProductos.setItem(row, 1, item)
             btnModificar = QPushButton("✏️")
             btnModificar.setStyleSheet("""
                 QPushButton {
@@ -757,7 +787,7 @@ class Pop_up_ModificarPromocion(QDialog):
             """)
             btnModificar.setCursor(Qt.PointingHandCursor)
             btnModificar.clicked.connect(lambda _, r=row: self.modificarProducto(r))
-            self.tablaProductos.setCellWidget(row,2,btnModificar)
+            self.tablaProductos.setCellWidget(row, 2, btnModificar)
             btnEliminar = QPushButton("🗑️")
             btnEliminar.setStyleSheet("""
                 QPushButton {
@@ -775,7 +805,7 @@ class Pop_up_ModificarPromocion(QDialog):
             """)
             btnEliminar.setCursor(Qt.PointingHandCursor)
             btnEliminar.clicked.connect(lambda _, r=row: self.eliminarProducto(r))
-            self.tablaProductos.setCellWidget(row,3,btnEliminar)
+            self.tablaProductos.setCellWidget(row, 3, btnEliminar)
 
     def agregarProducto(self):
         producto = self.comboProductos.currentText()
@@ -787,17 +817,17 @@ class Pop_up_ModificarPromocion(QDialog):
             QMessageBox.warning(self, "Advertencia", "Escriba una cantidad")
             return
         for row in range(self.tablaProductos.rowCount()):
-            if self.tablaProductos.item(row,0).text() == producto:
+            if self.tablaProductos.item(row, 0).text() == producto:
                 QMessageBox.warning(self, "Advertencia", f"El producto '{producto}' ya está en la promoción")
                 return
         fila = self.tablaProductos.rowCount()
         self.tablaProductos.insertRow(fila)
-        item=QTableWidgetItem(producto)
+        item = QTableWidgetItem(producto)
         item.setTextAlignment(Qt.AlignCenter)
-        self.tablaProductos.setItem(fila,0,item)
-        item=QTableWidgetItem(cantidad)
+        self.tablaProductos.setItem(fila, 0, item)
+        item = QTableWidgetItem(cantidad)
         item.setTextAlignment(Qt.AlignCenter)
-        self.tablaProductos.setItem(fila,1,item)
+        self.tablaProductos.setItem(fila, 1, item)
         btnModificar = QPushButton("✏️")
         btnModificar.setStyleSheet("""
             QPushButton {
@@ -815,7 +845,7 @@ class Pop_up_ModificarPromocion(QDialog):
         """)
         btnModificar.setCursor(Qt.PointingHandCursor)
         btnModificar.clicked.connect(lambda _, r=fila: self.modificarProducto(r))
-        self.tablaProductos.setCellWidget(fila,2,btnModificar)
+        self.tablaProductos.setCellWidget(fila, 2, btnModificar)
         btnEliminar = QPushButton("🗑️")
         btnEliminar.setStyleSheet("""
             QPushButton {
@@ -833,13 +863,13 @@ class Pop_up_ModificarPromocion(QDialog):
         """)
         btnEliminar.setCursor(Qt.PointingHandCursor)
         btnEliminar.clicked.connect(lambda _, r=fila: self.eliminarProducto(r))
-        self.tablaProductos.setCellWidget(fila,3,btnEliminar)
+        self.tablaProductos.setCellWidget(fila, 3, btnEliminar)
         self.editCantidad.clear()
         self.comboProductos.setCurrentIndex(0)
 
     def modificarProducto(self, fila):
-        nombre_actual = self.tablaProductos.item(fila,0).text()
-        cantidad_actual = self.tablaProductos.item(fila,1).text()
+        nombre_actual = self.tablaProductos.item(fila, 0).text()
+        cantidad_actual = self.tablaProductos.item(fila, 1).text()
         dialog = QDialog(self)
         dialog.setWindowTitle("Modificar Producto")
         dialog.setFixedSize(620, 250)
@@ -903,12 +933,15 @@ class Pop_up_ModificarPromocion(QDialog):
                 for id_sub, nombre in subcategorias:
                     combo_subcategorias.addItem(nombre, id_sub)
             else:
-                c.execute("""
+                c.execute(
+                    """
                     SELECT S.idSubcategoria, S.nombre 
                     FROM Subcategoria S
                     WHERE S.idCategoria = ? AND S.activa = 1 
                     ORDER BY S.nombre
-                """, (categoria_id,))
+                """,
+                    (categoria_id,),
+                )
                 subcategorias = c.fetchall()
                 combo_subcategorias.addItem("Todas las subcategorías", -1)
                 for id_sub, nombre in subcategorias:
@@ -929,20 +962,26 @@ class Pop_up_ModificarPromocion(QDialog):
                     ORDER BY P.nomProd
                 """)
             elif subcategoria_id == -1 and categoria_id != -1:
-                c.execute("""
+                c.execute(
+                    """
                     SELECT P.nomProd 
                     FROM Producto P
                     JOIN Subcategoria S ON P.idSubcategoria = S.idSubcategoria
                     WHERE P.activo = 1 AND S.idCategoria = ?
                     ORDER BY P.nomProd
-                """, (categoria_id,))
+                """,
+                    (categoria_id,),
+                )
             else:
-                c.execute("""
+                c.execute(
+                    """
                     SELECT P.nomProd 
                     FROM Producto P
                     WHERE P.activo = 1 AND P.idSubcategoria = ?
                     ORDER BY P.nomProd
-                """, (subcategoria_id,))
+                """,
+                    (subcategoria_id,),
+                )
             productos = [p[0] for p in c.fetchall()]
             if productos:
                 combo.addItems(productos)
@@ -1002,7 +1041,7 @@ class Pop_up_ModificarPromocion(QDialog):
                 padding: 8px;
             }
         """)
-    
+
         def guardar():
             nuevo_nombre = combo.currentText()
             nueva_cantidad = edit_cantidad.text().strip()
@@ -1013,15 +1052,15 @@ class Pop_up_ModificarPromocion(QDialog):
                 QMessageBox.information(dialog, "Aviso", "Debe llenar los campos necesarios")
                 return
             for r in range(self.tablaProductos.rowCount()):
-                if r != fila and self.tablaProductos.item(r,0).text() == nuevo_nombre:
+                if r != fila and self.tablaProductos.item(r, 0).text() == nuevo_nombre:
                     QMessageBox.information(dialog, "Aviso", f"El producto '{nuevo_nombre}' ya está en la promoción")
                     return
-            item=QTableWidgetItem(nuevo_nombre)
+            item = QTableWidgetItem(nuevo_nombre)
             item.setTextAlignment(Qt.AlignCenter)
-            self.tablaProductos.setItem(fila,0,item)
-            item=QTableWidgetItem(nueva_cantidad)
+            self.tablaProductos.setItem(fila, 0, item)
+            item = QTableWidgetItem(nueva_cantidad)
             item.setTextAlignment(Qt.AlignCenter)
-            self.tablaProductos.setItem(fila,1,item)
+            self.tablaProductos.setItem(fila, 1, item)
             dialog.accept()
 
         btn_guardar.clicked.connect(guardar)
@@ -1033,31 +1072,33 @@ class Pop_up_ModificarPromocion(QDialog):
         dialog.exec_()
         conn.close()
 
-    def eliminarProducto(self,fila):
+    def eliminarProducto(self, fila):
         self.tablaProductos.removeRow(fila)
         for i in range(self.tablaProductos.rowCount()):
-            boton=self.tablaProductos.cellWidget(i,2)
+            boton = self.tablaProductos.cellWidget(i, 2)
             boton.disconnect()
             boton.clicked.connect(lambda _, r=i: self.modificarProducto(r))
-            boton=self.tablaProductos.cellWidget(i,3)
+            boton = self.tablaProductos.cellWidget(i, 3)
             boton.disconnect()
             boton.clicked.connect(lambda _, r=i: self.eliminarProducto(r))
 
     def actualizarFoto(self):
-        file_path,_ = QFileDialog.getOpenFileName(self,"Seleccionar imagen","","Imágenes (*.png *.jpg *.jpeg *.bmp *.webp)")
+        file_path, _ = QFileDialog.getOpenFileName(
+            self, "Seleccionar imagen", "", "Imágenes (*.png *.jpg *.jpeg *.bmp *.webp)"
+        )
         if file_path:
-            pixmap = QPixmap(file_path).scaled(160,160,Qt.KeepAspectRatio, Qt.SmoothTransformation)
+            pixmap = QPixmap(file_path).scaled(160, 160, Qt.KeepAspectRatio, Qt.SmoothTransformation)
             self.botonImagen.setIcon(QIcon(pixmap))
-            self.botonImagen.setIconSize(QSize(160,160))
+            self.botonImagen.setIconSize(QSize(160, 160))
 
     def obtenerBytesImagen(self):
         icon = self.botonImagen.icon()
         if icon.isNull():
             return None
-        pixmap = icon.pixmap(160,160)
+        pixmap = icon.pixmap(160, 160)
         buffer = QBuffer()
         buffer.open(QBuffer.ReadWrite)
-        pixmap.save(buffer,"PNG")
+        pixmap.save(buffer, "PNG")
         return buffer.data()
 
     def guardarCambios(self):
@@ -1065,20 +1106,20 @@ class Pop_up_ModificarPromocion(QDialog):
         try:
             precio = float(self.campoPrecio.text())
         except ValueError:
-            QMessageBox.warning(self,"Advertencia","Precio inválido")
+            QMessageBox.warning(self, "Advertencia", "Precio inválido")
             return
         if not nombre:
-            QMessageBox.warning(self,"Advertencia","Nombre obligatorio")
+            QMessageBox.warning(self, "Advertencia", "Nombre obligatorio")
             return
         if self.tablaProductos.rowCount() == 0:
-            QMessageBox.warning(self,"Advertencia","La promoción debe tener al menos un producto")
+            QMessageBox.warning(self, "Advertencia", "La promoción debe tener al menos un producto")
             return
         conn = sqlite3.connect(DB_PATH)
         c = conn.cursor()
-        c.execute("""SELECT * FROM Promocion WHERE nomProm=?""",(nombre,))
-        resultados=c.fetchall()
-        if resultados and nombre!=self.nomProm:
-            QMessageBox.warning(self,"Advertencia","Este nombre de promocion ya ha sido registrado")
+        c.execute("""SELECT * FROM Promocion WHERE nomProm=?""", (nombre,))
+        resultados = c.fetchall()
+        if resultados and nombre != self.nomProm:
+            QMessageBox.warning(self, "Advertencia", "Este nombre de promocion ya ha sido registrado")
             conn.close()
             return
         fecha_especifica = None
@@ -1102,24 +1143,39 @@ class Pop_up_ModificarPromocion(QDialog):
         elif self.checkDiasSemana.isChecked():
             hora_inicio = self.timeInicioDias.time().toString("HH:mm:00")
             hora_fin = self.timeFinDias.time().toString("HH:mm:00")
-        c.execute("""UPDATE Promocion SET nomProm=?, precioProm=?, imgProm=?, fechaEspecifica=?, 
+        c.execute(
+            """UPDATE Promocion SET nomProm=?, precioProm=?, imgProm=?, fechaEspecifica=?, 
                      fechaInicio=?, fechaFin=?, horaInicio=?, horaFin=? WHERE idProm=?""",
-                  (nombre, precio, self.obtenerBytesImagen(), fecha_especifica, 
-                   fecha_inicio, fecha_fin, hora_inicio, hora_fin, self.idProm))
+            (
+                nombre,
+                precio,
+                self.obtenerBytesImagen(),
+                fecha_especifica,
+                fecha_inicio,
+                fecha_fin,
+                hora_inicio,
+                hora_fin,
+                self.idProm,
+            ),
+        )
         c.execute("DELETE FROM PromocionDias WHERE idProm=?", (self.idProm,))
         if self.checkDiasSemana.isChecked():
             for checkbox in self.diasCheckboxes:
                 if checkbox.isChecked():
-                    c.execute("INSERT INTO PromocionDias (idProm, diaSemana) VALUES (?,?)",
-                             (self.idProm, checkbox.diaNum))
-        c.execute("DELETE FROM PromocionProd WHERE idProm=?",(self.idProm,))
+                    c.execute(
+                        "INSERT INTO PromocionDias (idProm, diaSemana) VALUES (?,?)", (self.idProm, checkbox.diaNum)
+                    )
+        c.execute("DELETE FROM PromocionProd WHERE idProm=?", (self.idProm,))
         for row in range(self.tablaProductos.rowCount()):
-            nomProd = self.tablaProductos.item(row,0).text()
-            cantidad = float(self.tablaProductos.item(row,1).text())
-            c.execute("SELECT idProd FROM Producto WHERE nomProd=?",(nomProd,))
+            nomProd = self.tablaProductos.item(row, 0).text()
+            cantidad = float(self.tablaProductos.item(row, 1).text())
+            c.execute("SELECT idProd FROM Producto WHERE nomProd=?", (nomProd,))
             idProd = c.fetchone()[0]
-            c.execute("INSERT INTO PromocionProd (idProm,idProd,cantidadProdProm) VALUES (?,?,?)",(self.idProm,idProd,cantidad))
+            c.execute(
+                "INSERT INTO PromocionProd (idProm,idProd,cantidadProdProm) VALUES (?,?,?)",
+                (self.idProm, idProd, cantidad),
+            )
         conn.commit()
         conn.close()
-        QMessageBox.information(self,"Éxito","Promoción modificada correctamente")
+        QMessageBox.information(self, "Éxito", "Promoción modificada correctamente")
         self.accept()

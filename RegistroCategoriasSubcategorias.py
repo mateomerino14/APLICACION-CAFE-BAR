@@ -44,7 +44,6 @@ class RegistroCategoriasSubcategorias(QWidget):
         """)
         self.conjunto = set()
         self.set_up()
-        
 
     def set_up(self):
         self.layoutPrincipal = QVBoxLayout()
@@ -52,7 +51,6 @@ class RegistroCategoriasSubcategorias(QWidget):
         self.layoutPrincipal.setContentsMargins(20, 20, 20, 20)
         self.iniciarPagina()
         self.showMaximized()
-       
 
     def iniciarPagina(self):
         layout1 = QHBoxLayout()
@@ -250,7 +248,7 @@ class RegistroCategoriasSubcategorias(QWidget):
         self.camp4 = QLineEdit()
         self.camp4.setPlaceholderText("Nombre de la Subcategoría")
         self.camp4.setFixedHeight(40)
-        
+
         self.btnImagenSubcategoria = QPushButton("Subir Imagen Subcategoría")
         self.btnImagenSubcategoria.setFixedHeight(40)
         self.btnImagenSubcategoria.setStyleSheet("""
@@ -333,13 +331,14 @@ class RegistroCategoriasSubcategorias(QWidget):
         """)
         botonRegistrar.clicked.connect(lambda: self.subirInformacion(self.camp2.text()))
         self.layoutPrincipal.addWidget(botonRegistrar, alignment=Qt.AlignCenter)
-    
 
     def cargarCategoriasCompleter(self):
         try:
             conn = sqlite3.connect(DB_PATH)
             c = conn.cursor()
-            consulta = """SELECT nomCategoria FROM Categoria WHERE activa = 1 ORDER BY nomCategoria COLLATE NOCASE ASC"""
+            consulta = (
+                """SELECT nomCategoria FROM Categoria WHERE activa = 1 ORDER BY nomCategoria COLLATE NOCASE ASC"""
+            )
             c.execute(consulta)
             resultados = c.fetchall()
             conn.close()
@@ -350,20 +349,15 @@ class RegistroCategoriasSubcategorias(QWidget):
                 self.completer_categoria.setModel(modelo)
         except Exception as e:
             print(f"Error al cargar categorías: {e}")
-    
 
     def filtrarCategorias(self, texto):
         if texto:
             self.completer_categoria.setCompletionPrefix(texto)
             self.completer_categoria.complete()
-    
 
     def subirImagenCategoria(self):
         file_name, _ = QFileDialog.getOpenFileName(
-            self, 
-            "Seleccionar Imagen", 
-            "", 
-            "Imágenes (*.png *.jpg *.jpeg *.bmp *.gif)"
+            self, "Seleccionar Imagen", "", "Imágenes (*.png *.jpg *.jpeg *.bmp *.gif)"
         )
         if file_name:
             pixmap = QPixmap(file_name)
@@ -377,14 +371,10 @@ class RegistroCategoriasSubcategorias(QWidget):
                 msg.setWindowTitle("Error")
                 msg.setText("No se pudo cargar la imagen seleccionada.")
                 msg.exec_()
-    
 
     def subirImagenSubcategoria(self):
         file_name, _ = QFileDialog.getOpenFileName(
-            self, 
-            "Seleccionar Imagen para Subcategoría", 
-            "", 
-            "Imágenes (*.png *.jpg *.jpeg *.bmp *.gif)"
+            self, "Seleccionar Imagen para Subcategoría", "", "Imágenes (*.png *.jpg *.jpeg *.bmp *.gif)"
         )
         if file_name:
             pixmap = QPixmap(file_name)
@@ -398,7 +388,6 @@ class RegistroCategoriasSubcategorias(QWidget):
                 msg.setWindowTitle("Error")
                 msg.setText("No se pudo cargar la imagen seleccionada.")
                 msg.exec_()
-    
 
     def subirInformacion(self, cat):
         conn = sqlite3.connect(DB_PATH)
@@ -481,7 +470,6 @@ class RegistroCategoriasSubcategorias(QWidget):
             self.labelImagenCategoria.setText("Imagen\npor defecto")
             self.labelImagenSubcategoria.setText("Imagen\npor defecto")
         self.cargarCategoriasCompleter()
-        
 
     def anadirElemento(self, elemento, bandera=True):
         if elemento == "":
@@ -615,7 +603,6 @@ class RegistroCategoriasSubcategorias(QWidget):
                 self.tablaRegistrados.item(i, 0).setBackground(QColor(248, 249, 250))
             else:
                 self.tablaRegistrados.item(i, 0).setBackground(QColor(255, 255, 255))
-    
 
     def modificarElemento(self, elemento, boton):
         fila = self.tablaRegistrados.indexAt(boton.mapTo(self.tablaRegistrados.viewport(), QPoint(0, 0))).row()
@@ -671,13 +658,12 @@ class RegistroCategoriasSubcategorias(QWidget):
                 boton_eliminar.clicked.disconnect()
                 boton_eliminar.clicked.connect(lambda _, e=nuevo: self.eliminarElemento(e, boton_eliminar))
 
-
     def eliminarElemento(self, elemento, boton):
         self.conjunto.discard(elemento)
         indice = self.tablaRegistrados.indexAt(boton.mapTo(self.tablaRegistrados.viewport(), QPoint(0, 0)))
         fila = indice.row()
         self.tablaRegistrados.removeRow(fila)
-    
+
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)

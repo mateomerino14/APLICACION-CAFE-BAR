@@ -7,11 +7,12 @@ from Rutas import get_db_path
 
 DB_PATH = get_db_path()
 
+
 class Pop_up_ModificacionEmpleado(QDialog):
-   def __init__(self,datos,parent=None):
+    def __init__(self, datos, parent=None):
         super().__init__()
         self.setWindowTitle("MODIFICACION DE EMPLEADO")
-        self.setFixedSize(500,930)
+        self.setFixedSize(500, 930)
         self.imagen_bytes_nueva = None
         self.setStyleSheet("""
             QDialog {
@@ -45,10 +46,9 @@ class Pop_up_ModificacionEmpleado(QDialog):
             }
         """)
         self.crearPantallaModificacion(datos)
-        
-        
-   def crearPantallaModificacion(self,datos):
-       campoEstilo = """
+
+    def crearPantallaModificacion(self, datos):
+        campoEstilo = """
            QLineEdit, QComboBox {
                background-color: white;
                border: 2px solid #dce4ec;
@@ -73,8 +73,8 @@ class Pop_up_ModificacionEmpleado(QDialog):
                width: 0px;
                height: 0px;
            }
-       """     
-       editEstilo = """
+       """
+        editEstilo = """
            QLabel {
                font-size: 14px;
                font-weight: bold;
@@ -82,9 +82,9 @@ class Pop_up_ModificacionEmpleado(QDialog):
                padding: 3px;
            }
        """
-       layoutDatos = QVBoxLayout(self)
-       titulo = QLabel("DATOS DE EMPLEADO")
-       titulo.setStyleSheet("""
+        layoutDatos = QVBoxLayout(self)
+        titulo = QLabel("DATOS DE EMPLEADO")
+        titulo.setStyleSheet("""
            QLabel {
                font-size: 22px;
                color: #2980b9;
@@ -97,120 +97,120 @@ class Pop_up_ModificacionEmpleado(QDialog):
                border: 1px solid #a0c5e8;
            }
        """)
-       layoutDatos.addWidget(titulo, alignment=Qt.AlignCenter)
-       layoutDatos.setSpacing(10)
-       layoutDatos.setContentsMargins(40,40,40,40)
-       nombre = QLabel("NOMBRE")
-       apellido = QLabel("APELLIDO PATERNO")
-       apellido2 = QLabel("APELLIDO MATERNO")
-       ci = QLabel("CI")
-       numCelular = QLabel("NÚMERO DE CELULAR")
-       idCargo = QLabel("CARGO")
-       direccion = QLabel("DIRECCIÓN")
-       correoElectronico = QLabel("CORREO ELECTRÓNICO")
-       letras_regex = QRegExp("[A-Za-záéíóúÁÉÍÓÚñÑ\\s]+")
-       digitos_regex = QRegExp("[0-9]*")
-       direccion_regex = QRegExp("[A-Za-záéíóúÁÉÍÓÚñÑ0-9#.,\\-\\s]*")
-       self.campoNombre = QLineEdit()
-       self.campoNombre.setValidator(QRegExpValidator(letras_regex))
-       self.campoNombre.setMaxLength(30)
-       self.campoNombre.setText(datos[3])
-       self.campoApellido = QLineEdit()
-       self.campoApellido.setValidator(QRegExpValidator(letras_regex))
-       self.campoApellido.setMaxLength(30)
-       self.campoApellido.setText(datos[4])
-       self.campoApellido2 = QLineEdit()
-       self.campoApellido2.setValidator(QRegExpValidator(letras_regex))
-       self.campoApellido2.setMaxLength(30)
-       self.campoApellido2.setText(datos[5])
-       self.campoCi = QLineEdit()
-       self.campoCi.setValidator(QRegExpValidator(digitos_regex))
-       self.campoCi.setMaxLength(7)
-       self.campoCi.setText(datos[2])
-       self.campoNumeroCelular = QLineEdit()
-       self.campoNumeroCelular.setMaxLength(8)
-       self.campoNumeroCelular.setValidator(QRegExpValidator(digitos_regex))
-       self.campoNumeroCelular.setText(datos[6])
-       self.campoCargo = QComboBox()
-       self.cargarCargos(self.campoCargo)
-       self.campoCargo.setCurrentText(datos[9])
-       self.campoDireccion = QLineEdit()
-       self.campoDireccion.setValidator(QRegExpValidator(direccion_regex))
-       self.campoDireccion.setMaxLength(30)
-       self.campoDireccion.setText(datos[7])
-       self.campoCorreo = QLineEdit()
-       regex_correo = QRegExpValidator(QRegExp(r"^[a-zA-Z][a-zA-Z0-9._-]*@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"))
-       self.campoCorreo.setValidator(regex_correo)
-       self.campoCorreo.setMaxLength(30)
-       self.campoCorreo.setText(datos[8])
-       nombre.setStyleSheet(editEstilo)
-       apellido.setStyleSheet(editEstilo)
-       apellido2.setStyleSheet(editEstilo)
-       ci.setStyleSheet(editEstilo)
-       numCelular.setStyleSheet(editEstilo)
-       idCargo.setStyleSheet(editEstilo)
-       direccion.setStyleSheet(editEstilo)
-       correoElectronico.setStyleSheet(editEstilo)
-       self.campoNombre.setStyleSheet(campoEstilo)
-       self.campoApellido.setStyleSheet(campoEstilo)
-       self.campoApellido2.setStyleSheet(campoEstilo)
-       self.campoCi.setStyleSheet(campoEstilo)
-       self.campoNumeroCelular.setStyleSheet(campoEstilo)
-       self.campoCargo.setStyleSheet(campoEstilo)
-       self.campoDireccion.setStyleSheet(campoEstilo)
-       self.campoCorreo.setStyleSheet(campoEstilo)
-       layout1 = QHBoxLayout()
-       layout2 = QHBoxLayout()
-       layout3 = QHBoxLayout()
-       layout4 = QHBoxLayout()
-       layout5 = QHBoxLayout()
-       layout6 = QHBoxLayout()
-       layout7 = QHBoxLayout()
-       layout8 = QHBoxLayout()
-       layout1.addWidget(nombre)
-       layout1.addWidget(self.campoNombre)
-       layout2.addWidget(apellido)
-       layout2.addWidget(self.campoApellido)
-       layout3.addWidget(apellido2)
-       layout3.addWidget(self.campoApellido2)
-       layout4.addWidget(ci)
-       layout4.addWidget(self.campoCi)
-       layout5.addWidget(numCelular)
-       layout5.addWidget(self.campoNumeroCelular)
-       layout6.addWidget(idCargo)
-       layout6.addWidget(self.campoCargo)
-       layout7.addWidget(direccion)
-       layout7.addWidget(self.campoDireccion)
-       layout8.addWidget(correoElectronico)
-       layout8.addWidget(self.campoCorreo)
-       layoutDatos.addLayout(layout1)
-       layoutDatos.addLayout(layout2)
-       layoutDatos.addLayout(layout3)
-       layoutDatos.addLayout(layout4)
-       layoutDatos.addLayout(layout5)
-       layoutDatos.addLayout(layout6)
-       layoutDatos.addLayout(layout7)
-       layoutDatos.addLayout(layout8)
+        layoutDatos.addWidget(titulo, alignment=Qt.AlignCenter)
+        layoutDatos.setSpacing(10)
+        layoutDatos.setContentsMargins(40, 40, 40, 40)
+        nombre = QLabel("NOMBRE")
+        apellido = QLabel("APELLIDO PATERNO")
+        apellido2 = QLabel("APELLIDO MATERNO")
+        ci = QLabel("CI")
+        numCelular = QLabel("NÚMERO DE CELULAR")
+        idCargo = QLabel("CARGO")
+        direccion = QLabel("DIRECCIÓN")
+        correoElectronico = QLabel("CORREO ELECTRÓNICO")
+        letras_regex = QRegExp("[A-Za-záéíóúÁÉÍÓÚñÑ\\s]+")
+        digitos_regex = QRegExp("[0-9]*")
+        direccion_regex = QRegExp("[A-Za-záéíóúÁÉÍÓÚñÑ0-9#.,\\-\\s]*")
+        self.campoNombre = QLineEdit()
+        self.campoNombre.setValidator(QRegExpValidator(letras_regex))
+        self.campoNombre.setMaxLength(30)
+        self.campoNombre.setText(datos[3])
+        self.campoApellido = QLineEdit()
+        self.campoApellido.setValidator(QRegExpValidator(letras_regex))
+        self.campoApellido.setMaxLength(30)
+        self.campoApellido.setText(datos[4])
+        self.campoApellido2 = QLineEdit()
+        self.campoApellido2.setValidator(QRegExpValidator(letras_regex))
+        self.campoApellido2.setMaxLength(30)
+        self.campoApellido2.setText(datos[5])
+        self.campoCi = QLineEdit()
+        self.campoCi.setValidator(QRegExpValidator(digitos_regex))
+        self.campoCi.setMaxLength(7)
+        self.campoCi.setText(datos[2])
+        self.campoNumeroCelular = QLineEdit()
+        self.campoNumeroCelular.setMaxLength(8)
+        self.campoNumeroCelular.setValidator(QRegExpValidator(digitos_regex))
+        self.campoNumeroCelular.setText(datos[6])
+        self.campoCargo = QComboBox()
+        self.cargarCargos(self.campoCargo)
+        self.campoCargo.setCurrentText(datos[9])
+        self.campoDireccion = QLineEdit()
+        self.campoDireccion.setValidator(QRegExpValidator(direccion_regex))
+        self.campoDireccion.setMaxLength(30)
+        self.campoDireccion.setText(datos[7])
+        self.campoCorreo = QLineEdit()
+        regex_correo = QRegExpValidator(QRegExp(r"^[a-zA-Z][a-zA-Z0-9._-]*@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"))
+        self.campoCorreo.setValidator(regex_correo)
+        self.campoCorreo.setMaxLength(30)
+        self.campoCorreo.setText(datos[8])
+        nombre.setStyleSheet(editEstilo)
+        apellido.setStyleSheet(editEstilo)
+        apellido2.setStyleSheet(editEstilo)
+        ci.setStyleSheet(editEstilo)
+        numCelular.setStyleSheet(editEstilo)
+        idCargo.setStyleSheet(editEstilo)
+        direccion.setStyleSheet(editEstilo)
+        correoElectronico.setStyleSheet(editEstilo)
+        self.campoNombre.setStyleSheet(campoEstilo)
+        self.campoApellido.setStyleSheet(campoEstilo)
+        self.campoApellido2.setStyleSheet(campoEstilo)
+        self.campoCi.setStyleSheet(campoEstilo)
+        self.campoNumeroCelular.setStyleSheet(campoEstilo)
+        self.campoCargo.setStyleSheet(campoEstilo)
+        self.campoDireccion.setStyleSheet(campoEstilo)
+        self.campoCorreo.setStyleSheet(campoEstilo)
+        layout1 = QHBoxLayout()
+        layout2 = QHBoxLayout()
+        layout3 = QHBoxLayout()
+        layout4 = QHBoxLayout()
+        layout5 = QHBoxLayout()
+        layout6 = QHBoxLayout()
+        layout7 = QHBoxLayout()
+        layout8 = QHBoxLayout()
+        layout1.addWidget(nombre)
+        layout1.addWidget(self.campoNombre)
+        layout2.addWidget(apellido)
+        layout2.addWidget(self.campoApellido)
+        layout3.addWidget(apellido2)
+        layout3.addWidget(self.campoApellido2)
+        layout4.addWidget(ci)
+        layout4.addWidget(self.campoCi)
+        layout5.addWidget(numCelular)
+        layout5.addWidget(self.campoNumeroCelular)
+        layout6.addWidget(idCargo)
+        layout6.addWidget(self.campoCargo)
+        layout7.addWidget(direccion)
+        layout7.addWidget(self.campoDireccion)
+        layout8.addWidget(correoElectronico)
+        layout8.addWidget(self.campoCorreo)
+        layoutDatos.addLayout(layout1)
+        layoutDatos.addLayout(layout2)
+        layoutDatos.addLayout(layout3)
+        layoutDatos.addLayout(layout4)
+        layoutDatos.addLayout(layout5)
+        layoutDatos.addLayout(layout6)
+        layoutDatos.addLayout(layout7)
+        layoutDatos.addLayout(layout8)
 
-       self.imagenLabel = QLabel()
-       self.imagenLabel.setFixedSize(210,210)
-       self.imagenLabel.setAlignment(Qt.AlignCenter)
-       self.imagenLabel.setStyleSheet("""
+        self.imagenLabel = QLabel()
+        self.imagenLabel.setFixedSize(210, 210)
+        self.imagenLabel.setAlignment(Qt.AlignCenter)
+        self.imagenLabel.setStyleSheet("""
            QLabel {
                border: 2px dashed #95a5a6;
                border-radius: 8px;
                background-color: #f8f9fa;
            }
        """)
-       self.datosImagenOriginal = datos[10]
-       pixmap = QPixmap()
-       pixmap.loadFromData(datos[10].data())
-       self.imagenLabel.setPixmap(pixmap.scaled(210, 210,  Qt.IgnoreAspectRatio,  Qt.SmoothTransformation))
-       layoutImagenFoto = QVBoxLayout()
-       layoutImagenFoto.addWidget(self.imagenLabel, alignment=Qt.AlignCenter)
-       botonCambiarFoto = QPushButton("Cambiar Foto")
-       botonCambiarFoto.setCursor(Qt.PointingHandCursor)
-       botonCambiarFoto.setStyleSheet("""
+        self.datosImagenOriginal = datos[10]
+        pixmap = QPixmap()
+        pixmap.loadFromData(datos[10].data())
+        self.imagenLabel.setPixmap(pixmap.scaled(210, 210, Qt.IgnoreAspectRatio, Qt.SmoothTransformation))
+        layoutImagenFoto = QVBoxLayout()
+        layoutImagenFoto.addWidget(self.imagenLabel, alignment=Qt.AlignCenter)
+        botonCambiarFoto = QPushButton("Cambiar Foto")
+        botonCambiarFoto.setCursor(Qt.PointingHandCursor)
+        botonCambiarFoto.setStyleSheet("""
            QPushButton {
                background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
                    stop: 0 #3498db, stop: 1 #2980b9);
@@ -227,13 +227,13 @@ class Pop_up_ModificacionEmpleado(QDialog):
                    stop: 0 #5dade2, stop: 1 #2e86c1);
            }
        """)
-       botonCambiarFoto.clicked.connect(self.cambiarFoto)
-       layoutImagenFoto.addWidget(botonCambiarFoto, alignment=Qt.AlignCenter)
-       layoutDatos.addLayout(layoutImagenFoto)
+        botonCambiarFoto.clicked.connect(self.cambiarFoto)
+        layoutImagenFoto.addWidget(botonCambiarFoto, alignment=Qt.AlignCenter)
+        layoutDatos.addLayout(layoutImagenFoto)
 
-       botonRestablecerClave = QPushButton("Restablecer Contraseña")
-       botonRestablecerClave.setCursor(Qt.PointingHandCursor)
-       botonRestablecerClave.setStyleSheet("""
+        botonRestablecerClave = QPushButton("Restablecer Contraseña")
+        botonRestablecerClave.setCursor(Qt.PointingHandCursor)
+        botonRestablecerClave.setStyleSheet("""
            QPushButton {
                background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
                    stop: 0 #d35400, stop: 1 #ba4a00);
@@ -249,18 +249,18 @@ class Pop_up_ModificacionEmpleado(QDialog):
                    stop: 0 #e67e22, stop: 1 #d35400);
            }
        """)
-       botonRestablecerClave.clicked.connect(lambda: self.restablecerContrasena(datos[0]))
-       layoutDatos.addWidget(botonRestablecerClave)
+        botonRestablecerClave.clicked.connect(lambda: self.restablecerContrasena(datos[0]))
+        layoutDatos.addWidget(botonRestablecerClave)
 
-       layoutImagen = QHBoxLayout()
-       layoutBotones = QHBoxLayout()
-       cancelar = QPushButton("CANCELAR")
-       modificar = QPushButton("MODIFICAR")
-       cancelar.setCursor(Qt.PointingHandCursor)
-       cancelar.clicked.connect(self.cerrarVentanaCancelar)
-       modificar.setCursor(Qt.PointingHandCursor)
-       modificar.clicked.connect(lambda:self.modificarRegistro(datos))
-       botonEstilo1 = """
+        layoutImagen = QHBoxLayout()
+        layoutBotones = QHBoxLayout()
+        cancelar = QPushButton("CANCELAR")
+        modificar = QPushButton("MODIFICAR")
+        cancelar.setCursor(Qt.PointingHandCursor)
+        cancelar.clicked.connect(self.cerrarVentanaCancelar)
+        modificar.setCursor(Qt.PointingHandCursor)
+        modificar.clicked.connect(lambda: self.modificarRegistro(datos))
+        botonEstilo1 = """
            QPushButton {
                background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
                    stop: 0 #e74c3c, stop: 1 #c0392b);
@@ -282,7 +282,7 @@ class Pop_up_ModificacionEmpleado(QDialog):
            }
        """
 
-       botonEstilo2 = """
+        botonEstilo2 = """
            QPushButton {
                background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
                    stop: 0 #2ecc71, stop: 1 #27ae60);
@@ -303,31 +303,24 @@ class Pop_up_ModificacionEmpleado(QDialog):
                    stop: 0 #27ae60, stop: 1 #2ecc71);
            }
        """
-       
-       layoutCancelar = QVBoxLayout()
-       layoutModificar = QVBoxLayout()
-       cancelar.setStyleSheet(botonEstilo1)
-       modificar.setStyleSheet(botonEstilo2)
-       layoutCancelar.addStretch(100)
-       layoutCancelar.addWidget(cancelar, alignment=Qt.AlignCenter, stretch=20) 
-       layoutBotones.addStretch(1)
-       layoutBotones.addLayout(layoutCancelar)       
-       layoutModificar.addStretch(100)
-       layoutModificar.addWidget(modificar, alignment=Qt.AlignCenter, stretch=20)
-       layoutBotones.addLayout(layoutModificar)  
-       layoutBotones.addStretch(1)
-       layoutBotones.setSpacing(20)
-       layoutDatos.addLayout(layoutBotones)
-   
-       
-   
-   def cambiarFoto(self):
-        filename, _ = QFileDialog.getOpenFileName(
-            self,
-            "Seleccionar Foto",
-            "",
-            "Imágenes (*.png *.jpg *.jpeg *.bmp)"
-        )
+
+        layoutCancelar = QVBoxLayout()
+        layoutModificar = QVBoxLayout()
+        cancelar.setStyleSheet(botonEstilo1)
+        modificar.setStyleSheet(botonEstilo2)
+        layoutCancelar.addStretch(100)
+        layoutCancelar.addWidget(cancelar, alignment=Qt.AlignCenter, stretch=20)
+        layoutBotones.addStretch(1)
+        layoutBotones.addLayout(layoutCancelar)
+        layoutModificar.addStretch(100)
+        layoutModificar.addWidget(modificar, alignment=Qt.AlignCenter, stretch=20)
+        layoutBotones.addLayout(layoutModificar)
+        layoutBotones.addStretch(1)
+        layoutBotones.setSpacing(20)
+        layoutDatos.addLayout(layoutBotones)
+
+    def cambiarFoto(self):
+        filename, _ = QFileDialog.getOpenFileName(self, "Seleccionar Foto", "", "Imágenes (*.png *.jpg *.jpeg *.bmp)")
         if not filename:
             return
         pixmap = QPixmap(filename)
@@ -341,11 +334,11 @@ class Pop_up_ModificacionEmpleado(QDialog):
         buffer.close()
         self.imagenLabel.setPixmap(pixmap.scaled(210, 210, Qt.IgnoreAspectRatio, Qt.SmoothTransformation))
 
-   def restablecerContrasena(self, aliasEmp):
-       dialog = QDialog(self)
-       dialog.setWindowTitle("Restablecer Contraseña")
-       dialog.setFixedSize(420, 340)
-       dialog.setStyleSheet("""
+    def restablecerContrasena(self, aliasEmp):
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Restablecer Contraseña")
+        dialog.setFixedSize(420, 340)
+        dialog.setStyleSheet("""
            QDialog {
                background-color: #ffffff;
                font-family: 'Segoe UI', Arial, sans-serif;
@@ -370,125 +363,135 @@ class Pop_up_ModificacionEmpleado(QDialog):
                background-color: white;
            }
        """)
-       layout = QVBoxLayout(dialog)
-       layout.setContentsMargins(0, 0, 0, 0)
-       layout.setSpacing(0)
+        layout = QVBoxLayout(dialog)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
 
-       header = QWidget()
-       header.setStyleSheet("""
+        header = QWidget()
+        header.setStyleSheet("""
            QWidget {
                background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
                    stop: 0 #d35400, stop: 1 #ba4a00);
            }
        """)
-       header_layout = QVBoxLayout(header)
-       header_layout.setContentsMargins(24, 20, 24, 20)
-       header_layout.setSpacing(4)
-       titulo = QLabel("Restablecer Contraseña")
-       titulo.setStyleSheet("QLabel { color: white; font-size: 18px; font-weight: bold; background: transparent; }")
-       titulo.setAlignment(Qt.AlignCenter)
-       header_layout.addWidget(titulo)
-       subtitulo = QLabel(f"Usuario: {aliasEmp}")
-       subtitulo.setStyleSheet("QLabel { color: rgba(255,255,255,0.9); font-size: 13px; font-weight: 500; background: transparent; }")
-       subtitulo.setAlignment(Qt.AlignCenter)
-       header_layout.addWidget(subtitulo)
-       layout.addWidget(header)
+        header_layout = QVBoxLayout(header)
+        header_layout.setContentsMargins(24, 20, 24, 20)
+        header_layout.setSpacing(4)
+        titulo = QLabel("Restablecer Contraseña")
+        titulo.setStyleSheet("QLabel { color: white; font-size: 18px; font-weight: bold; background: transparent; }")
+        titulo.setAlignment(Qt.AlignCenter)
+        header_layout.addWidget(titulo)
+        subtitulo = QLabel(f"Usuario: {aliasEmp}")
+        subtitulo.setStyleSheet(
+            "QLabel { color: rgba(255,255,255,0.9); font-size: 13px; font-weight: 500; background: transparent; }"
+        )
+        subtitulo.setAlignment(Qt.AlignCenter)
+        header_layout.addWidget(subtitulo)
+        layout.addWidget(header)
 
-       cuerpo = QWidget()
-       cuerpo.setStyleSheet("background-color: #ffffff;")
-       cuerpo_layout = QVBoxLayout(cuerpo)
-       cuerpo_layout.setContentsMargins(28, 24, 28, 24)
-       cuerpo_layout.setSpacing(8)
+        cuerpo = QWidget()
+        cuerpo.setStyleSheet("background-color: #ffffff;")
+        cuerpo_layout = QVBoxLayout(cuerpo)
+        cuerpo_layout.setContentsMargins(28, 24, 28, 24)
+        cuerpo_layout.setSpacing(8)
 
-       cuerpo_layout.addWidget(QLabel("Nueva contraseña (mínimo 6 caracteres)"))
-       campoNueva = QLineEdit()
-       campoNueva.setEchoMode(QLineEdit.Password)
-       cuerpo_layout.addWidget(campoNueva)
-       cuerpo_layout.addSpacing(10)
+        cuerpo_layout.addWidget(QLabel("Nueva contraseña (mínimo 6 caracteres)"))
+        campoNueva = QLineEdit()
+        campoNueva.setEchoMode(QLineEdit.Password)
+        cuerpo_layout.addWidget(campoNueva)
+        cuerpo_layout.addSpacing(10)
 
-       cuerpo_layout.addWidget(QLabel("Confirmar contraseña"))
-       campoConfirmar = QLineEdit()
-       campoConfirmar.setEchoMode(QLineEdit.Password)
-       cuerpo_layout.addWidget(campoConfirmar)
-       cuerpo_layout.addStretch()
-       layout.addWidget(cuerpo, 1)
+        cuerpo_layout.addWidget(QLabel("Confirmar contraseña"))
+        campoConfirmar = QLineEdit()
+        campoConfirmar.setEchoMode(QLineEdit.Password)
+        cuerpo_layout.addWidget(campoConfirmar)
+        cuerpo_layout.addStretch()
+        layout.addWidget(cuerpo, 1)
 
-       footer = QWidget()
-       footer.setStyleSheet("QWidget { background-color: #f8f9fa; border-top: 1px solid #e2e8f0; }")
-       footer_layout = QHBoxLayout(footer)
-       footer_layout.setContentsMargins(24, 16, 24, 16)
-       footer_layout.setSpacing(12)
+        footer = QWidget()
+        footer.setStyleSheet("QWidget { background-color: #f8f9fa; border-top: 1px solid #e2e8f0; }")
+        footer_layout = QHBoxLayout(footer)
+        footer_layout.setContentsMargins(24, 16, 24, 16)
+        footer_layout.setSpacing(12)
 
-       btn_cancelar = QPushButton("Cancelar")
-       btn_cancelar.setCursor(Qt.PointingHandCursor)
-       btn_cancelar.setStyleSheet("""
+        btn_cancelar = QPushButton("Cancelar")
+        btn_cancelar.setCursor(Qt.PointingHandCursor)
+        btn_cancelar.setStyleSheet("""
            QPushButton { background-color: #95a5a6; color: white; border: none; border-radius: 8px;
                font-size: 14px; font-weight: bold; padding: 10px 20px; min-width: 100px; }
            QPushButton:hover { background-color: #7f8c8d; }
        """)
-       btn_confirmar = QPushButton("Confirmar")
-       btn_confirmar.setCursor(Qt.PointingHandCursor)
-       btn_confirmar.setStyleSheet("""
+        btn_confirmar = QPushButton("Confirmar")
+        btn_confirmar.setCursor(Qt.PointingHandCursor)
+        btn_confirmar.setStyleSheet("""
            QPushButton { background-color: #2ecc71; color: white; border: none; border-radius: 8px;
                font-size: 14px; font-weight: bold; padding: 10px 20px; min-width: 100px; }
            QPushButton:hover { background-color: #27ae60; }
        """)
-       footer_layout.addStretch()
-       footer_layout.addWidget(btn_cancelar)
-       footer_layout.addWidget(btn_confirmar)
-       layout.addWidget(footer)
+        footer_layout.addStretch()
+        footer_layout.addWidget(btn_cancelar)
+        footer_layout.addWidget(btn_confirmar)
+        layout.addWidget(footer)
 
-       btn_cancelar.clicked.connect(dialog.reject)
-       btn_confirmar.clicked.connect(dialog.accept)
-       campoConfirmar.returnPressed.connect(dialog.accept)
+        btn_cancelar.clicked.connect(dialog.reject)
+        btn_confirmar.clicked.connect(dialog.accept)
+        campoConfirmar.returnPressed.connect(dialog.accept)
 
-       if dialog.exec_() != QDialog.Accepted:
-           return
+        if dialog.exec_() != QDialog.Accepted:
+            return
 
-       nueva = campoNueva.text().strip()
-       confirmar = campoConfirmar.text().strip()
-       if len(nueva) < 6:
-           QMessageBox.warning(self, "Error", "La contraseña debe tener al menos 6 caracteres.")
-           return
-       if nueva != confirmar:
-           QMessageBox.warning(self, "Error", "Las contraseñas no coinciden.")
-           return
+        nueva = campoNueva.text().strip()
+        confirmar = campoConfirmar.text().strip()
+        if len(nueva) < 6:
+            QMessageBox.warning(self, "Error", "La contraseña debe tener al menos 6 caracteres.")
+            return
+        if nueva != confirmar:
+            QMessageBox.warning(self, "Error", "Las contraseñas no coinciden.")
+            return
 
-       conn = sqlite3.connect(DB_PATH)
-       c = conn.cursor()
-       try:
-           nueva_hash = hashear_password(nueva)
-           c.execute("UPDATE Empleado SET contEmp=? WHERE aliasEmp=?", (nueva_hash, aliasEmp))
-           conn.commit()
-           QMessageBox.information(self, "Éxito", "La contraseña fue restablecida correctamente.")
-       except Exception as e:
-           conn.rollback()
-           QMessageBox.critical(self, "Error", f"No se pudo restablecer la contraseña: {str(e)}")
-       finally:
-           conn.close()
+        conn = sqlite3.connect(DB_PATH)
+        c = conn.cursor()
+        try:
+            nueva_hash = hashear_password(nueva)
+            c.execute("UPDATE Empleado SET contEmp=? WHERE aliasEmp=?", (nueva_hash, aliasEmp))
+            conn.commit()
+            QMessageBox.information(self, "Éxito", "La contraseña fue restablecida correctamente.")
+        except Exception as e:
+            conn.rollback()
+            QMessageBox.critical(self, "Error", f"No se pudo restablecer la contraseña: {str(e)}")
+        finally:
+            conn.close()
 
-   def modificarRegistro(self,datos):
-       if self.campoNombre.text().strip()=="" or self.campoApellido.text().strip()=="" or self.campoApellido2.text().strip()=="" or self.campoCi.text().strip()=="" or self.campoNumeroCelular.text().strip()=="":
-           QMessageBox.warning(self,"Alerta","Rellene los campos necesarios")
-           return
-       if len(self.campoCi.text().strip()) < 5:
-           QMessageBox.warning(self,"Alerta","Ingrese un CI válido (mínimo 5 dígitos)")
-           return
-       if len(self.campoNumeroCelular.text().strip()) < 7:
-           QMessageBox.warning(self,"Alerta","Ingrese un número de celular válido (mínimo 7 dígitos)")
-           return
-       conn=sqlite3.connect(DB_PATH)
-       c=conn.cursor()
-       try:
-           buscarIndice="""SELECT idCargo FROM Cargo WHERE nomCarg=?"""
-           resultados=c.execute(buscarIndice,(self.campoCargo.currentText(),))
-           fila_indice=resultados.fetchone()
-           if fila_indice is None:
-               QMessageBox.warning(self,"Alerta","Seleccione un cargo válido")
-               return
-           indice=fila_indice[0]
-           imagen_final = self.imagen_bytes_nueva if self.imagen_bytes_nueva is not None else self.datosImagenOriginal.data()
-           consulta="""UPDATE Empleado
+    def modificarRegistro(self, datos):
+        if (
+            self.campoNombre.text().strip() == ""
+            or self.campoApellido.text().strip() == ""
+            or self.campoApellido2.text().strip() == ""
+            or self.campoCi.text().strip() == ""
+            or self.campoNumeroCelular.text().strip() == ""
+        ):
+            QMessageBox.warning(self, "Alerta", "Rellene los campos necesarios")
+            return
+        if len(self.campoCi.text().strip()) < 5:
+            QMessageBox.warning(self, "Alerta", "Ingrese un CI válido (mínimo 5 dígitos)")
+            return
+        if len(self.campoNumeroCelular.text().strip()) < 7:
+            QMessageBox.warning(self, "Alerta", "Ingrese un número de celular válido (mínimo 7 dígitos)")
+            return
+        conn = sqlite3.connect(DB_PATH)
+        c = conn.cursor()
+        try:
+            buscarIndice = """SELECT idCargo FROM Cargo WHERE nomCarg=?"""
+            resultados = c.execute(buscarIndice, (self.campoCargo.currentText(),))
+            fila_indice = resultados.fetchone()
+            if fila_indice is None:
+                QMessageBox.warning(self, "Alerta", "Seleccione un cargo válido")
+                return
+            indice = fila_indice[0]
+            imagen_final = (
+                self.imagen_bytes_nueva if self.imagen_bytes_nueva is not None else self.datosImagenOriginal.data()
+            )
+            consulta = """UPDATE Empleado
                        SET nomEmp=?,
                            apellPatEmp=?,
                            apellMatEmp=?,
@@ -499,34 +502,44 @@ class Pop_up_ModificacionEmpleado(QDialog):
                            idCargo=?,
                            imgEmp=?
                        WHERE aliasEmp=?"""
-           dupla=(self.campoNombre.text(),self.campoApellido.text(),self.campoApellido2.text(),self.campoCi.text(),self.campoNumeroCelular.text(),self.campoDireccion.text(),self.campoCorreo.text(),indice,imagen_final,datos[0])
-           c.execute(consulta,dupla)
-           conn.commit()
-       except Exception as e:
-           conn.rollback()
-           QMessageBox.critical(self,"Error", f"No se pudo modificar el empleado: {str(e)}")
-           return
-       finally:
-           conn.close()
-       QMessageBox.information(self,"Confirmación", "¡Se modifico con exito!" )
-       self.cerrarVentana()
-      
-        
-   def cerrarVentanaCancelar(self):
-       self.reject()
-       self.close()
-       
-   def cerrarVentana(self):
-       self.accept() 
-       self.close()
-       
-   def cargarCargos(self,campoCargos):
-        conn=sqlite3.connect(DB_PATH)
-        c=conn.cursor()
-        consulta=("""SELECT * FROM Cargo""")
+            dupla = (
+                self.campoNombre.text(),
+                self.campoApellido.text(),
+                self.campoApellido2.text(),
+                self.campoCi.text(),
+                self.campoNumeroCelular.text(),
+                self.campoDireccion.text(),
+                self.campoCorreo.text(),
+                indice,
+                imagen_final,
+                datos[0],
+            )
+            c.execute(consulta, dupla)
+            conn.commit()
+        except Exception as e:
+            conn.rollback()
+            QMessageBox.critical(self, "Error", f"No se pudo modificar el empleado: {str(e)}")
+            return
+        finally:
+            conn.close()
+        QMessageBox.information(self, "Confirmación", "¡Se modifico con exito!")
+        self.cerrarVentana()
+
+    def cerrarVentanaCancelar(self):
+        self.reject()
+        self.close()
+
+    def cerrarVentana(self):
+        self.accept()
+        self.close()
+
+    def cargarCargos(self, campoCargos):
+        conn = sqlite3.connect(DB_PATH)
+        c = conn.cursor()
+        consulta = """SELECT * FROM Cargo"""
         c.execute(consulta)
-        resultados=c.fetchall()
-        for _,cargo in resultados:
+        resultados = c.fetchall()
+        for _, cargo in resultados:
             campoCargos.addItem(cargo)
         campoCargos.setCurrentIndex(-1)
         conn.close()

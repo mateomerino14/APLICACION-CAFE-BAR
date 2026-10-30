@@ -7,6 +7,7 @@ from Rutas import get_db_path
 
 DB_PATH = get_db_path()
 
+
 class Pop_up_ModificacionCargos(QDialog):
     def __init__(self, id_cargo, nom_cargo, parent=None):
         super().__init__(parent)
@@ -70,9 +71,9 @@ class Pop_up_ModificacionCargos(QDialog):
                 height: 0px;
             }
         """)
-        
+
         self.crearPantallaModificacion()
-        
+
     def obtener_todas_subpantallas_agrupadas(self):
         conn = sqlite3.connect(DB_PATH)
         c = conn.cursor()
@@ -84,34 +85,30 @@ class Pop_up_ModificacionCargos(QDialog):
         """)
         resultados = c.fetchall()
         conn.close()
-        
+
         pantallas = {}
         for id_pant, nom_pant, id_sub, nom_sub, accion in resultados:
             if id_pant not in pantallas:
-                pantallas[id_pant] = {
-                    'nombre': nom_pant,
-                    'subpantallas': []
-                }
-            pantallas[id_pant]['subpantallas'].append({
-                'id': id_sub,
-                'nombre': nom_sub,
-                'accion': accion
-            })
+                pantallas[id_pant] = {'nombre': nom_pant, 'subpantallas': []}
+            pantallas[id_pant]['subpantallas'].append({'id': id_sub, 'nombre': nom_sub, 'accion': accion})
         return pantallas
-        
+
     def obtener_subpantallas_seleccionadas(self):
         conn = sqlite3.connect(DB_PATH)
         c = conn.cursor()
-        c.execute("""
+        c.execute(
+            """
             SELECT s.idSubPant
             FROM PermisosCargoSubpantalla pcs
             JOIN Subpantalla s ON pcs.idSubPant = s.idSubPant
             WHERE pcs.idCarg = ?
-        """, (self.id_cargo,))
+        """,
+            (self.id_cargo,),
+        )
         resultados = c.fetchall()
         conn.close()
         return [r[0] for r in resultados]
-        
+
     def crearPantallaModificacion(self):
         main_widget = QWidget()
         main_widget.setStyleSheet("""
@@ -119,14 +116,14 @@ class Pop_up_ModificacionCargos(QDialog):
                 background: white;
             }
         """)
-        
+
         layout_principal = QVBoxLayout(self)
         layout_principal.addWidget(main_widget)
         layout_principal.setContentsMargins(20, 20, 20, 20)
         layoutDatos = QVBoxLayout(main_widget)
         layoutDatos.setSpacing(20)
         layoutDatos.setContentsMargins(30, 25, 30, 25)
-        
+
         titulo = QLabel(f"MODIFICAR CARGO: {self.nom_cargo}")
         titulo.setStyleSheet("""
             QLabel {
@@ -143,7 +140,7 @@ class Pop_up_ModificacionCargos(QDialog):
         """)
         titulo.setAlignment(Qt.AlignCenter)
         layoutDatos.addWidget(titulo)
-        
+
         layoutCargo = QHBoxLayout()
         cargo = QLabel("Cargo:")
         campoCargo = QLabel(self.nom_cargo)
@@ -174,7 +171,7 @@ class Pop_up_ModificacionCargos(QDialog):
         layoutCargo.addWidget(cargo)
         layoutCargo.addWidget(campoCargo)
         layoutDatos.addLayout(layoutCargo)
-        
+
         separador = QFrame()
         separador.setFrameShape(QFrame.HLine)
         separador.setFrameShadow(QFrame.Sunken)
@@ -187,7 +184,7 @@ class Pop_up_ModificacionCargos(QDialog):
             }
         """)
         layoutDatos.addWidget(separador)
-        
+
         tituloSecciones = QLabel("PERMISOS DE ACCESO POR SUBECCIÓN")
         tituloSecciones.setStyleSheet("""
             QLabel {
@@ -202,16 +199,16 @@ class Pop_up_ModificacionCargos(QDialog):
         """)
         tituloSecciones.setAlignment(Qt.AlignCenter)
         layoutDatos.addWidget(tituloSecciones)
-        
+
         scroll_area = QScrollArea()
         scroll_area.setWidgetResizable(True)
         scroll_area.setMinimumHeight(350)
-        
+
         scroll_content = QWidget()
         scroll_layout = QVBoxLayout(scroll_content)
         scroll_layout.setSpacing(15)
         scroll_layout.setContentsMargins(20, 20, 20, 20)
-        
+
         checkbox_style = """
             QCheckBox {
                 font-size: 14px;
@@ -242,13 +239,13 @@ class Pop_up_ModificacionCargos(QDialog):
                 border: 2px solid #6c757d;
             }
         """
-        
+
         self.checkboxes = []
         self.checkboxes_por_pantalla = {}
-        
+
         pantallas = self.obtener_todas_subpantallas_agrupadas()
         seleccionadas = self.obtener_subpantallas_seleccionadas()
-        
+
         for id_pant, pantalla in pantallas.items():
             seccion_widget = QWidget()
             seccion_widget.setStyleSheet("""
@@ -259,7 +256,7 @@ class Pop_up_ModificacionCargos(QDialog):
                 }
             """)
             seccion_layout = QVBoxLayout(seccion_widget)
-            
+
             header_seccion = QHBoxLayout()
             titulo_seccion = QLabel(f"📌 {pantalla['nombre']}")
             titulo_seccion.setStyleSheet("""
@@ -272,7 +269,7 @@ class Pop_up_ModificacionCargos(QDialog):
                 margin: 5px;
             """)
             header_seccion.addWidget(titulo_seccion, 1)
-            
+
             btn_seleccionar_todas = QPushButton("✓ Todas")
             btn_seleccionar_todas.setStyleSheet("""
                 QPushButton {
@@ -290,7 +287,7 @@ class Pop_up_ModificacionCargos(QDialog):
             """)
             btn_seleccionar_todas.setCursor(Qt.PointingHandCursor)
             header_seccion.addWidget(btn_seleccionar_todas)
-            
+
             btn_deseleccionar_todas = QPushButton("✗ Ninguna")
             btn_deseleccionar_todas.setStyleSheet("""
                 QPushButton {
@@ -308,15 +305,15 @@ class Pop_up_ModificacionCargos(QDialog):
             """)
             btn_deseleccionar_todas.setCursor(Qt.PointingHandCursor)
             header_seccion.addWidget(btn_deseleccionar_todas)
-            
+
             seccion_layout.addLayout(header_seccion)
-            
+
             grid_sub = QGridLayout()
             grid_sub.setSpacing(10)
             grid_sub.setContentsMargins(15, 10, 15, 10)
-            
+
             self.checkboxes_por_pantalla[id_pant] = []
-            
+
             for i, sub in enumerate(pantalla['subpantallas']):
                 checkbox = QCheckBox(sub['nombre'])
                 checkbox.setStyleSheet(checkbox_style)
@@ -325,25 +322,29 @@ class Pop_up_ModificacionCargos(QDialog):
                     checkbox.setChecked(True)
                 self.checkboxes.append(checkbox)
                 self.checkboxes_por_pantalla[id_pant].append(checkbox)
-                
+
                 fila = i // 2
                 columna = i % 2
                 grid_sub.addWidget(checkbox, fila, columna)
-            
-            btn_seleccionar_todas.clicked.connect(lambda checked, lista=self.checkboxes_por_pantalla[id_pant]: self.seleccionar_todos(lista, True))
-            btn_deseleccionar_todas.clicked.connect(lambda checked, lista=self.checkboxes_por_pantalla[id_pant]: self.seleccionar_todos(lista, False))
-            
+
+            btn_seleccionar_todas.clicked.connect(
+                lambda checked, lista=self.checkboxes_por_pantalla[id_pant]: self.seleccionar_todos(lista, True)
+            )
+            btn_deseleccionar_todas.clicked.connect(
+                lambda checked, lista=self.checkboxes_por_pantalla[id_pant]: self.seleccionar_todos(lista, False)
+            )
+
             seccion_layout.addLayout(grid_sub)
             scroll_layout.addWidget(seccion_widget)
-        
+
         scroll_layout.addStretch()
         scroll_area.setWidget(scroll_content)
         layoutDatos.addWidget(scroll_area, 1)
-        
+
         layoutBotones = QHBoxLayout()
         cancelar = QPushButton("CANCELAR")
         modificar = QPushButton("GUARDAR CAMBIOS")
-        
+
         boton_cancelar_style = """
             QPushButton {
                 background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
@@ -365,7 +366,7 @@ class Pop_up_ModificacionCargos(QDialog):
                 padding: 11px 24px;
             }
         """
-        
+
         boton_guardar_style = """
             QPushButton {
                 background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
@@ -387,71 +388,73 @@ class Pop_up_ModificacionCargos(QDialog):
                 padding: 11px 24px;
             }
         """
-        
+
         cancelar.setStyleSheet(boton_cancelar_style)
         modificar.setStyleSheet(boton_guardar_style)
         cancelar.setCursor(Qt.PointingHandCursor)
         modificar.setCursor(Qt.PointingHandCursor)
-        
+
         cancelar.clicked.connect(self.cerrarVentanaCancelar)
         modificar.clicked.connect(self.guardarCambios)
-        
+
         layoutBotones.addStretch(1)
         layoutBotones.addWidget(cancelar)
         layoutBotones.addSpacing(20)
         layoutBotones.addWidget(modificar)
         layoutBotones.addStretch(1)
         layoutDatos.addLayout(layoutBotones)
-        
+
     def seleccionar_todos(self, lista_checkboxes, estado):
         for checkbox in lista_checkboxes:
             checkbox.setChecked(estado)
-        
+
     def cerrarVentanaCancelar(self):
         self.reject()
-        
+
     def guardarCambios(self):
         seleccionados = []
         for checkbox in self.checkboxes:
             if checkbox.isChecked():
                 id_subpantalla = checkbox.property("idSubPant")
                 seleccionados.append(id_subpantalla)
-        
+
         if len(seleccionados) == 0:
             QMessageBox.warning(self, "Advertencia", "Se debe dar acceso por lo menos a una subsección")
             return
-        
+
         conn = sqlite3.connect(DB_PATH)
         c = conn.cursor()
-        
+
         try:
             conn.execute("BEGIN TRANSACTION")
-            
+
             c.execute("DELETE FROM PermisosCargoSubpantalla WHERE idCarg = ?", (self.id_cargo,))
-            
+
             for id_sub in seleccionados:
-                c.execute("INSERT INTO PermisosCargoSubpantalla(idCarg, idSubPant) VALUES (?, ?)",
-                         (self.id_cargo, id_sub))
-            
+                c.execute(
+                    "INSERT INTO PermisosCargoSubpantalla(idCarg, idSubPant) VALUES (?, ?)", (self.id_cargo, id_sub)
+                )
+
             conn.commit()
             QMessageBox.information(self, "Confirmación", "Se ha registrado con éxito la modificación")
             self.accept()
-            
+
         except Exception as e:
             conn.rollback()
             QMessageBox.critical(self, "Error", f"Error al guardar: {str(e)}")
         finally:
             conn.close()
-        
+
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton:
             self.drag_start_position = event.globalPos() - self.frameGeometry().topLeft()
             event.accept()
-            
+
     def mouseMoveEvent(self, event):
         if event.buttons() == Qt.LeftButton and hasattr(self, 'drag_start_position'):
             self.move(event.globalPos() - self.drag_start_position)
             event.accept()
+
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)

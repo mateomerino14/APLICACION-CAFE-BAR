@@ -9,16 +9,17 @@ from Rutas import get_db_path, get_resource_path
 
 DB_PATH = get_db_path()
 
+
 class Login(QMainWindow):
     def __init__(self):
         super().__init__()
         self.set_up()
-    
+
     def set_up(self):
         self.setWindowTitle("LOGIN - Sistema Cafebar")
         self.showMaximized()
         self.setFixedSize(QApplication.primaryScreen().size())
-        
+
         self.setStyleSheet("""
             QMainWindow {
                 background-color: #aed6f1;
@@ -71,26 +72,25 @@ class Login(QMainWindow):
                  background-color: #2980b9; 
              }
         """)
-        
-        
+
         contenedorPrincipal = QWidget()
         self.setCentralWidget(contenedorPrincipal)
         layout = QVBoxLayout()
         layout.setContentsMargins(50, 50, 50, 50)
         layout.setSpacing(30)
         contenedorPrincipal.setLayout(layout)
-        layoutListaEmpleados=QHBoxLayout()
-        botonIzquierda=QPushButton("<<")
+        layoutListaEmpleados = QHBoxLayout()
+        botonIzquierda = QPushButton("<<")
         botonIzquierda.setStyleSheet("""font-size:25px;""")
-        botonIzquierda.setFixedSize(50,40)
+        botonIzquierda.setFixedSize(50, 40)
         layoutListaEmpleados.addWidget(botonIzquierda)
-        self.layoutEmpleado=QHBoxLayout()
-        self.cargarEmpleados(self.layoutEmpleado,layoutListaEmpleados)
-        botonDerecha=QPushButton(">>")
+        self.layoutEmpleado = QHBoxLayout()
+        self.cargarEmpleados(self.layoutEmpleado, layoutListaEmpleados)
+        botonDerecha = QPushButton(">>")
         botonIzquierda.clicked.connect(lambda _: self.moverIzquierda(self.layoutEmpleado))
         botonDerecha.clicked.connect(lambda _: self.moverDerecha(self.layoutEmpleado))
         botonDerecha.setStyleSheet(botonIzquierda.styleSheet())
-        botonDerecha.setFixedSize(50,40)
+        botonDerecha.setFixedSize(50, 40)
         layoutListaEmpleados.addWidget(botonDerecha)
         layout.addLayout(layoutListaEmpleados)
         titulo = QLabel("INICIO DE SESIÓN")
@@ -104,8 +104,8 @@ class Login(QMainWindow):
         titulo.setAlignment(Qt.AlignCenter)
         layout.addWidget(titulo)
         logo = QLabel()
-        logo_path = get_resource_path(os.path.join('Imagenes','Login-Logo.jpg'))
-        logo.setFixedSize(150, 150) 
+        logo_path = get_resource_path(os.path.join('Imagenes', 'Login-Logo.jpg'))
+        logo.setFixedSize(150, 150)
         if os.path.exists(logo_path):
             pixmap = QPixmap(logo_path)
             if not pixmap.isNull():
@@ -137,7 +137,7 @@ class Login(QMainWindow):
                 border-radius: 75px;
             """)
         logo.setAlignment(Qt.AlignCenter)
-        layout.addWidget(logo,alignment=Qt.AlignCenter)
+        layout.addWidget(logo, alignment=Qt.AlignCenter)
         form_layout = QVBoxLayout()
         form_layout.setSpacing(20)
         usuario_layout = QVBoxLayout()
@@ -151,8 +151,8 @@ class Login(QMainWindow):
         self.text_usuario = QLineEdit()
         self.text_usuario.setPlaceholderText("Ingrese su nombre de usuario")
         self.text_usuario.setFixedWidth(400)
-        usuario_layout.addWidget(lbl_usuario,alignment=Qt.AlignCenter)
-        usuario_layout.addWidget(self.text_usuario,alignment=Qt.AlignCenter)
+        usuario_layout.addWidget(lbl_usuario, alignment=Qt.AlignCenter)
+        usuario_layout.addWidget(self.text_usuario, alignment=Qt.AlignCenter)
         form_layout.addLayout(usuario_layout)
         pass_layout = QVBoxLayout()
         lbl_pass = QLabel("CONTRASEÑA")
@@ -170,14 +170,14 @@ class Login(QMainWindow):
         self.btn_visible = QPushButton()
         self.btn_visible.setCheckable(True)
         self.btn_visible.setCursor(Qt.PointingHandCursor)
-        ojo_abierto_path =get_resource_path(os.path.join('Imagenes','ojoAbierto.png'))
-        ojo_cerrado_path = get_resource_path(os.path.join('Imagenes','ojoCerrado.png'))
+        ojo_abierto_path = get_resource_path(os.path.join('Imagenes', 'ojoAbierto.png'))
+        ojo_cerrado_path = get_resource_path(os.path.join('Imagenes', 'ojoCerrado.png'))
         if os.path.exists(ojo_abierto_path):
             self.btn_visible.setIcon(QIcon(ojo_abierto_path))
         else:
             print(f"Error: No se encontró el icono {ojo_abierto_path}")
             self.btn_visible.setText("👁")
-        
+
         self.btn_visible.setIconSize(QSize(24, 24))
         self.btn_visible.setStyleSheet("""
             QPushButton {
@@ -185,12 +185,14 @@ class Login(QMainWindow):
                 border: none;
             }
         """)
-        self.btn_visible.clicked.connect(lambda: self.mostrarContrasena(self.text_pass, self.btn_visible, ojo_abierto_path, ojo_cerrado_path))
+        self.btn_visible.clicked.connect(
+            lambda: self.mostrarContrasena(self.text_pass, self.btn_visible, ojo_abierto_path, ojo_cerrado_path)
+        )
         pass_input_layout.addStretch(71)
-        pass_input_layout.addWidget(self.text_pass,alignment=Qt.AlignCenter,stretch=100)
-        pass_input_layout.addWidget(self.btn_visible,alignment=Qt.AlignLeft,stretch=0)
+        pass_input_layout.addWidget(self.text_pass, alignment=Qt.AlignCenter, stretch=100)
+        pass_input_layout.addWidget(self.btn_visible, alignment=Qt.AlignLeft, stretch=0)
         pass_input_layout.addStretch(50)
-        pass_layout.addWidget(lbl_pass,alignment=Qt.AlignCenter)
+        pass_layout.addWidget(lbl_pass, alignment=Qt.AlignCenter)
         pass_layout.addLayout(pass_input_layout)
         form_layout.addLayout(pass_layout)
         layout.addLayout(form_layout)
@@ -204,7 +206,9 @@ class Login(QMainWindow):
             font-size: 18px;
             font-weight: bold;
         """)
-        btn_ingresar.clicked.connect(lambda: self.verificarUsuario(self.text_usuario.text().strip(), self.text_pass.text().strip()))
+        btn_ingresar.clicked.connect(
+            lambda: self.verificarUsuario(self.text_usuario.text().strip(), self.text_pass.text().strip())
+        )
         btn_directorio = QPushButton("MODO DIRECTORIO")
         btn_directorio.setFixedSize(250, 50)
         btn_directorio.setStyleSheet("""
@@ -227,10 +231,13 @@ class Login(QMainWindow):
             color: #7f8c8d;
         """)
         footer.setAlignment(Qt.AlignCenter)
-        layout.addWidget(footer,stretch=3)
-        QShortcut(QKeySequence("Return"),self,lambda *_: self.verificarUsuario(self.text_usuario.text().strip(), self.text_pass.text().strip()))
-        
-    
+        layout.addWidget(footer, stretch=3)
+        QShortcut(
+            QKeySequence("Return"),
+            self,
+            lambda *_: self.verificarUsuario(self.text_usuario.text().strip(), self.text_pass.text().strip()),
+        )
+
     def rellenarCampo(self, campo):
         conn = None
         try:
@@ -247,12 +254,11 @@ class Login(QMainWindow):
         finally:
             if conn:
                 conn.close()
-        
 
     def verificarUsuario(self, nombre, contrasena):
         if not nombre or not contrasena:
             QMessageBox.information(self, "Aviso", "Rellene los campos solicitados")
-            return 
+            return
         conn = None
         try:
             conn = sqlite3.connect(DB_PATH)
@@ -266,7 +272,7 @@ class Login(QMainWindow):
                 else:
                     QMessageBox.information(self, "Error", "Credenciales Incorrectas")
                 esDirectorio = True
-            
+
             if not esDirectorio:
                 consulta = """SELECT contEmp FROM Empleado WHERE aliasEmp = ? AND disponibleEmp=1"""
                 c.execute(consulta, (nombre,))
@@ -274,20 +280,20 @@ class Login(QMainWindow):
                 if resultado and verificar_password(contrasena, resultado[0]):
                     self.iniciarPaginaPrincipal(nombre)
                 else:
-                    QMessageBox.information(self, "Error", "Credenciales Incorrectas")  
+                    QMessageBox.information(self, "Error", "Credenciales Incorrectas")
         except sqlite3.Error as e:
             QMessageBox.critical(self, "Error", f"Error al acceder a la base de datos: {str(e)}")
         finally:
             if conn:
                 conn.close()
-        
 
-    def iniciarPaginaPrincipal(self,usuario):
+    def iniciarPaginaPrincipal(self, usuario):
         from AdministradorPaginas import AdministradorPaginas
-        self.pagina=AdministradorPaginas(usuario)
+
+        self.pagina = AdministradorPaginas(usuario)
         self.pagina.show()
         self.close()
-    
+
     def mostrarContrasena(self, textPass, botonVisible, ojo_abierto_path, ojo_cerrado_path):
         if botonVisible.isChecked():
             textPass.setEchoMode(QLineEdit.Normal)
@@ -301,8 +307,7 @@ class Login(QMainWindow):
                 botonVisible.setIcon(QIcon(ojo_abierto_path))
             else:
                 botonVisible.setText("👁")
-    
-    
+
     def cargarEmpleados(self, layoutEmpleados, layout):
         self._clear_layout(layoutEmpleados)
         self.contenedor = QFrame()
@@ -341,30 +346,26 @@ class Login(QMainWindow):
             layoutEmpleados.addWidget(vacio)
         self.actual = inicio
 
-
     def moverIzquierda(self, layoutEmpleados):
-        if self.actual==0:
-            return 
-        nuevo_inicio = max(0, self.actual-self.page_size)
-        self.mostrarPagina(layoutEmpleados,nuevo_inicio)
-    
-    
-    def moverDerecha(self, layoutEmpleados):
-        if self.actual+self.page_size>=len(self.resultados):
-            return  
-        nuevo_inicio = self.actual+self.page_size
+        if self.actual == 0:
+            return
+        nuevo_inicio = max(0, self.actual - self.page_size)
         self.mostrarPagina(layoutEmpleados, nuevo_inicio)
-        
-        
+
+    def moverDerecha(self, layoutEmpleados):
+        if self.actual + self.page_size >= len(self.resultados):
+            return
+        nuevo_inicio = self.actual + self.page_size
+        self.mostrarPagina(layoutEmpleados, nuevo_inicio)
+
     def _clear_layout(self, layout):
         while layout.count():
             item = layout.takeAt(0)
             w = item.widget()
             if w:
                 w.deleteLater()
-        
-        
-        
+
+
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     pagina = Login()

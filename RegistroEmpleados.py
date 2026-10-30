@@ -9,6 +9,7 @@ from Rutas import get_db_path, get_resource_path
 
 DB_PATH = get_db_path()
 
+
 class RegistroEmpleados(QWidget):
     def __init__(self):
         super().__init__()
@@ -43,12 +44,12 @@ class RegistroEmpleados(QWidget):
             }
         """)
         self.set_up()
-        
+
     def set_up(self):
         self.layoutDatos = QHBoxLayout()
         self.layoutPrincipal = QVBoxLayout()
         self.setLayout(self.layoutPrincipal)
-        self.layoutPrincipal.setContentsMargins(20,20,20,20)
+        self.layoutPrincipal.setContentsMargins(20, 20, 20, 20)
         self.anadirAreaRegistro()
         self.layoutPrincipal.setSpacing(50)
         self.layoutFoto = QVBoxLayout()
@@ -56,7 +57,7 @@ class RegistroEmpleados(QWidget):
         self.anadirAreaFotoRegistro()
         self.layoutPrincipal.addStretch(1)
         self.showMaximized()
-    
+
     def anadirAreaRegistro(self):
         labelEstilo = """
             font-size: 16px;
@@ -65,7 +66,7 @@ class RegistroEmpleados(QWidget):
             font-weight: bold;
             margin-bottom: 5px;
         """
-                       
+
         camposEstilo = """
             background-color: white;
             border: 2px solid #bdc3c7;
@@ -73,7 +74,7 @@ class RegistroEmpleados(QWidget):
             padding: 0px;
             font-size: 15px;
         """
-        
+
         botonesEstilo = """
             QPushButton {
                 background-color: #3498db;
@@ -88,7 +89,7 @@ class RegistroEmpleados(QWidget):
                 background-color: #2980b9;
             }
         """
-        
+
         widgetRegistro = QWidget()
         widgetRegistro.setStyleSheet("""
             background-color: white;
@@ -122,13 +123,13 @@ class RegistroEmpleados(QWidget):
         self.campo3.setStyleSheet(camposEstilo)
         self.campo3.setValidator(QRegExpValidator(letras_regex))
         self.campo3.setMaxLength(30)
-        
+
         def crear_grupo_campo(label, campo):
             grupo = QVBoxLayout()
             grupo.addWidget(label, alignment=Qt.AlignLeft)
             grupo.addWidget(campo)
             return grupo
-        
+
         layoutH1.addLayout(crear_grupo_campo(nombre, self.campo1))
         layoutH1.addLayout(crear_grupo_campo(apellido, self.campo2))
         layoutH1.addLayout(crear_grupo_campo(apellido2, self.campo3))
@@ -182,16 +183,18 @@ class RegistroEmpleados(QWidget):
         confirmar = QPushButton("CONFIRMAR")
         confirmar.setStyleSheet(botonesEstilo)
         confirmar.setCursor(Qt.PointingHandCursor)
-        confirmar.clicked.connect(lambda: self.activarPantallaPequena(
-            self.campo1.text().strip(),  # nombre
-            self.campo2.text().strip(),  # apell. pat
-            self.campo3.text().strip(),  # apell. mat
-            self.campo4.text().strip(),  # CI
-            self.campo5.text().strip(),  # celular
-            self.campo6.text().strip(),  # dirección (OPCIONAL)
-            self.campo7.text().strip(),  # correo (OPCIONAL)
-            self.campo8.currentText().strip()  # cargo
-        ))
+        confirmar.clicked.connect(
+            lambda: self.activarPantallaPequena(
+                self.campo1.text().strip(),  # nombre
+                self.campo2.text().strip(),  # apell. pat
+                self.campo3.text().strip(),  # apell. mat
+                self.campo4.text().strip(),  # CI
+                self.campo5.text().strip(),  # celular
+                self.campo6.text().strip(),  # dirección (OPCIONAL)
+                self.campo7.text().strip(),  # correo (OPCIONAL)
+                self.campo8.currentText().strip(),  # cargo
+            )
+        )
         rechazar = QPushButton("CANCELAR")
         rechazar.setStyleSheet("""
             QPushButton {
@@ -208,10 +211,11 @@ class RegistroEmpleados(QWidget):
             }
         """)
         rechazar.setCursor(Qt.PointingHandCursor)
-        rechazar.clicked.connect(lambda: self.limpiarTodo(
-            self.campo1, self.campo2, self.campo3, self.campo4,
-            self.campo5, self.campo6, self.campo7, self.campo8
-        ))
+        rechazar.clicked.connect(
+            lambda: self.limpiarTodo(
+                self.campo1, self.campo2, self.campo3, self.campo4, self.campo5, self.campo6, self.campo7, self.campo8
+            )
+        )
         layoutBotones.addWidget(confirmar)
         layoutBotones.addWidget(rechazar)
         layoutBotones.setAlignment(Qt.AlignCenter)
@@ -228,7 +232,7 @@ class RegistroEmpleados(QWidget):
         for id, cargo in resultado.fetchall():
             self.campo8.addItem(cargo)
         conn.close()
-        
+
     def activarPantallaPequena(self, c1, c2, c3, c4, c5, c6, c7, c8):
         if not c1 or not c2 or not c3:
             QMessageBox.warning(self, "Advertencia", "Ingrese los campos obligatorios")
@@ -249,13 +253,14 @@ class RegistroEmpleados(QWidget):
         pixmap.save(buffer, "PNG")
         imagen_blob = buffer.data()
         buffer.close()
-        lista.append(imagen_blob)  
+        lista.append(imagen_blob)
         mini = Pop_up_RegistrarEmpleados(lista, self)
         resultado = mini.exec_()
         if resultado == QDialog.Accepted:
-            self.limpiarTodo(self.campo1, self.campo2, self.campo3, self.campo4,self.campo5, self.campo6, self.campo7, self.campo8)
+            self.limpiarTodo(
+                self.campo1, self.campo2, self.campo3, self.campo4, self.campo5, self.campo6, self.campo7, self.campo8
+            )
 
-        
     def limpiarTodo(self, campo1, campo2, campo3, campo4, campo5, campo6, campo7, campo8):
         campo1.clear()
         campo2.clear()
@@ -273,7 +278,7 @@ class RegistroEmpleados(QWidget):
             pixmap.fill(QColor("#3498db"))
         pixmap = pixmap.scaled(200, 200, Qt.KeepAspectRatio, Qt.SmoothTransformation)
         self.foto.setPixmap(pixmap)
-        
+
     def anadirAreaFotoRegistro(self):
         self.foto.setAlignment(Qt.AlignCenter)
         self.foto.setFixedSize(300, 300)
@@ -311,14 +316,9 @@ class RegistroEmpleados(QWidget):
         self.layoutFoto.addWidget(botonFoto, alignment=Qt.AlignCenter)
         self.layoutFoto.setAlignment(Qt.AlignCenter)
         self.layoutDatos.addLayout(self.layoutFoto)
-    
+
     def subirFoto(self):
-        filename, _ = QFileDialog.getOpenFileName(
-            self,
-            "Seleccionar Foto",
-            "",
-            "Imágenes (*.png *.jpg *.jpeg *.bmp)"
-        )
+        filename, _ = QFileDialog.getOpenFileName(self, "Seleccionar Foto", "", "Imágenes (*.png *.jpg *.jpeg *.bmp)")
         if filename:
             pixmap = QPixmap(filename)
             pixmap = pixmap.scaled(self.foto.size(), Qt.KeepAspectRatio, Qt.SmoothTransformation)

@@ -5,20 +5,21 @@ from PyQt5.QtCore import QObject, pyqtSignal
 import usb.core
 import usb.util
 import serial
-import win32print 
+import win32print
 import serial.tools.list_ports
 from Rutas import get_db_path
 
 DB_PATH = get_db_path()
 
+
 class ManejadorImpresion(QObject):
-    impresion_completada = pyqtSignal(str, bool) 
+    impresion_completada = pyqtSignal(str, bool)
 
     def __init__(self):
         super().__init__()
         self.conn_impresion = sqlite3.connect(DB_PATH)
         self.cursor_impresion = self.conn_impresion.cursor()
-    
+
     def obtener_impresora(self, tipo):
         try:
             if tipo == "Barra":
@@ -43,7 +44,7 @@ class ManejadorImpresion(QObject):
                     'dispositivo': impresora[3] if impresora[3] else '',
                     'descripcion': impresora[4] if impresora[4] else '',
                     'es_barra': impresora[5],
-                    'es_cocina': impresora[6]
+                    'es_cocina': impresora[6],
                 }
             else:
                 print(f"  ✗ No hay impresora configurada para {tipo}")
@@ -51,9 +52,10 @@ class ManejadorImpresion(QObject):
         except Exception as e:
             print(f"Error en obtener_impresora({tipo}): {e}")
             import traceback
+
             traceback.print_exc()
             return None
-    
+
     def imprimir_ticket(self, datos_venta, items):
         try:
             print("\n=== INICIANDO IMPRESIÓN TICKET ===")
@@ -69,12 +71,12 @@ class ManejadorImpresion(QObject):
             if not exito:
                 print(f"Fallo impresión directa: {mensaje}")
                 return self._guardar_en_archivo(contenido, "Barra")
-            return exito, mensaje  
+            return exito, mensaje
         except Exception as e:
             error_msg = f"Error al imprimir ticket: {str(e)}"
             print(f"❌ {error_msg}")
             return False, error_msg
-    
+
     def imprimir_cocina(self, datos_venta, items):
         try:
             print("\n=== INICIANDO IMPRESIÓN COCINA ===")
@@ -95,15 +97,26 @@ class ManejadorImpresion(QObject):
             error_msg = f"Error al imprimir pedido cocina: {str(e)}"
             print(f"❌ {error_msg}")
             return False, error_msg
-    
 
     def _es_impresora_termica(self, impresora_info):
         dispositivo = impresora_info.get('dispositivo', '').lower()
         descripcion = impresora_info.get('descripcion', '').lower()
         keywords_termicas = [
-            'thermal', 'termica', 'ticket', 'receipt', 'pos', 
-            'tm-t20', 'tm-t70', 'tm-t88', 'tm-', 'tsp', 
-            'bixolon', 'star', 'citizen', 'zjiang', 'serial printer'
+            'thermal',
+            'termica',
+            'ticket',
+            'receipt',
+            'pos',
+            'tm-t20',
+            'tm-t70',
+            'tm-t88',
+            'tm-',
+            'tsp',
+            'bixolon',
+            'star',
+            'citizen',
+            'zjiang',
+            'serial printer',
         ]
         texto_completo = f"{dispositivo} {descripcion}".lower()
         for keyword in keywords_termicas:
@@ -116,7 +129,7 @@ class ManejadorImpresion(QObject):
         if 'com' in dispositivo:
             return True
         return False
-    
+
     def _intentar_imprimir(self, impresora, contenido, es_termica=True):
         print("\n🔍 _intentar_imprimir:")
         print(f"  Dispositivo: {impresora.get('dispositivo')}")
@@ -137,25 +150,48 @@ class ManejadorImpresion(QObject):
         else:
             print("  Intentando impresora predeterminada de Windows")
             return self._imprimir_por_windows(contenido, es_termica)
-    
 
     def _limpiar_caracteres_especiales(self, texto):
         reemplazos = {
-            'á': 'a', 'é': 'e', 'í': 'i', 'ó': 'o', 'ú': 'u',
-            'Á': 'A', 'É': 'E', 'Í': 'I', 'Ó': 'O', 'Ú': 'U',
-            'ñ': 'n', 'Ñ': 'N',
-            'ü': 'u', 'Ü': 'U',
-            '¿': '?', '¡': '!',
-            '´': "'", '`': "'",
-            '«': '"', '»': '"',
-            '€': 'EUR', '£': 'GBP', '$': 'USD',
+            'á': 'a',
+            'é': 'e',
+            'í': 'i',
+            'ó': 'o',
+            'ú': 'u',
+            'Á': 'A',
+            'É': 'E',
+            'Í': 'I',
+            'Ó': 'O',
+            'Ú': 'U',
+            'ñ': 'n',
+            'Ñ': 'N',
+            'ü': 'u',
+            'Ü': 'U',
+            '¿': '?',
+            '¡': '!',
+            '´': "'",
+            '`': "'",
+            '«': '"',
+            '»': '"',
+            '€': 'EUR',
+            '£': 'GBP',
+            '$': 'USD',
             '°': ' grados',
-            '×': 'x', '÷': '/',
-            '©': '(c)', '®': '(r)', '™': '(tm)',
-            '…': '...', '—': '-', '–': '-',
-            'ç': 'c', 'Ç': 'C',
-            'ß': 'ss', 'ä': 'ae', 'ö': 'oe',
-            'Ä': 'AE', 'Ö': 'OE'
+            '×': 'x',
+            '÷': '/',
+            '©': '(c)',
+            '®': '(r)',
+            '™': '(tm)',
+            '…': '...',
+            '—': '-',
+            '–': '-',
+            'ç': 'c',
+            'Ç': 'C',
+            'ß': 'ss',
+            'ä': 'ae',
+            'ö': 'oe',
+            'Ä': 'AE',
+            'Ö': 'OE',
         }
         resultado = []
         for char in texto:
@@ -169,7 +205,6 @@ class ManejadorImpresion(QObject):
                 else:
                     resultado.append(' ')
         return ''.join(resultado)
-    
 
     def _imprimir_por_windows_nombre(self, nombre_impresora, contenido, es_termica=True):
         try:
@@ -197,10 +232,10 @@ class ManejadorImpresion(QObject):
         except Exception as e:
             print(f"Error impresión Windows por nombre: {e}")
             return self._imprimir_por_windows(contenido, es_termica)
-    
 
     def _construir_ticket(self, datos_venta, items):
         from datetime import datetime
+
         fecha = datetime.now().strftime("%d/%m/%Y")
         hora = datetime.now().strftime("%I:%M %p")
         contenido = []
@@ -236,7 +271,7 @@ class ManejadorImpresion(QObject):
                     'precio': precio,
                     'cantidad': cantidad,
                     'subtotal': subtotal,
-                    'personalizacion': personalizacion
+                    'personalizacion': personalizacion,
                 }
         total_general = 0
         contenido.append(f"{'CANT':<5}{'DESCRIPCION':<22}{'T':<3}{'SUBTOTAL':>14}")
@@ -252,7 +287,7 @@ class ManejadorImpresion(QObject):
                 personalizacion_limpia = self._limpiar_caracteres_especiales(g['personalizacion'])
                 partes_pers = [p.strip() for p in personalizacion_limpia.split('|') if p.strip()]
                 for parte in partes_pers:
-                    fragmentos = [parte[i:i+38] for i in range(0, len(parte), 38)]
+                    fragmentos = [parte[i : i + 38] for i in range(0, len(parte), 38)]
                     for fragmento in fragmentos:
                         contenido.append(f"     {fragmento}")
         contenido.append("=" * 44)
@@ -260,9 +295,9 @@ class ManejadorImpresion(QObject):
         contenido.append("=" * 44)
         return "\n".join(contenido)
 
-
     def _construir_pedido_cocina(self, datos_venta, items_raw):
         from datetime import datetime
+
         fecha = datetime.now().strftime("%d/%m/%Y")
         hora = datetime.now().strftime("%I:%M %p")
         contenido = []
@@ -298,23 +333,23 @@ class ManejadorImpresion(QObject):
             if g['exclusiones']:
                 for excl_linea in g['exclusiones']:
                     excl_limpia = self._limpiar_caracteres_especiales(excl_linea)
-                    partes = [excl_limpia[i:i+36] for i in range(0, len(excl_limpia), 36)]
+                    partes = [excl_limpia[i : i + 36] for i in range(0, len(excl_limpia), 36)]
                     for parte in partes:
                         contenido.append(f"     sin: {parte}")
             if g.get('extras'):
                 for extra_linea in g['extras']:
                     extra_limpia = self._limpiar_caracteres_especiales(extra_linea)
-                    partes = [extra_limpia[i:i+34] for i in range(0, len(extra_limpia), 34)]
+                    partes = [extra_limpia[i : i + 34] for i in range(0, len(extra_limpia), 34)]
                     for parte in partes:
                         contenido.append(f"     extra: {parte}")
         contenido.append("=" * 44)
         return "\n".join(contenido)
 
-
     def _parsear_items_cocina(self, items_raw):
         import re
         import sqlite3
         import os, sys
+
         if getattr(sys, 'frozen', False):
             base_path = os.path.dirname(sys.executable)
         else:
@@ -325,13 +360,16 @@ class ManejadorImpresion(QObject):
             try:
                 conn = sqlite3.connect(db_path)
                 cursor = conn.cursor()
-                cursor.execute("""
+                cursor.execute(
+                    """
                     SELECT pp.idProd, p.nomProd, pp.cantidadProdProm
                     FROM PromocionProd pp
                     JOIN Producto p ON pp.idProd = p.idProd
                     JOIN Promocion pr ON pp.idProm = pr.idProm
                     WHERE pr.nomProm = ?
-                """, (nombre_promo,))
+                """,
+                    (nombre_promo,),
+                )
                 resultado = cursor.fetchall()
                 conn.close()
                 return resultado
@@ -349,27 +387,23 @@ class ManejadorImpresion(QObject):
                 prods_promo = obtener_productos_promo(producto)
                 if prods_promo:
                     for id_prod, nom_prod, cant_prod in prods_promo:
-                        lineas.append({
-                            'producto': nom_prod,
-                            'tipo': tipo,
-                            'cantidad': cant_prod * cantidad,
-                            'exclusiones': [],
-                            'extras': []
-                        })
+                        lineas.append(
+                            {
+                                'producto': nom_prod,
+                                'tipo': tipo,
+                                'cantidad': cant_prod * cantidad,
+                                'exclusiones': [],
+                                'extras': [],
+                            }
+                        )
                 else:
-                    lineas.append({
-                        'producto': producto,
-                        'tipo': tipo,
-                        'cantidad': cantidad,
-                        'exclusiones': [],
-                        'extras': []
-                    })
+                    lineas.append(
+                        {'producto': producto, 'tipo': tipo, 'cantidad': cantidad, 'exclusiones': [], 'extras': []}
+                    )
                 continue
 
             partes_pipe = [p.strip() for p in personalizacion_raw.split('|') if p.strip()]
-            tiene_formato_promo = any(
-                re.match(r'^U\d+\s+.+:\s+(sin|extra)\s+', p) for p in partes_pipe
-            )
+            tiene_formato_promo = any(re.match(r'^U\d+\s+.+:\s+(sin|extra)\s+', p) for p in partes_pipe)
 
             if tiene_formato_promo:
                 por_producto = {}
@@ -395,26 +429,30 @@ class ManejadorImpresion(QObject):
                         clave_combo = (datos_unidad['sin'], datos_unidad['extra'])
                         agrupado_por_combo[clave_combo] = agrupado_por_combo.get(clave_combo, 0) + 1
                     for (sin_texto, extra_texto), cant_unidades in agrupado_por_combo.items():
-                        lineas.append({
-                            'producto': nombre_prod,
-                            'tipo': tipo,
-                            'cantidad': cant_unidades,
-                            'exclusiones': [sin_texto] if sin_texto else [],
-                            'extras': [extra_texto] if extra_texto else []
-                        })
+                        lineas.append(
+                            {
+                                'producto': nombre_prod,
+                                'tipo': tipo,
+                                'cantidad': cant_unidades,
+                                'exclusiones': [sin_texto] if sin_texto else [],
+                                'extras': [extra_texto] if extra_texto else [],
+                            }
+                        )
 
                 for id_prod, nom_prod, cant_prod in obtener_productos_promo(producto):
                     total_en_promo = cant_prod * cantidad
                     con_personalizacion = total_unidades_personalizadas.get(nom_prod, 0)
                     sin_personalizacion = total_en_promo - con_personalizacion
                     if sin_personalizacion > 0:
-                        lineas.append({
-                            'producto': nom_prod,
-                            'tipo': tipo,
-                            'cantidad': sin_personalizacion,
-                            'exclusiones': [],
-                            'extras': []
-                        })
+                        lineas.append(
+                            {
+                                'producto': nom_prod,
+                                'tipo': tipo,
+                                'cantidad': sin_personalizacion,
+                                'exclusiones': [],
+                                'extras': [],
+                            }
+                        )
             else:
                 excl_simple = []
                 extra_simple = []
@@ -426,16 +464,17 @@ class ManejadorImpresion(QObject):
                         extra_simple.append(parte_limpia[6:].strip())
                     elif parte_limpia:
                         excl_simple.append(parte_limpia)
-                lineas.append({
-                    'producto': producto,
-                    'tipo': tipo,
-                    'cantidad': cantidad,
-                    'exclusiones': excl_simple,
-                    'extras': extra_simple
-                })
+                lineas.append(
+                    {
+                        'producto': producto,
+                        'tipo': tipo,
+                        'cantidad': cantidad,
+                        'exclusiones': excl_simple,
+                        'extras': extra_simple,
+                    }
+                )
 
         return lineas
-    
 
     def _imprimir_por_puerto(self, puerto, contenido, es_termica=True):
         try:
@@ -446,13 +485,13 @@ class ManejadorImpresion(QObject):
                 bytesize=serial.EIGHTBITS,
                 parity=serial.PARITY_NONE,
                 stopbits=serial.STOPBITS_ONE,
-                timeout=2
+                timeout=2,
             )
             if es_termica:
-                ser.write(b'\x1B\x40')
+                ser.write(b'\x1b\x40')
                 ser.write(contenido.encode('cp850', errors='ignore'))
                 ser.write(b'\n' * 5)
-                ser.write(b'\x1D\x56\x00')
+                ser.write(b'\x1d\x56\x00')
             else:
                 contenido_con_saltos = contenido + '\n' * 8
                 ser.write(contenido_con_saltos.encode('cp850', errors='ignore'))
@@ -462,7 +501,6 @@ class ManejadorImpresion(QObject):
         except Exception as e:
             print(f"Error impresión puerto {puerto}: {e}")
             return False, f"Error en puerto {puerto}: {str(e)}"
-    
 
     def _imprimir_por_usb(self, vid, pid, contenido, es_termica=True):
         try:
@@ -477,7 +515,7 @@ class ManejadorImpresion(QObject):
                 pass
             dispositivo.set_configuration()
             cfg = dispositivo.get_active_configuration()
-            intf = cfg[(0,0)]
+            intf = cfg[(0, 0)]
             ep_out = None
             for ep in intf:
                 if usb.util.endpoint_direction(ep.bEndpointAddress) == usb.util.ENDPOINT_OUT:
@@ -492,20 +530,19 @@ class ManejadorImpresion(QObject):
                 else:
                     contenido_completo = contenido.encode('utf-8', errors='ignore')
                     contenido_completo += b'\n' * 8
-                
+
                 ep_out.write(contenido_completo)
                 usb.util.dispose_resources(dispositivo)
-                
+
                 tipo = "térmica" if es_termica else "normal"
                 return True, f"Impresión USB exitosa ({tipo})"
             else:
                 usb.util.dispose_resources(dispositivo)
                 return False, "No se encontró endpoint de salida"
-                
+
         except Exception as e:
             print(f"Error impresión USB: {e}")
             return False, f"Error USB: {str(e)}"
-    
 
     def _imprimir_por_windows(self, contenido, es_termica=True):
         try:
@@ -532,11 +569,11 @@ class ManejadorImpresion(QObject):
                 tipo = "térmica" if es_termica else "normal"
                 return True, f"Impresión exitosa en {impresora_default} ({tipo})"
             finally:
-                win32print.ClosePrinter(hprinter)   
+                win32print.ClosePrinter(hprinter)
         except Exception as e:
             print(f"Error impresión Windows: {e}")
             return False, f"Error Windows: {str(e)}"
-    
+
     def _guardar_en_archivo(self, contenido, tipo="Ticket"):
         try:
             directorio = os.path.join(os.path.expanduser("~"), "Desktop", "Tickets_Cafebar")
@@ -544,17 +581,16 @@ class ManejadorImpresion(QObject):
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             ruta = os.path.join(directorio, f"{tipo}_{timestamp}.txt")
             with open(ruta, 'a', encoding='utf-8') as f:
-                f.write("\n" + "="*50 + "\n")
+                f.write("\n" + "=" * 50 + "\n")
                 f.write(f"Ticket tipo: {tipo}\n")
                 f.write(f"Fecha: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}\n")
-                f.write("="*50 + "\n")
+                f.write("=" * 50 + "\n")
                 f.write(contenido)
-                f.write("\n" + "="*50 + "\n")
+                f.write("\n" + "=" * 50 + "\n")
             return True, f"Ticket guardado en: {ruta}"
         except Exception as e:
             return False, f"Error al guardar archivo: {str(e)}"
-    
-    
+
     def __del__(self):
         if hasattr(self, 'conn_impresion'):
             self.conn_impresion.close()

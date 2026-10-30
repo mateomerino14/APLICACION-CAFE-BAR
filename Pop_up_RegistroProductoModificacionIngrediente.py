@@ -6,13 +6,14 @@ from Rutas import get_db_path
 
 DB_PATH = get_db_path()
 
+
 class Pop_up_RegistroProductoModificacionIngrediente(QDialog):
-    def __init__(self, elemento,lista, conjunto, parent=None):
+    def __init__(self, elemento, lista, conjunto, parent=None):
         super().__init__(parent)
         self.nuevoIden = elemento
-        self.nuevoIng=lista[0]
-        self.nuevaDesc=lista[2]
-        self.nuevCant=lista[1]
+        self.nuevoIng = lista[0]
+        self.nuevaDesc = lista[2]
+        self.nuevCant = lista[1]
         self.nuevoIdIng = self._buscarIdIng(lista[0])
         self.setWindowTitle("MODIFICACIÓN DE INGREDIENTE")
         self.setFixedSize(480, 300)
@@ -61,18 +62,18 @@ class Pop_up_RegistroProductoModificacionIngrediente(QDialog):
                 margin-right: 7px;
             }
         """)
-        
+
         layoutPrincipal = QVBoxLayout()
         self.setLayout(layoutPrincipal)
         layout1 = QHBoxLayout()
         campo1 = QLabel("Ingrediente: ")
         campo1.setStyleSheet("""background-color: transparent;""")
         campo2 = QComboBox()
-        conn=sqlite3.connect(DB_PATH)
-        c=conn.cursor()
-        consulta="""SELECT nomIng FROM Stock"""
+        conn = sqlite3.connect(DB_PATH)
+        c = conn.cursor()
+        consulta = """SELECT nomIng FROM Stock"""
         c.execute(consulta)
-        resultados=[str(elem[0]) for elem in c.fetchall()]
+        resultados = [str(elem[0]) for elem in c.fetchall()]
         conn.close()
         campo2.addItems(resultados)
         campo2.setCurrentText(lista[0])
@@ -97,7 +98,7 @@ class Pop_up_RegistroProductoModificacionIngrediente(QDialog):
         layout2.addWidget(campo3)
         layout2.addWidget(campo4)
         layoutPrincipal.addLayout(layout2)
-        campo2.currentIndexChanged.connect(lambda:self.actualizar(campo2,campo4))
+        campo2.currentIndexChanged.connect(lambda: self.actualizar(campo2, campo4))
         layout3 = QHBoxLayout()
         campo5 = QLabel("Cantidad: ")
         campo5.setStyleSheet("""background-color: transparent;""")
@@ -147,14 +148,18 @@ class Pop_up_RegistroProductoModificacionIngrediente(QDialog):
                 background-color: #a23526;
             }
         """)
-        boton1.clicked.connect(lambda: self.cambiarIdentificador(conjunto, campo2.currentText(), campo2.currentText(), campo4.text(), campo6.text()))
+        boton1.clicked.connect(
+            lambda: self.cambiarIdentificador(
+                conjunto, campo2.currentText(), campo2.currentText(), campo4.text(), campo6.text()
+            )
+        )
         boton2.clicked.connect(self.cerrarVentana)
         layout4.addWidget(boton1)
         layout4.addWidget(boton2)
         layoutPrincipal.addLayout(layout4)
         layoutPrincipal.setContentsMargins(20, 20, 20, 20)
         layoutPrincipal.setSpacing(15)
-    
+
     def _buscarIdIng(self, nombreIngrediente):
         try:
             conn = sqlite3.connect(DB_PATH)
@@ -166,26 +171,26 @@ class Pop_up_RegistroProductoModificacionIngrediente(QDialog):
         except Exception:
             return None
 
-    def actualizar(self,campo2,campo4):
-        conn=sqlite3.connect(DB_PATH)
-        c=conn.cursor()
-        consulta="""SELECT idIng, descripcion FROM Stock WHERE nomIng=?"""
-        c.execute(consulta,(campo2.currentText(),))
-        actual=c.fetchone()
+    def actualizar(self, campo2, campo4):
+        conn = sqlite3.connect(DB_PATH)
+        c = conn.cursor()
+        consulta = """SELECT idIng, descripcion FROM Stock WHERE nomIng=?"""
+        c.execute(consulta, (campo2.currentText(),))
+        actual = c.fetchone()
         conn.close()
         if actual:
             self.nuevoIdIng = actual[0]
             campo4.setText(actual[1] if actual[1] else "")
-    
+
     def cambiarIdentificador(self, conjunto, nuevo, ingrediente, descripcion, cantidad):
         if cantidad == "":
             QMessageBox.critical(self, "Advertencia", "Debe llenar los campos necesarios")
             return
-        
+
         nuevo_id = ingrediente
-        
+
         conjunto_upper = {item.upper() for item in conjunto}
-        
+
         if nuevo_id.upper() in conjunto_upper and nuevo_id != self.nuevoIden:
             msg = QMessageBox()
             msg.setStyleSheet("""
@@ -220,15 +225,15 @@ class Pop_up_RegistroProductoModificacionIngrediente(QDialog):
             msg.setIcon(QMessageBox.Warning)
             msg.exec_()
             return
-        
+
         self.nuevoIden = nuevo_id
         self.nuevoIng = ingrediente
         self.nuevaDesc = descripcion
         self.nuevaCant = cantidad
         self.accept()
-    
+
     def getIden(self):
         return self.nuevoIden, self.nuevoIng, self.nuevaDesc, self.nuevaCant, self.nuevoIdIng
-    
+
     def cerrarVentana(self):
         self.close()

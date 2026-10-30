@@ -9,6 +9,7 @@ from Rutas import get_db_path
 
 DB_PATH = get_db_path()
 
+
 class Familia(QWidget):
     def __init__(self):
         super().__init__()
@@ -187,17 +188,17 @@ class Familia(QWidget):
                 background-color: #f0f7ff;
             }
         """)
-        
+
         self.set_up()
-        
+
     def set_up(self):
         self.layoutDatos = QHBoxLayout()
         self.layoutPrincipal = QVBoxLayout()
         self.setLayout(self.layoutPrincipal)
-        self.layoutPrincipal.setContentsMargins(20,20,20,20)
+        self.layoutPrincipal.setContentsMargins(20, 20, 20, 20)
         self.anadirAreaRegistro()
         self.showMaximized()
-   
+
     def anadirAreaRegistro(self):
         contenedorSeccion = QWidget()
         layoutSeccion = QHBoxLayout()
@@ -317,7 +318,6 @@ class Familia(QWidget):
         scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
         layoutSeccion.addWidget(scroll, stretch=10)
         self.layoutPrincipal.addWidget(contenedorSeccion, stretch=8)
-     
 
     def cargarSubcategorias(self):
         categoria = self.categoria.currentText()
@@ -342,12 +342,12 @@ class Familia(QWidget):
                 self.subcategorias.addItems(lista)
                 self.subcategorias.setCurrentIndex(-1)
             else:
-                self.subcategorias.clear() 
+                self.subcategorias.clear()
         except Exception as e:
             print(f"Error en cargarSubcategorias: {e}")
         finally:
             conn.close()
-    
+
     def cargarCategorias(self):
         self.categoria.clear()
         conn = sqlite3.connect(DB_PATH)
@@ -358,12 +358,12 @@ class Familia(QWidget):
             if resultados:
                 listaCategorias = [elem[0] for elem in resultados]
                 self.categoria.addItems(listaCategorias)
-                self.categoria.setCurrentIndex(-1)  
+                self.categoria.setCurrentIndex(-1)
         except Exception as e:
             print(f"Error en cargarCategorias: {e}")
         finally:
             conn.close()
-    
+
     def desHabilitarCampos(self):
         self.etiquetaCategoria.setVisible(False)
         self.categoria.setVisible(False)
@@ -371,7 +371,7 @@ class Familia(QWidget):
         self.subcategorias.setVisible(False)
         self.detalles.setText("")
         self.limpiarCampo(self.layoutMesas)
-        
+
     def HabilitarCampos(self):
         self.etiquetaCategoria.setVisible(True)
         self.categoria.setVisible(True)
@@ -384,7 +384,7 @@ class Familia(QWidget):
         self.limpiarCampo(self.layoutMesas)
         conn = sqlite3.connect(DB_PATH)
         c = conn.cursor()
-        if self.opcion1.isChecked():     
+        if self.opcion1.isChecked():
             c.execute("""SELECT * FROM Promocion WHERE activo=TRUE""")
             resultados = c.fetchall()
             conn.close()
@@ -394,10 +394,13 @@ class Familia(QWidget):
             self.mostrarPromociones(resultados)
         elif self.opcion2.isChecked():
             if self.categoria.currentText() == "" or self.subcategorias.currentText() == "":
-                QMessageBox.information(self, "Rellenar campos solicitados", "Debe seleccionar una categoria y subcategoria de producto")
+                QMessageBox.information(
+                    self, "Rellenar campos solicitados", "Debe seleccionar una categoria y subcategoria de producto"
+                )
                 conn.close()
                 return
-            c.execute("""
+            c.execute(
+                """
                 SELECT P.* 
                 FROM Producto P 
                 JOIN Subcategoria S ON P.idSubcategoria = S.idSubcategoria 
@@ -406,18 +409,22 @@ class Familia(QWidget):
                 AND C.activa=TRUE
                 AND S.activa=TRUE
                 AND C.nomCategoria=? AND S.nombre=?
-            """, (self.categoria.currentText(), self.subcategorias.currentText()))
+            """,
+                (self.categoria.currentText(), self.subcategorias.currentText()),
+            )
             resultados = c.fetchall()
             conn.close()
             if not resultados:
-                QMessageBox.information(self, "Sin resultados", "No se encontraron productos con los criterios seleccionados")
+                QMessageBox.information(
+                    self, "Sin resultados", "No se encontraron productos con los criterios seleccionados"
+                )
                 return
             self.mostrarProductos(resultados)
         else:
             QMessageBox.information(self, "Rellenar campos solicitados", "Se debe seleccionar el area de interes")
             conn.close()
             return
-    
+
     def mostrarPromociones(self, promociones):
         fila_actual = QHBoxLayout()
         fila_actual.setSpacing(10)
@@ -495,7 +502,7 @@ class Familia(QWidget):
         if fila_actual.count() > 0:
             self.layoutMesas.addLayout(fila_actual)
         self.layoutMesas.addStretch(1)
-    
+
     def mostrarProductos(self, productos):
         fila_actual = QHBoxLayout()
         fila_actual.setSpacing(10)
@@ -580,28 +587,37 @@ class Familia(QWidget):
         if fila_actual.count() > 0:
             self.layoutMesas.addLayout(fila_actual)
         self.layoutMesas.addStretch(1)
-    
+
     def cargarDetallesPromocion(self, idProm):
         conn = sqlite3.connect(DB_PATH)
         c = conn.cursor()
-        c.execute("""
+        c.execute(
+            """
             SELECT P.nomProd, PP.cantidadProdProm 
             FROM PromocionProd PP
             JOIN Producto P ON PP.idProd = P.idProd 
             WHERE PP.idProm=?
-        """, (idProm,))
+        """,
+            (idProm,),
+        )
         productos = c.fetchall()
-        c.execute("""
+        c.execute(
+            """
             SELECT fechaEspecifica, fechaInicio, fechaFin, horaInicio, horaFin 
             FROM Promocion WHERE idProm=?
-        """, (idProm,))
+        """,
+            (idProm,),
+        )
         promocion_data = c.fetchone()
-        c.execute("""
+        c.execute(
+            """
             SELECT diaSemana FROM PromocionDias WHERE idProm=? ORDER BY diaSemana
-        """, (idProm,))
+        """,
+            (idProm,),
+        )
         dias = c.fetchall()
         conn.close()
-        
+
         html = """
         <style>
             .titulo { color: #2c3e50; font-size: 16px; font-weight: bold; margin-top: 10px; }
@@ -615,26 +631,26 @@ class Familia(QWidget):
             hr { border: 1px solid #ecf0f1; }
         </style>
         """
-        
+
         html += "<div class='titulo'>📦 PRODUCTOS</div>"
         for nom_prod, cantidad in productos:
             html += f"<div class='producto'>• {cantidad}x {nom_prod}</div>"
-        
+
         html += "<hr>"
         html += "<div class='titulo'>⏰ DISPONIBILIDAD</div>"
-        
+
         fecha_especifica = promocion_data[0]
         fecha_inicio = promocion_data[1]
         fecha_fin = promocion_data[2]
         hora_inicio = promocion_data[3]
         hora_fin = promocion_data[4]
-        
+
         ahora = datetime.now()
         fecha_actual = ahora.date()
         hora_actual = ahora.time()
         dia_semana_actual = ahora.weekday() + 1
         disponible_ahora = True
-        
+
         if fecha_especifica:
             try:
                 fecha_esp = datetime.strptime(fecha_especifica, "%Y-%m-%d").date()
@@ -661,7 +677,7 @@ class Familia(QWidget):
         if dias:
             dias_numeros = [dia[0] for dia in dias]
             dia_nombres = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"]
-            dias_texto = [dia_nombres[dia_num-1] for dia_num in dias_numeros if 1 <= dia_num <= 7]
+            dias_texto = [dia_nombres[dia_num - 1] for dia_num in dias_numeros if 1 <= dia_num <= 7]
 
             if dia_semana_actual not in dias_numeros:
                 disponible_ahora = False
@@ -680,7 +696,7 @@ class Familia(QWidget):
                 html += "<div class='inactivo'>• Horario: Formato inválido</div>"
         else:
             html += "<div class='info'>• Horario: Todo el día</div>"
-        
+
         html += "<hr>"
         html += "<div class='titulo'>🔴 ESTADO ACTUAL</div>"
         if disponible_ahora:
@@ -689,22 +705,25 @@ class Familia(QWidget):
             html += "<div class='inactivo'>• ❌ PROMOCIÓN NO DISPONIBLE AHORA</div>"
 
         self.detalles.setHtml(html)
-    
+
     def cargarDetallesProducto(self, idProd):
         conn = sqlite3.connect(DB_PATH)
         c = conn.cursor()
         c.execute("SELECT descripcion FROM Producto WHERE idProd=?", (idProd,))
         desc_row = c.fetchone()
         descripcion = desc_row[0] if desc_row else ""
-        c.execute("""
+        c.execute(
+            """
             SELECT S.nomIng, PI.cantidadIngNecesitada, S.cantidadStock, S.unidadMedida
             FROM ProductosIngredientes PI
             JOIN Stock S ON PI.idIng = S.idIng
             WHERE PI.idProd = ?
-        """, (idProd,))
+        """,
+            (idProd,),
+        )
         ingredientes = c.fetchall()
         conn.close()
-        
+
         html = """
         <style>
             .titulo { color: #2c3e50; font-size: 16px; font-weight: bold; margin-top: 10px; }
@@ -721,27 +740,27 @@ class Familia(QWidget):
             .stock-cero { color: #e74c3c; font-size: 14px; }
         </style>
         """
-        
+
         html += "<div class='titulo'>📝 DESCRIPCIÓN</div>"
         html += f"<div class='descripcion'>{descripcion or '—'}</div>"
-        
+
         html += "<hr>"
         html += "<div class='titulo'>🥗 INGREDIENTES NECESARIOS</div>"
-        
+
         max_productos = float('inf')
         detalles_ingredientes = []
-        
+
         for nom_ing, cant_necesaria, cant_stock, unidad in ingredientes:
             cant_necesaria = cant_necesaria or 0
             cant_stock = cant_stock or 0
             unidad = unidad or ""
-            
+
             stock_class = "stock-alto"
             if cant_stock == 0:
                 stock_class = "stock-cero"
             elif cant_stock < 10:
                 stock_class = "stock-bajo"
-            
+
             if cant_necesaria > 0:
                 productos_posibles = cant_stock / cant_necesaria
                 max_productos = min(max_productos, productos_posibles)
@@ -750,16 +769,16 @@ class Familia(QWidget):
                     f"<div class='{stock_class}'>  - Necesario: {cant_necesaria} {unidad}</div>"
                     f"<div class='{stock_class}'>  - Stock: {cant_stock} {unidad}</div>"
                 )
-        
+
         if detalles_ingredientes:
             for det in detalles_ingredientes:
                 html += det
         else:
             html += "<div class='info'>• (sin ingredientes registrados)</div>"
-        
+
         html += "<hr>"
         html += "<div class='titulo'>📊 CÁLCULO DE PRODUCCIÓN</div>"
-        
+
         if not ingredientes or not detalles_ingredientes:
             unidades_str = "indeterminado"
             html += f"<div class='info'>• Se pueden fabricar aproximadamente: {unidades_str} unidades</div>"
@@ -777,7 +796,7 @@ class Familia(QWidget):
                 html += f"<div class='warning'>• Se pueden fabricar aproximadamente: {unidades} unidades</div>"
             else:
                 html += f"<div class='success'>• Se pueden fabricar aproximadamente: {unidades} unidades</div>"
-        
+
         if not ingredientes or not detalles_ingredientes:
             html += "<div class='warning'>⚠️ No se encontraron ingredientes registrados para este producto</div>"
         else:
@@ -787,9 +806,9 @@ class Familia(QWidget):
                 html += "<div class='error'>❌ Stock insuficiente para fabricar ninguna unidad</div>"
             elif max_productos < 5:
                 html += "<div class='warning'>⚠️ Stock bajo - considerar reabastecimiento</div>"
-        
+
         self.detalles.setHtml(html)
-    
+
     def limpiarCampo(self, layout):
         if layout is None:
             return
@@ -801,11 +820,11 @@ class Familia(QWidget):
                 if hijo.layout():
                     self.limpiarCampo(hijo.layout())
                     hijo.layout().deleteLater()
-    
+
     def cerrarVentana(self):
         self.close()
-        
-        
+
+
 if __name__ == "__main__":
     aplicacion = QApplication(sys.argv)
     pagina = Familia()

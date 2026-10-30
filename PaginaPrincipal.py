@@ -9,11 +9,13 @@ import math
 from datetime import datetime
 from Rutas import get_resource_path, get_writable_base_path
 
+
 def get_banner_path():
     base = get_writable_base_path()
     carpeta = os.path.join(base, 'database')
     os.makedirs(carpeta, exist_ok=True)
     return os.path.join(carpeta, 'banner_custom.png')
+
 
 BANNER_PATH = get_banner_path()
 
@@ -74,7 +76,7 @@ class PaginaPrincipal(QWidget):
         self.showMinimized()
         self.layoutPrincipal = QVBoxLayout()
         self.setLayout(self.layoutPrincipal)
-        self.layoutPrincipal.setContentsMargins(0,0,0,0)
+        self.layoutPrincipal.setContentsMargins(0, 0, 0, 0)
         self.layoutPrincipal.setSpacing(24)
 
         self._crearFormasDecorativas()
@@ -114,7 +116,7 @@ class PaginaPrincipal(QWidget):
         self.formasDecorativas[1].move(-90, alto - 200)
         self.formasDecorativas[2].move(int(ancho * 0.08), int(alto * 0.62))
 
-    def set_up(self): 
+    def set_up(self):
         self.contenedorCentral = QWidget()
         self.contenedorCentral.setStyleSheet("background: transparent;")
         layoutCentral = QVBoxLayout(self.contenedorCentral)
@@ -244,7 +246,7 @@ class PaginaPrincipal(QWidget):
 
     def _quitarEfectoOpacidad(self):
         self.contenedorCentral.setGraphicsEffect(None)
-        
+
     def cargarImagenActual(self):
         tamano = self.imagen.width()
         if os.path.exists(BANNER_PATH):
@@ -278,10 +280,7 @@ class PaginaPrincipal(QWidget):
 
     def cambiarImagenPortada(self):
         file_path, _ = QFileDialog.getOpenFileName(
-            self,
-            "Seleccionar imagen de portada",
-            "",
-            "Imágenes (*.png *.jpg *.jpeg *.bmp *.webp)"
+            self, "Seleccionar imagen de portada", "", "Imágenes (*.png *.jpg *.jpeg *.bmp *.webp)"
         )
         if not file_path:
             return
@@ -296,10 +295,10 @@ class PaginaPrincipal(QWidget):
             QMessageBox.information(self, "Confirmación", "La imagen de portada fue actualizada correctamente.")
         except Exception as e:
             QMessageBox.critical(self, "Error", f"No se pudo actualizar la imagen: {str(e)}")
-        
-        
-if __name__=="__main__":
-    aplicacion=QApplication(sys.argv)
-    pagina=PaginaPrincipal()
+
+
+if __name__ == "__main__":
+    aplicacion = QApplication(sys.argv)
+    pagina = PaginaPrincipal()
     pagina.show()
     sys.exit(aplicacion.exec_())
