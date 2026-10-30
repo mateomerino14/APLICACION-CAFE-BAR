@@ -922,7 +922,7 @@ class Configuracion(QWidget):
             tabla_detalles.horizontalHeader().setStretchLastSection(True)
             total = 0
             for detalle in detalles:
-                producto, cantidad, tipo, subtotal, estado_det, fecha_det, mesero_det = detalle
+                producto, cantidad, tipo, subtotal, estado_det, _, mesero_det = detalle
                 precio_unitario = subtotal / cantidad if cantidad > 0 else 0
                 fila = tabla_detalles.rowCount()
                 tabla_detalles.insertRow(fila)
@@ -1129,9 +1129,6 @@ class Configuracion(QWidget):
         conn.commit()
         conn.close()
         QMessageBox.information(self, "Éxito", "Contraseña del DIRECTORIO actualizada.")
-
-    def get_connection(self):
-        return sqlite3.connect(DB_PATH)
 
     def obtener_cuenta_gmail_activa(self):
         conn = sqlite3.connect(DB_PATH)

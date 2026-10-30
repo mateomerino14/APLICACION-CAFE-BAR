@@ -335,7 +335,6 @@ class ModificarCategoriaDialog(QDialog):
         super().__init__(parent)
         self.id_categoria = id_categoria
         self.nombre_actual = nombre_actual
-        self.imagen_modificada = False
         self.setWindowTitle("Modificar Categoría")
         self.setModal(True)
         self.setFixedSize(560, 600)
@@ -537,7 +536,6 @@ class ModificarCategoriaDialog(QDialog):
                 with open(file_name, 'rb') as file:
                     self.imagen_bytes = file.read()
 
-                self.imagen_modificada = True
                 self.mostrarImagen(self.imagen_bytes)
             except Exception as e:
                 QMessageBox.warning(self, "Error", f"No se pudo cargar la imagen: {str(e)}")

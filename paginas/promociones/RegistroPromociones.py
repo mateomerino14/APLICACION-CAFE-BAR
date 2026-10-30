@@ -705,9 +705,6 @@ class RegistroPromociones(QWidget):
                     self.campoProducto.setCurrentIndex(i)
                     break
 
-    def actualizarProductos(self):
-        self.cargar_categorias()
-
     def calcularTotal(self, tabla):
         total = 0
         for i in range(tabla.rowCount()):
