@@ -19,7 +19,7 @@ from paginas.productos.DarBajaProductos import DarBajaProductos
 from paginas.secciones.Administracion_Secciones_Mesas import Administracion_Secciones_Mesas
 from paginas.stock.RegistroIngredientes import RegistroIngredientes
 from paginas.stock.ModificacionIngredientes import ModificacionIngredientes
-from Reportes import Reportes
+from paginas.reportes.Reportes import Reportes
 from paginas.empleados.RegistroEmpleados import RegistroEmpleados
 from paginas.empleados.ModificacionEmpleados import ModificacionEmpleados
 from paginas.empleados.DarBajaEmpleados import DarBajaEmpleados
