@@ -4,7 +4,7 @@ from PyQt5.QtGui import *
 from PyQt5.QtCore import *
 import sqlite3
 from functools import partial
-from Pop_up_ModificacionClientes import Pop_up_ModificacionClientes
+from paginas.clientes.Pop_up_ModificacionClientes import Pop_up_ModificacionClientes
 from nucleo.Rutas import get_db_path, get_images_dir
 
 DB_PATH = get_db_path()

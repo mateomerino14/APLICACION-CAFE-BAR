@@ -7,8 +7,8 @@ from datetime import datetime
 from paginas.inicio.PaginaPrincipal import PaginaPrincipal
 from paginas.familia.Familia import Familia
 from paginas.caja.RegistrarPedidos import RegistrarPedidos
-from RegistroClientes import RegistroClientes
-from ModificacionClientes import ModificacionClientes
+from paginas.clientes.RegistroClientes import RegistroClientes
+from paginas.clientes.ModificacionClientes import ModificacionClientes
 from paginas.administracion.Configuracion import Configuracion
 from paginas.administracion.Impresoras import Impresoras
 from RegistroCategoriasSubcategorias import RegistroCategoriasSubcategorias
