@@ -34,6 +34,34 @@ from Rutas import get_db_path
 
 DB_PATH = get_db_path()
 
+PAGINAS = {
+    "Home": PaginaPrincipal,
+    "Familia": Familia,
+    "RegistroClientes": RegistroClientes,
+    "ModificacionClientes": ModificacionClientes,
+    "Configuracion": Configuracion,
+    "Impresoras": Impresoras,
+    "RegistroCategorias": RegistroCategoriasSubcategorias,
+    "ModificacionCategorias": ModificacionCategorias,
+    "RegistroProductos": RegistroProductos,
+    "ModificacionProductos": ModificacionProductos,
+    "DarBajaProductos": DarBajaProductos,
+    "Secciones": Administracion_Secciones_Mesas,
+    "RegistroIngredientes": RegistroIngredientes,
+    "ModificacionIngredientes": ModificacionIngredientes,
+    "Reportes": Reportes,
+    "RegistroEmpleados": RegistroEmpleados,
+    "ModificacionEmpleados": ModificacionEmpleados,
+    "DarBajaEmpleados": DarBajaEmpleados,
+    "RegistroPromociones": RegistroPromociones,
+    "ModificacionPromociones": ModificacionPromociones,
+    "DarBajaPromociones": DarBajaPromociones,
+    "RegistroCargos": RegistroCargos,
+    "ModificacionCargos": ModificacionCargos,
+    "DarBajaCategorias": DarBajaCategorias,
+}
+
+
 class AdministradorPaginas(QMainWindow):
     def __init__(self, usuario):
         super().__init__()
@@ -42,15 +70,13 @@ class AdministradorPaginas(QMainWindow):
         self._pages = {}
         self.administradorMenu = None
         self.setWindowTitle("SISTEMA DE ADMINISTRACION DE CAFE-BAR")
-        self.setStyleSheet("""self{
-                              font-family: 'Segoe UI', Arial, sans-serif
-                              }
-                              QMessageBox {
-                                  background-color: #ffffff;
-                                  border: 1px solid #e2e8f0;
-                                  border-radius: 8px;
-                                  
-                              }""")
+        self.setStyleSheet("""
+            QMessageBox {
+                background-color: #ffffff;
+                border: 1px solid #e2e8f0;
+                border-radius: 8px;
+            }
+        """)
         self._init_ui()
         self.showMaximized()
         self.setFixedSize(QApplication.primaryScreen().size())
@@ -346,32 +372,9 @@ class AdministradorPaginas(QMainWindow):
         self.layoutPrincipal.addWidget(menuContainer)
 
     def _create_page(self, name: str) -> QWidget:
-        if name == "Home":                      return PaginaPrincipal()
-        if name == "Familia":                   return Familia()
-        if name == "RegistrarPedidos":          return RegistrarPedidos(self.usuario)
-        if name == "RegistroClientes":          return RegistroClientes()
-        if name == "ModificacionClientes":      return ModificacionClientes()
-        if name == "Configuracion":             return Configuracion()
-        if name == "Impresoras":                return Impresoras()
-        if name == "RegistroCategorias":        return RegistroCategoriasSubcategorias()
-        if name == "ModificacionCategorias":  return ModificacionCategorias()
-        if name == "RegistroProductos":         return RegistroProductos()
-        if name == "ModificacionProductos":     return ModificacionProductos()
-        if name == "DarBajaProductos":          return DarBajaProductos()
-        if name == "Secciones":                 return Administracion_Secciones_Mesas()
-        if name == "RegistroIngredientes":      return RegistroIngredientes()
-        if name == "ModificacionIngredientes":  return ModificacionIngredientes()
-        if name == "Reportes":                  return Reportes()
-        if name == "RegistroEmpleados":         return RegistroEmpleados()
-        if name == "ModificacionEmpleados":     return ModificacionEmpleados()
-        if name == "DarBajaEmpleados":          return DarBajaEmpleados()
-        if name == "RegistroPromociones":       return RegistroPromociones()
-        if name == "ModificacionPromociones":   return ModificacionPromociones()
-        if name == "DarBajaPromociones":        return DarBajaPromociones()
-        if name == "RegistroCargos":            return RegistroCargos()
-        if name == "ModificacionCargos":        return ModificacionCargos()
-        if name == "DarBajaCategorias":         return DarBajaCategorias()
-        raise KeyError(name)
+        if name == "RegistrarPedidos":
+            return RegistrarPedidos(self.usuario)
+        return PAGINAS[name]()
 
     def show_page(self, name: str, after=None):
         if name not in self._pages:
