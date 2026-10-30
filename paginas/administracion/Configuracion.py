@@ -1130,9 +1130,6 @@ class Configuracion(QWidget):
         conn.close()
         QMessageBox.information(self, "Éxito", "Contraseña del DIRECTORIO actualizada.")
 
-    def get_connection(self):
-        return sqlite3.connect(DB_PATH)
-
     def obtener_cuenta_gmail_activa(self):
         conn = sqlite3.connect(DB_PATH)
         cur = conn.cursor()

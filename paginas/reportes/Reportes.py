@@ -789,9 +789,6 @@ class Reportes(QWidget):
             self.comboEmpleado.addItem(alias, codigo)
         self.comboEmpleado.addItem("DIRECTORIO", -1)
 
-    def cargarEmpleadosGrafica(self):
-        self.cargarEmpleados()
-
     def actualizarOpcionesFiltro(self):
         subreporte_tipo = self.comboSubreporte.currentData()
 
